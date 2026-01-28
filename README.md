@@ -1,32 +1,126 @@
-# DataLabel Backend  
-_Data Labeling Support System – Backend Service_
+# 🏷️ DataLabel – Data Labeling Support System
+
+Hệ thống hỗ trợ gán nhãn dữ liệu phục vụ huấn luyện mô hình Machine Learning / AI.  
+Dự án được phát triển trong khuôn khổ môn học **SWP391 – Software Project**.
 
 ---
 
-## 📌 Tổng quan
-**DataLabel Backend** là hệ thống backend phục vụ cho nền tảng gán nhãn dữ liệu (Data Labeling Platform).  
-Backend chịu trách nhiệm xử lý nghiệp vụ, quản lý dữ liệu, phân quyền người dùng và cung cấp API cho Frontend thông qua RESTful APIs.
+## 📌 Tổng quan đề tài
+**DataLabel** là một nền tảng web full-stack giúp tổ chức, quản lý và thực hiện quy trình **gán nhãn dữ liệu** một cách có kiểm soát, minh bạch và dễ mở rộng.
 
-Dự án được xây dựng cho **mục đích nội bộ**, tập trung vào việc chuẩn hóa luồng nghiệp vụ gán nhãn dữ liệu và sẵn sàng mở rộng trong các giai đoạn tiếp theo.
-
----
-
-## 🎯 Mục tiêu
-- Cung cấp API cho hệ thống gán nhãn dữ liệu
-- Quản lý người dùng và phân quyền theo vai trò
-- Quản lý dự án gán nhãn, bộ dữ liệu và bộ nhãn
-- Xử lý luồng gán nhãn – kiểm duyệt – phê duyệt
-- Hỗ trợ xuất dữ liệu đã được duyệt
-- Chuẩn bị nền tảng cho AI hỗ trợ gán nhãn trong tương lai
+Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
+- Phân công công việc gán nhãn
+- Kiểm duyệt chất lượng nhãn
+- Quản lý dataset, project, label
+- Xuất dữ liệu theo định dạng phục vụ huấn luyện mô hình AI
 
 ---
 
-## 👥 Vai trò hệ thống
-- **Admin**: Quản lý người dùng, cấu hình hệ thống, nhật ký hoạt động  
-- **Manager**: Quản lý dự án gán nhãn, bộ dữ liệu, phân công công việc  
-- **Annotator**: Thực hiện gán nhãn dữ liệu theo nhiệm vụ được giao  
-- **Reviewer**: Kiểm duyệt, phê duyệt hoặc trả về kết quả gán nhãn  
+## 🎓 Thông tin môn học
+- **Môn học:** SWP391 – Software Project
+- **Học kỳ:** FALL 2025
+- **Loại dự án:** Full-stack Web Application
+- **Mục đích:** Học tập & nghiên cứu
 
 ---
 
-## 🧩 Kiến trúc tổng quan
+## 👥 Vai trò người dùng
+
+### 🔐 Admin
+- Quản lý người dùng
+- Tạo và quản lý vai trò (Role)
+- Gán vai trò cho tài khoản
+- Cấu hình hệ thống
+- Theo dõi nhật ký hoạt động
+
+### 📋 Manager
+- Tạo và quản lý Project
+- Quản lý Dataset
+- Tạo Category, Label Set, Guideline
+- Phân công task gán nhãn cho Annotator
+- Theo dõi tiến độ và chất lượng gán nhãn
+- Xuất dữ liệu đã được duyệt
+
+### ✍️ Annotator
+- Nhận task gán nhãn
+- Xem guideline và label set
+- Thực hiện gán nhãn dữ liệu
+- Lưu nháp hoặc gửi kết quả để kiểm duyệt
+- Chỉnh sửa nhãn theo phản hồi
+
+### 🔍 Reviewer
+- Nhận các annotation cần kiểm duyệt
+- Đánh giá chất lượng nhãn
+- Phê duyệt hoặc trả về làm lại
+- Ghi nhận lỗi theo danh mục
+
+---
+
+## ✨ Chức năng chính của hệ thống
+
+### 👤 Quản lý người dùng & phân quyền
+- CRUD User
+- CRUD Role
+- Gán role cho tài khoản
+- Kiểm soát truy cập theo vai trò
+
+### 📁 Quản lý Project & Dataset
+- Tạo và quản lý Project
+- Phân loại Project theo Category
+- Quản lý Dataset theo từng Project
+- Gắn Label Set cho Dataset
+
+### 🏷️ Gán nhãn dữ liệu
+- Tạo Label Set & Label
+- Quản lý Guideline gán nhãn
+- Phân công task gán nhãn
+- Lưu nháp và nộp kết quả
+
+### ✅ Kiểm duyệt & đánh giá
+- Reviewer kiểm tra annotation
+- Phê duyệt hoặc yêu cầu chỉnh sửa
+- Theo dõi mức độ đồng thuận (consensus)
+- Ghi nhận lỗi gán nhãn
+
+### 📤 Xuất dữ liệu
+- Xuất dữ liệu đã duyệt
+- Hỗ trợ nhiều định dạng (YOLO, COCO, Pascal VOC, JSON)
+- Phục vụ huấn luyện mô hình AI
+
+### 🤖 Hỗ trợ AI (định hướng)
+- Gợi ý nhãn ban đầu cho Annotator
+- Hỗ trợ tăng tốc quá trình gán nhãn
+
+---
+
+## 🏗️ Kiến trúc tổng thể
+
+- **Frontend:** Web UI cho từng vai trò (Admin / Manager / Annotator / Reviewer)
+- **Backend:** RESTful API xử lý nghiệp vụ & phân quyền
+- **Database:** Lưu trữ người dùng, project, dataset, annotation
+- **Swagger:** Tài liệu API
+- **AI Module (future):** Gợi ý nhãn
+
+---
+
+## 🛠️ Công nghệ sử dụng (dự kiến)
+
+### Backend
+- ASP.NET Core Web API (C#)
+- Swagger (OpenAPI)
+- Entity Framework Core
+- PostgreSQL / SQL Server
+
+### Frontend
+- React
+- TypeScript
+- Modern UI Framework
+
+---
+
+## 🔜 Hướng phát triển
+- Áp dụng JWT Authentication & Authorization
+- Tích hợp database đầy đủ
+- Thống kê & báo cáo chất lượng gán nhãn
+- Hoàn thiện AI hỗ trợ gán nhãn
+- Triển khai hệ thống hoàn chỉnh
