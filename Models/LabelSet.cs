@@ -3,29 +3,29 @@ using System.Collections.Generic;
 
 namespace DataLabel_Project_BE.Models;
 
-public partial class Project
+public partial class LabelSet
 {
-    public Guid ProjectId { get; set; }
+    public Guid LabelSetId { get; set; }
 
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
 
-    public string Status { get; set; } = null!;
+    public int VersionNumber { get; set; }
 
-    public Guid CategoryId { get; set; }
+    public Guid? GuidelineId { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public Guid? CreatedBy { get; set; }
 
-    public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
+    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 
     public virtual ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
 
-    public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
-
-    public virtual Category ProjectCategory { get; set; } = null!;
+    public virtual ICollection<Label> Labels { get; set; } = new List<Label>();
 
     public virtual User? CreatedByUser { get; set; }
+
+    public virtual Guideline? LabelSetGuideline { get; set; }
 }
