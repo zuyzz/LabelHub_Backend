@@ -62,7 +62,7 @@ namespace DataLabel_Project_BE.Controllers
             if (user == null) return NotFound();
 
             user.RoleId = request.RoleId;
-            user.RoleName = request.RoleName;
+            // user.RoleName = request.RoleName;
 
             return Ok(user);
         }

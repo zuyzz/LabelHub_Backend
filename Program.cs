@@ -18,6 +18,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 // MAP CONTROLLERS (QUAN TRỌNG)
-// app.MapControllers();
+app.MapControllers();
 
-// app.Run();
+app.Run();
