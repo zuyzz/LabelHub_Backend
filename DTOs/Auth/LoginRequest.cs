@@ -1,8 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace DataLabel_Project_BE.DTOs.Auth
 {
     public class LoginRequest
     {
-        // TODO: Add properties (Username/Email, Password)
-        // TODO: Add data annotations for validation
+        [Required(ErrorMessage = "Username or Email is required")]
+        public string UsernameOrEmail { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = string.Empty;
     }
 }
