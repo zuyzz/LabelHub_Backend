@@ -10,14 +10,14 @@ namespace DataLabel_Project_BE.Controllers
     /// </summary>
     [ApiController]
     [Route("api/roles")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "admin")]
     public class RolesController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IRoleService _roleService;
 
-        public RolesController(AuthService authService)
+        public RolesController(IRoleService roleService)
         {
-            _authService = authService;
+            _roleService = roleService;
         }
 
         /// <summary>
@@ -32,14 +32,10 @@ namespace DataLabel_Project_BE.Controllers
         /// <response code="401">Chưa xác thực</response>
         /// <response code="403">Không có quyền</response>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            var roles = _authService.GetAllRoles();
-            
-            // Map to RoleResponse DTOs
+            var roles = await _roleService.GetAllAsync();
+
             var response = roles.Select(r => new RoleResponse
             {
                 RoleId = r.RoleId,
@@ -63,25 +59,12 @@ namespace DataLabel_Project_BE.Controllers
         /// <response code="403">Không có quyền</response>
         /// <response code="404">Không tìm thấy</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult GetById(Guid id)
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var role = _authService.GetRoleById(id);
-            if (role == null)
-            {
-                return NotFound(new { message = "Role not found" });
-            }
+            var role = await _roleService.GetByIdAsync(id);
+            if (role == null) return NotFound(new { message = "Role not found" });
 
-            // Map to RoleResponse DTO
-            var response = new RoleResponse
-            {
-                RoleId = role.RoleId,
-                RoleName = role.RoleName
-            };
-
+            var response = new RoleResponse { RoleId = role.RoleId, RoleName = role.RoleName };
             return Ok(response);
         }
 
@@ -100,28 +83,15 @@ namespace DataLabel_Project_BE.Controllers
         /// <response code="401">Chưa xác thực</response>
         /// <response code="403">Không có quyền</response>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public IActionResult Create([FromBody] CreateRoleRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateRoleRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                var newRole = _authService.CreateRole(request.RoleName);
-                
-                // Map to RoleResponse DTO
-                var response = new RoleResponse
-                {
-                    RoleId = newRole.RoleId,
-                    RoleName = newRole.RoleName
-                };
+                var newRole = await _roleService.CreateRoleAsync(request.RoleName);
 
+                var response = new RoleResponse { RoleId = newRole.RoleId, RoleName = newRole.RoleName };
                 return CreatedAtAction(nameof(GetById), new { id = newRole.RoleId }, response);
             }
             catch (Exception ex)
@@ -147,33 +117,16 @@ namespace DataLabel_Project_BE.Controllers
         /// <response code="403">Không có quyền</response>
         /// <response code="404">Không tìm thấy</response>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult Update(Guid id, [FromBody] UpdateRoleRequest request)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoleRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                var role = _authService.UpdateRole(id, request.RoleName);
-                if (role == null)
-                {
-                    return NotFound(new { message = "Role not found" });
-                }
+                var role = await _roleService.UpdateRoleAsync(id, request.RoleName);
+                if (role == null) return NotFound(new { message = "Role not found" });
 
-                // Map to RoleResponse DTO
-                var response = new RoleResponse
-                {
-                    RoleId = role.RoleId,
-                    RoleName = role.RoleName
-                };
-
+                var response = new RoleResponse { RoleId = role.RoleId, RoleName = role.RoleName };
                 return Ok(response);
             }
             catch (Exception ex)
@@ -198,20 +151,12 @@ namespace DataLabel_Project_BE.Controllers
         /// <response code="403">Không có quyền</response>
         /// <response code="404">Không tìm thấy</response>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
             try
             {
-                var success = _authService.DeleteRole(id);
-                if (!success)
-                {
-                    return NotFound(new { message = "Role not found" });
-                }
+                var success = await _roleService.DeleteRoleAsync(id);
+                if (!success) return NotFound(new { message = "Role not found" });
                 return NoContent();
             }
             catch (Exception ex)

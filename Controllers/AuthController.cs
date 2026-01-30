@@ -12,9 +12,9 @@ namespace DataLabel_Project_BE.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
-        public AuthController(AuthService authService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
         }
@@ -37,14 +37,14 @@ namespace DataLabel_Project_BE.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = _authService.Login(request);
+            var response = await _authService.LoginAsync(request);
 
             if (response == null)
             {
@@ -53,8 +53,5 @@ namespace DataLabel_Project_BE.Controllers
 
             return Ok(response);
         }
-
-        // ❌ NO REGISTER ENDPOINT
-        // Only Admin can create user accounts via /api/users endpoint
     }
 }

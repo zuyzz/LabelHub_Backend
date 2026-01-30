@@ -1,4 +1,7 @@
 using DataLabel_Project_BE.Services;
+using DataLabel_Project_BE.Data;
+using DataLabel_Project_BE.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -10,7 +13,24 @@ var builder = WebApplication.CreateBuilder(args);
 // =======================
 // Register services
 // =======================
-builder.Services.AddSingleton<AuthService>(); // Singleton for in-memory mock data
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'Default' is not configured.");
+}
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+
+// Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -103,7 +123,7 @@ app.UseSwaggerUI(options =>
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // ⚠️ PHẢI trước Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
