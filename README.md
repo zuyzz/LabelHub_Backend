@@ -20,7 +20,6 @@ Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
 - **Môn học:** SWP391 – Software Project
 - **Học kỳ:** FALL 2025
 - **Loại dự án:** Full-stack Web Application
-- **Mục đích:** Học tập & nghiên cứu
 
 ---
 
@@ -82,10 +81,6 @@ Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
 - Theo dõi mức độ đồng thuận (consensus)
 - Ghi nhận lỗi gán nhãn
 
-### 📤 Xuất dữ liệu
-- Xuất dữ liệu đã duyệt
-- Hỗ trợ nhiều định dạng (YOLO, COCO, Pascal VOC, JSON)
-- Phục vụ huấn luyện mô hình AI
 
 ### 🤖 Hỗ trợ AI (định hướng)
 - Gợi ý nhãn ban đầu cho Annotator
@@ -111,12 +106,7 @@ Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
 - Entity Framework Core
 - PostgreSQL / SQL Server
 
-### Frontend
-- React
-- TypeScript
-- Modern UI Framework
-
----
+--- 
 
 ## 🔜 Hướng phát triển
 - Áp dụng JWT Authentication & Authorization

@@ -9,6 +9,11 @@ public partial class User
 
     public string Username { get; set; } = null!;
 
+    /// <summary>
+    /// Hashed password for authentication
+    /// </summary>
+    public string PasswordHash { get; set; } = null!;
+
     public string? DisplayName { get; set; }
 
     public string? Email { get; set; }
