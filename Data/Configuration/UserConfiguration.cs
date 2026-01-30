@@ -18,6 +18,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         entity.Property(e => e.UserId).HasColumnName("userId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.Username).HasColumnName("username").HasColumnType("character varying");
+        entity.Property(e => e.PasswordHash).HasColumnName("passwordHash");
         entity.Property(e => e.DisplayName).HasColumnName("displayName").HasColumnType("character varying");
         entity.Property(e => e.Email).HasColumnName("email").HasColumnType("character varying");
         entity.Property(e => e.PhoneNumber).HasColumnName("phoneNumber")
