@@ -11,7 +11,13 @@ namespace DataLabel_Project_BE.Services
 {
     /// <summary>
     /// Authentication service for handling user login and management
-    /// Uses IN-MEMORY MOCK DATA for testing and demo purposes
+    /// 
+    /// MOCK DATA IMPLEMENTATION:
+    /// - Uses IN-MEMORY storage (List&lt;User&gt;, List&lt;Role&gt;)
+    /// - Data resets on application restart
+    /// - Seed users: admin (ready), reviewer_demo (requires password change)
+    /// - Default password for new users: configured in appsettings.json
+    /// 
     /// Implements password hashing using SHA256 and JWT token generation
     /// </summary>
     public class AuthService
@@ -97,6 +103,12 @@ namespace DataLabel_Project_BE.Services
             var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440");
             var expiresAt = DateTime.UtcNow.AddMinutes(expireMinutes);
 
+            // Check if first login
+            var requirePasswordChange = user.IsFirstLogin;
+            var message = requirePasswordChange 
+                ? "Login successful. You must change your password before accessing other features."
+                : "Login successful";
+
             return new LoginResponse
             {
                 UserId = user.UserId,
@@ -104,7 +116,8 @@ namespace DataLabel_Project_BE.Services
                 RoleName = roleName,
                 Token = token,
                 ExpiresAt = expiresAt,
-                Message = "Login successful"
+                Message = message,
+                RequirePasswordChange = requirePasswordChange
             };
         }
 
@@ -148,6 +161,29 @@ namespace DataLabel_Project_BE.Services
         }
 
         /// <summary>
+        /// Change password for first login users
+        /// Verifies old password before updating
+        /// Sets IsFirstLogin = false
+        /// </summary>
+        public User? ChangePassword(Guid userId, string oldPassword, string newPassword)
+        {
+            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            if (user == null) return null;
+
+            // Verify old password
+            if (!VerifyPassword(oldPassword, user.PasswordHash))
+            {
+                return null; // Old password is incorrect
+            }
+
+            // Hash and update password
+            user.PasswordHash = HashPassword(newPassword);
+            user.IsFirstLogin = false;
+
+            return user;
+        }
+
+        /// <summary>
         /// Get all roles
         /// </summary>
         public List<Role> GetAllRoles()
@@ -165,9 +201,10 @@ namespace DataLabel_Project_BE.Services
 
         /// <summary>
         /// Create new user (Admin only)
-        /// Password is hashed before storage
+        /// Uses default password from configuration
+        /// Sets IsFirstLogin = true
         /// </summary>
-        public User CreateUser(string username, string password, string? displayName, string? email, string? phoneNumber, Guid roleId)
+        public User CreateUser(string username, string? displayName, string? email, string? phoneNumber, Guid roleId)
         {
             // Check if username already exists
             if (_users.Any(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
@@ -181,8 +218,15 @@ namespace DataLabel_Project_BE.Services
                 throw new Exception("Role not found");
             }
 
-            // Hash the password
-            var passwordHash = HashPassword(password);
+            // Get default password from configuration (REQUIRED - no fallback)
+            var defaultPassword = _configuration["DefaultPassword"];
+            if (string.IsNullOrWhiteSpace(defaultPassword))
+            {
+                throw new InvalidOperationException("DefaultPassword is not configured in appsettings");
+            }
+            
+            Console.WriteLine("[DEBUG] DefaultPassword loaded successfully for new user creation");
+            var passwordHash = HashPassword(defaultPassword);
 
             var user = new User
             {
@@ -194,6 +238,7 @@ namespace DataLabel_Project_BE.Services
                 PhoneNumber = phoneNumber,
                 RoleId = roleId,
                 IsActive = true,
+                IsFirstLogin = true,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -220,6 +265,30 @@ namespace DataLabel_Project_BE.Services
             if (email != null) user.Email = email;
             if (phoneNumber != null) user.PhoneNumber = phoneNumber;
             if (isActive.HasValue) user.IsActive = isActive.Value;
+
+            return user;
+        }
+
+        /// <summary>
+        /// Update profile (Self-update only)
+        /// User can update their own profile information
+        /// Requires password to be changed first (IsFirstLogin = false)
+        /// </summary>
+        public User? UpdateProfile(Guid userId, string? displayName, string? email, string? phoneNumber)
+        {
+            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            if (user == null) return null;
+
+            // Enforce password change requirement
+            if (user.IsFirstLogin)
+            {
+                throw new Exception("You must change your password before updating profile");
+            }
+
+            // Update only provided fields
+            if (displayName != null) user.DisplayName = displayName;
+            if (email != null) user.Email = email;
+            if (phoneNumber != null) user.PhoneNumber = phoneNumber;
 
             return user;
         }
@@ -337,7 +406,16 @@ namespace DataLabel_Project_BE.Services
 
         /// <summary>
         /// Initialize seed data with FIXED GUIDs for testing
-        /// Creates 4 default roles and 1 admin user
+        /// 
+        /// MOCK DATA BEHAVIOR:
+        /// - Data is stored IN-MEMORY only
+        /// - Restarting the app resets all users except these seeded ones
+        /// - Default password for demo users: see "DefaultPassword" in appsettings.json
+        /// 
+        /// Creates:
+        /// - 4 fixed roles: Admin, Manager, Reviewer, Annotator
+        /// - 1 admin account (ready to use)
+        /// - 1 demo reviewer (requires password change on first login)
         /// </summary>
         private void InitializeSeedData()
         {
@@ -352,22 +430,49 @@ namespace DataLabel_Project_BE.Services
             _roles.Add(new Role { RoleId = reviewerRoleId, RoleName = "Reviewer" });
             _roles.Add(new Role { RoleId = annotatorRoleId, RoleName = "Annotator" });
 
-            // Create admin user with FIXED GUID
+            // Get default password from configuration
+            var defaultPassword = _configuration["DefaultPassword"];
+            if (string.IsNullOrWhiteSpace(defaultPassword))
+            {
+                throw new InvalidOperationException("DefaultPassword is not configured in appsettings");
+            }
+            
+            Console.WriteLine("[DEBUG] DefaultPassword loaded successfully at startup");
+
+            // Create admin user with FIXED GUID (ready to use, no password change required)
             var adminUserId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
             var adminUser = new User
             {
                 UserId = adminUserId,
                 Username = "admin",
-                Email = "admin@test.com",
-                PasswordHash = HashPassword("Admin@123"), // Hash the password
+                Email = "admin@datalabel.com",
+                PasswordHash = HashPassword("Admin@123"), // Admin has custom password
                 DisplayName = "System Administrator",
                 PhoneNumber = null,
                 RoleId = adminRoleId,
                 IsActive = true,
+                IsFirstLogin = false, // Admin doesn't need to change password
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Create demo reviewer user (for testing first-login flow)
+            var reviewerUserId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+            var reviewerUser = new User
+            {
+                UserId = reviewerUserId,
+                Username = "reviewer_demo",
+                Email = "reviewer@datalabel.com",
+                PasswordHash = HashPassword(defaultPassword), // Uses default password
+                DisplayName = "Demo Reviewer",
+                PhoneNumber = null,
+                RoleId = reviewerRoleId,
+                IsActive = true,
+                IsFirstLogin = true, // Must change password on first login
                 CreatedAt = DateTime.UtcNow
             };
 
             _users.Add(adminUser);
+            _users.Add(reviewerUser);
         }
     }
 }

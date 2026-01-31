@@ -20,6 +20,12 @@ builder.Services.AddEndpointsApiExplorer();
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured");
 
+// Warn if using placeholder key (safe for GitHub but needs real key for production)
+if (jwtKey == "CHANGE_ME_FOR_LOCAL_DEVELOPMENT")
+{
+    Console.WriteLine("⚠️  WARNING: Using placeholder JWT key. Copy appsettings.json to appsettings.Development.json and set a real secret key for local development.");
+}
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
 

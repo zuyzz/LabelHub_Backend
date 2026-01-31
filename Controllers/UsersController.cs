@@ -117,9 +117,11 @@ namespace DataLabel_Project_BE.Controllers
         /// ➕ Tạo tài khoản mới
         /// </summary>
         /// <remarks>
-        /// Chức năng: Tạo user mới  
+        /// Chức năng: Tạo user mới với mật khẩu mặc định  
         /// Quyền: Admin  
-        /// Body: username, password, roleId (bắt buộc), displayName, email, phoneNumber  
+        /// Body: username, roleId (bắt buộc), displayName, email, phoneNumber  
+        /// Mật khẩu mặc định được gán tự động  
+        /// User phải đổi mật khẩu khi đăng nhập lần đầu  
         /// Lỗi: 400 nếu username trùng, 401, 403
         /// </remarks>
         /// <param name="request">Thông tin tài khoản</param>
@@ -150,7 +152,6 @@ namespace DataLabel_Project_BE.Controllers
 
                 var user = _authService.CreateUser(
                     request.Username,
-                    request.Password,
                     request.DisplayName,
                     request.Email,
                     request.PhoneNumber,
