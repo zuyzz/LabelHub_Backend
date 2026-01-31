@@ -109,6 +109,18 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddAuthorization();
+
+// Database & DI 
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+// Register repository and service
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+// Accessor used to read current user info in services
+builder.Services.AddHttpContextAccessor();
+
 var app = builder.Build();
 
 // =======================
