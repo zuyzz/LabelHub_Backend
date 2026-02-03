@@ -5,6 +5,7 @@ namespace DataLabel_Project_BE.DTOs
         Success,
         AlreadyMember,
         ProjectNotFound,
-        Unauthorized
+        Unauthorized,
+        Forbidden
     }
 }

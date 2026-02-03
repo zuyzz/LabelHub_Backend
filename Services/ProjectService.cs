@@ -67,8 +67,9 @@ namespace DataLabel_Project_BE.Services
             await _repo.AddAsync(project);
             await _repo.SaveChangesAsync();
 
-            // If project created by a user (manager/admin), add them to ProjectMember table
-            if (createdBy.HasValue)
+            // If project created by a user (e.g., manager), add them to ProjectMember table
+            // Do NOT auto-add users with role 'admin'
+            if (createdBy.HasValue && _httpContextAccessor.HttpContext?.User?.IsInRole("admin") != true)
             {
                 var added = await _repo.AddProjectMemberAsync(project.ProjectId, createdBy.Value);
                 if (added)
@@ -112,8 +113,12 @@ namespace DataLabel_Project_BE.Services
 
         public async Task<DTOs.JoinProjectResult> JoinProjectAsync(Guid projectId)
         {
-            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = _httpContextAccessor.HttpContext?.User;
+            var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(userIdClaim, out var userId)) return DTOs.JoinProjectResult.Unauthorized;
+
+            // Admins are not allowed to join projects
+            if (user?.IsInRole("admin") == true) return DTOs.JoinProjectResult.Forbidden;
 
             if (!await _repo.ExistsAsync(projectId)) return DTOs.JoinProjectResult.ProjectNotFound;
 

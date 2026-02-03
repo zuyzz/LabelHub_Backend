@@ -47,6 +47,7 @@ namespace DataLabel_Project_BE.Controllers
             {
                 DTOs.JoinProjectResult.ProjectNotFound => NotFound(),
                 DTOs.JoinProjectResult.Unauthorized => Unauthorized(),
+                DTOs.JoinProjectResult.Forbidden => Forbid(),
                 DTOs.JoinProjectResult.AlreadyMember => Conflict(new { message = "Already a member" }),
                 DTOs.JoinProjectResult.Success => NoContent(),
                 _ => StatusCode(500)
