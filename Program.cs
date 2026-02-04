@@ -41,6 +41,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Register services
 // =======================
 builder.Services.AddScoped<AuthService>(); // Scoped for database operations
+builder.Services.AddScoped<GuidelineService>(); // Scoped for database operations
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
