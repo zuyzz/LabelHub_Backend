@@ -38,7 +38,9 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>(); 
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ILabelRepository, LabelRepository>();
+builder.Services.AddScoped<ILabelService, LabelService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
