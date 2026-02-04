@@ -74,7 +74,11 @@ public class GuidelinesController : ControllerBase
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         var guideline = await _guidelineService.CreateGuideline(request);
-        return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, guideline);
+        return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, new
+        {
+            message = "Guideline created successfully",
+            guideline
+        });
     }
 
     /// <summary>
@@ -103,7 +107,11 @@ public class GuidelinesController : ControllerBase
         if (guideline == null)
             return NotFound(new { message = "Guideline not found" });
 
-        return Ok(guideline);
+        return Ok(new
+        {
+            message = "Guideline updated successfully",
+            guideline
+        });
     }
 
     /// <summary>
