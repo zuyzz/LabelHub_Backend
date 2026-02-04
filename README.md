@@ -106,6 +106,29 @@ Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
 - Entity Framework Core
 - PostgreSQL / SQL Server
 
+---
+
+## ⚙️ Configuration & Setup
+
+### Local Development
+1. Clone repository
+2. Ensure `appsettings.Development.json` exists (already gitignored)
+3. The Development file contains the real JWT secret key
+4. Run the project - it will automatically use Development configuration
+
+### Important Files
+- **appsettings.json**: Template configuration (safe for GitHub, contains placeholder values)
+- **appsettings.Development.json**: Local secrets (gitignored, contains real JWT key)
+- **.gitignore**: Already configured to exclude Development config
+
+### Configuration Flow
+ASP.NET Core automatically merges configurations in this order:
+1. `appsettings.json` (base template)
+2. `appsettings.Development.json` (overrides for Development environment)
+3. Environment variables (if needed)
+
+The real JWT key in Development config overrides the placeholder in base config.
+
 --- 
 
 ## 🔜 Hướng phát triển

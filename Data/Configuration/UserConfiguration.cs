@@ -8,6 +8,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> entity)
     {
+        entity.ToTable("Users");
+        
         entity.HasKey(e => e.UserId).HasName("Users_pkey");
 
         entity.HasIndex(e => e.Email, "Users_email_key").IsUnique();
@@ -18,7 +20,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         entity.Property(e => e.UserId).HasColumnName("userId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.Username).HasColumnName("username").HasColumnType("character varying");
-        entity.Property(e => e.PasswordHash).HasColumnName("passwordHash");
+        entity.Property(e => e.PasswordHash).HasColumnName("passwordHash").HasColumnType("character varying");
         entity.Property(e => e.DisplayName).HasColumnName("displayName").HasColumnType("character varying");
         entity.Property(e => e.Email).HasColumnName("email").HasColumnType("character varying");
         entity.Property(e => e.PhoneNumber).HasColumnName("phoneNumber")
@@ -26,6 +28,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnType("character varying");
         entity.Property(e => e.RoleId).HasColumnName("roleId");
         entity.Property(e => e.IsActive).HasColumnName("isActive").HasDefaultValue(true);
+        entity.Property(e => e.IsFirstLogin).HasColumnName("isFirstLogin").HasDefaultValue(true);
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
 
         entity.HasOne(d => d.UserRole).WithMany(p => p.Users)

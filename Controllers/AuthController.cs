@@ -2,36 +2,31 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataLabel_Project_BE.DTOs.Auth;
 using DataLabel_Project_BE.Services;
+using System.Security.Claims;
 
 namespace DataLabel_Project_BE.Controllers
 {
     /// <summary>
-    /// 🔐 Xác thực
+    /// Authentication
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly AuthService _authService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(AuthService authService)
         {
             _authService = authService;
         }
 
         /// <summary>
-        /// 🔑 Đăng nhập
+        /// User login
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Đăng nhập, trả JWT  
-        /// Quyền: Public  
-        /// Body: usernameOrEmail, password  
-        /// Lỗi: 401 nếu sai thông tin
-        /// </remarks>
-        /// <param name="request">Thông tin đăng nhập</param>
-        /// <response code="200">Đăng nhập thành công, trả về thông tin user và JWT token</response>
-        /// <response code="400">Dữ liệu đầu vào không hợp lệ</response>
-        /// <response code="401">Sai thông tin đăng nhập hoặc tài khoản bị vô hiệu hóa</response>
+        /// <param name="request">Login credentials</param>
+        /// <response code="200">Login successful, returns user info and JWT token</response>
+        /// <response code="400">Invalid input data</response>
+        /// <response code="401">Invalid credentials or account is inactive</response>
         [HttpPost("login")]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -41,17 +36,67 @@ namespace DataLabel_Project_BE.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
-            var response = await _authService.LoginAsync(request);
+            var (response, errorMessage) = await _authService.Login(request);
 
             if (response == null)
             {
-                return Unauthorized(new { message = "Invalid credentials or account is inactive" });
+                return Unauthorized(new { message = errorMessage });
             }
 
             return Ok(response);
         }
+
+        /// <summary>
+        /// Change password
+        /// </summary>
+        /// <param name="request">Old and new passwords</param>
+        /// <response code="200">Password changed successfully</response>
+        /// <response code="400">Invalid data or incorrect old password</response>
+        /// <response code="401">Not authenticated</response>
+        /// <response code="404">User not found</response>
+        [HttpPost("change-password")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
+
+            // Get current user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid token" });
+            }
+
+            var (user, errorMessage) = await _authService.ChangePassword(
+                userId,
+                request.OldPassword,
+                request.NewPassword
+            );
+
+            if (user == null)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new 
+            { 
+                message = "Password changed successfully. You can now access all features.",
+                userId = user.UserId,
+                username = user.Username
+            });
+        }
+
+        // ❌ NO REGISTER ENDPOINT
+        // Only Admin can create user accounts via /api/users endpoint
     }
 }
