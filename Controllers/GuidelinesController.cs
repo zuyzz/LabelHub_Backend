@@ -31,7 +31,13 @@ public class GuidelinesController : ControllerBase
     public async Task<ActionResult<List<GuidelineResponse>>> GetAllGuidelines()
     {
         var guidelines = await _guidelineService.GetAllGuidelines();
-        return Ok(guidelines);
+        
+        if (guidelines.Count == 0)
+        {
+            return Ok(new { message = "No guidelines found", data = guidelines });
+        }
+        
+        return Ok(new { message = "Guidelines retrieved successfully", count = guidelines.Count, data = guidelines });
     }
 
     /// <summary>
@@ -51,7 +57,7 @@ public class GuidelinesController : ControllerBase
         if (guideline == null)
             return NotFound(new { message = "Guideline not found" });
 
-        return Ok(guideline);
+        return Ok(new { message = "Guideline retrieved successfully", data = guideline });
     }
 
     /// <summary>
@@ -77,7 +83,7 @@ public class GuidelinesController : ControllerBase
         return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, new
         {
             message = "Guideline created successfully",
-            guideline
+            data = guideline
         });
     }
 
@@ -110,7 +116,7 @@ public class GuidelinesController : ControllerBase
         return Ok(new
         {
             message = "Guideline updated successfully",
-            guideline
+            data = guideline
         });
     }
 

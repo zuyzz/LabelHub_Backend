@@ -1,5 +1,7 @@
 using DataLabel_Project_BE.Models;
 using DataLabel_Project_BE.Repositories;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DataLabel_Project_BE.Services;
 
@@ -37,8 +39,10 @@ public class UserService : IUserService
         var role = await _roleRepo.GetByIdAsync(roleId);
         if (role == null) throw new Exception("Role not found");
 
-        // Hash password
-        var passwordHash = AuthService.HashPasswordStatic(password);
+        // Hash password using SHA256
+        using var sha256 = SHA256.Create();
+        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+        var passwordHash = Convert.ToBase64String(hashedBytes);
 
         var user = new User
         {
