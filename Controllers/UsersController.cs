@@ -7,11 +7,11 @@ using System.Security.Claims;
 namespace DataLabel_Project_BE.Controllers
 {
     /// <summary>
-    /// 👥 Quản lý Người dùng
+    /// User Management
     /// </summary>
     [ApiController]
     [Route("api/users")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "admin")]
     public class UsersController : ControllerBase
     {
         private readonly AuthService _authService;
@@ -31,24 +31,19 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 📋 Lấy danh sách người dùng
+        /// Get all users
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Lấy tất cả users  
-        /// Quyền: Admin  
-        /// Lỗi: 401, 403
-        /// </remarks>
-        /// <response code="200">Danh sách người dùng</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
+        /// <response code="200">List of users</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            var users = _authService.GetAllUsers();
-            var roles = _authService.GetAllRoles();
+            var users = await _authService.GetAllUsers();
+            var roles = await _authService.GetAllRoles();
 
             // Map to UserResponse DTOs
             var response = users.Select(u => new UserResponse
@@ -70,32 +65,27 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🔍 Xem chi tiết người dùng
+        /// Get user by ID
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Lấy 1 user theo ID  
-        /// Quyền: Admin  
-        /// Lỗi: 401, 403, 404
-        /// </remarks>
-        /// <param name="id">ID người dùng</param>
-        /// <response code="200">Thông tin người dùng</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
-        /// <response code="404">Không tìm thấy</response>
+        /// <param name="id">User ID</param>
+        /// <response code="200">User details</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult GetById(Guid id)
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var user = _authService.GetUserById(id);
+            var user = await _authService.GetUserById(id);
             if (user == null)
             {
                 return NotFound(new { message = "User not found" });
             }
 
-            var role = _authService.GetRoleById(user.RoleId);
+            var role = await _authService.GetRoleById(user.RoleId);
 
             var response = new UserResponse
             {
@@ -114,43 +104,35 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// ➕ Tạo tài khoản mới
+        /// Create new user
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Tạo user mới với mật khẩu mặc định  
-        /// Quyền: Admin  
-        /// Body: username, roleId (bắt buộc), displayName, email, phoneNumber  
-        /// Mật khẩu mặc định được gán tự động  
-        /// User phải đổi mật khẩu khi đăng nhập lần đầu  
-        /// Lỗi: 400 nếu username trùng, 401, 403
-        /// </remarks>
-        /// <param name="request">Thông tin tài khoản</param>
-        /// <response code="201">Tạo thành công</response>
-        /// <response code="400">Dữ liệu không hợp lệ</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
+        /// <param name="request">User details</param>
+        /// <response code="201">User created</response>
+        /// <response code="400">Invalid data</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public IActionResult Create([FromBody] CreateUserRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
             try
             {
                 // Verify role exists
-                var role = _authService.GetRoleById(request.RoleId);
+                var role = await _authService.GetRoleById(request.RoleId);
                 if (role == null)
                 {
                     return BadRequest(new { message = "Invalid role specified" });
                 }
 
-                var user = _authService.CreateUser(
+                var user = await _authService.CreateUser(
                     request.Username,
                     request.DisplayName,
                     request.Email,
@@ -173,6 +155,23 @@ namespace DataLabel_Project_BE.Controllers
 
                 return CreatedAtAction(nameof(GetById), new { id = user.UserId }, response);
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("Users_username_key") == true)
+                {
+                    return BadRequest(new { message = "Username already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_email_key") == true)
+                {
+                    return BadRequest(new { message = "Email already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_phoneNumber_key") == true)
+                {
+                    return BadRequest(new { message = "Phone number already exists" });
+                }
+                return BadRequest(new { message = "Database error occurred", details = dbEx.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -180,40 +179,33 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// ✏️ Cập nhật người dùng
+        /// Update user
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Sửa thông tin user  
-        /// Quyền: Admin  
-        /// Body: displayName, email, phoneNumber, isActive  
-        /// ⚠️ Admin KHÔNG THỂ disable chính mình  
-        /// Lỗi: 400, 401, 403, 404
-        /// </remarks>
-        /// <param name="id">ID người dùng</param>
-        /// <param name="request">Thông tin cập nhật</param>
-        /// <response code="200">Cập nhật thành công</response>
-        /// <response code="400">Vi phạm quy tắc</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
-        /// <response code="404">Không tìm thấy</response>
+        /// <param name="id">User ID</param>
+        /// <param name="request">Update details</param>
+        /// <response code="200">User updated</response>
+        /// <response code="400">Invalid data</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult Update(Guid id, [FromBody] UpdateUserRequest request)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
             try
             {
                 var currentUserId = GetCurrentUserId();
-                
-                var user = _authService.UpdateUser(
+
+                var user = await _authService.UpdateUser(
                     id,
                     currentUserId,
                     request.DisplayName,
@@ -227,7 +219,7 @@ namespace DataLabel_Project_BE.Controllers
                     return NotFound(new { message = "User not found" });
                 }
 
-                var role = _authService.GetRoleById(user.RoleId);
+                var role = await _authService.GetRoleById(user.RoleId);
 
                 var response = new UserResponse
                 {
@@ -244,6 +236,19 @@ namespace DataLabel_Project_BE.Controllers
 
                 return Ok(response);
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("Users_email_key") == true)
+                {
+                    return BadRequest(new { message = "Email already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_phoneNumber_key") == true)
+                {
+                    return BadRequest(new { message = "Phone number already exists" });
+                }
+                return BadRequest(new { message = "Database error occurred", details = dbEx.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -251,32 +256,26 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🗑️ Vô hiệu hóa người dùng
+        /// Disable user
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Set isActive = false  
-        /// Quyền: Admin  
-        /// ⚠️ Admin KHÔNG THỂ disable chính mình  
-        /// Lỗi: 400, 401, 403, 404
-        /// </remarks>
-        /// <param name="id">ID người dùng</param>
-        /// <response code="200">Vô hiệu hóa thành công</response>
-        /// <response code="400">Vi phạm quy tắc</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
-        /// <response code="404">Không tìm thấy</response>
+        /// <param name="id">User ID</param>
+        /// <response code="200">User disabled</response>
+        /// <response code="400">Invalid operation</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
             try
             {
                 var currentUserId = GetCurrentUserId();
-                var success = _authService.DisableUser(id, currentUserId);
+                var success = await _authService.DisableUser(id, currentUserId);
 
                 if (!success)
                 {
@@ -292,33 +291,26 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🎭 Gán vai trò
+        /// Assign role to user
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Đổi role của user  
-        /// Quyền: Admin  
-        /// Body: roleId  
-        /// ⚠️ Admin KHÔNG THỂ gỡ role Admin của chính mình  
-        /// Lỗi: 400, 401, 403, 404
-        /// </remarks>
-        /// <param name="id">ID người dùng</param>
-        /// <param name="request">RoleId mới</param>
-        /// <response code="200">Gán thành công</response>
-        /// <response code="400">Vi phạm quy tắc</response>
-        /// <response code="401">Chưa xác thực</response>
-        /// <response code="403">Không có quyền</response>
-        /// <response code="404">Không tìm thấy</response>
+        /// <param name="id">User ID</param>
+        /// <param name="request">Role assignment details</param>
+        /// <response code="200">Role assigned</response>
+        /// <response code="400">Invalid operation</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpPut("{id}/role")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult AssignRole(Guid id, [FromBody] AssignRoleRequest request)
+        public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
             try
@@ -326,13 +318,13 @@ namespace DataLabel_Project_BE.Controllers
                 var currentUserId = GetCurrentUserId();
                 
                 // Verify role exists
-                var targetRole = _authService.GetRoleById(request.RoleId);
+                var targetRole = await _authService.GetRoleById(request.RoleId);
                 if (targetRole == null)
                 {
                     return BadRequest(new { message = "Invalid role specified" });
                 }
 
-                var user = _authService.AssignRole(id, request.RoleId, currentUserId);
+                var user = await _authService.AssignRole(id, request.RoleId, currentUserId);
 
                 if (user == null)
                 {

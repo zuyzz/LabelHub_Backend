@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace DataLabel_Project_BE.Controllers
 {
     /// <summary>
-    /// 🔐 Xác thực
+    /// Authentication
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -21,55 +21,37 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🔑 Đăng nhập
+        /// User login
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Đăng nhập, trả JWT  
-        /// Quyền: Public  
-        /// Body: usernameOrEmail, password  
-        /// 
-        /// ⚠️ FIRST LOGIN FLOW:  
-        /// - New users must change password on first login  
-        /// - Login succeeds with requirePasswordChange = true  
-        /// - User must call POST /api/auth/change-password before accessing other APIs  
-        /// 
-        /// Lỗi: 401 nếu sai thông tin
-        /// </remarks>
-        /// <param name="request">Thông tin đăng nhập</param>
-        /// <response code="200">Đăng nhập thành công, trả về thông tin user và JWT token</response>
-        /// <response code="400">Dữ liệu đầu vào không hợp lệ</response>
-        /// <response code="401">Sai thông tin đăng nhập hoặc tài khoản bị vô hiệu hóa</response>
+        /// <param name="request">Login credentials</param>
+        /// <response code="200">Login successful, returns user info and JWT token</response>
+        /// <response code="400">Invalid input data</response>
+        /// <response code="401">Invalid credentials or account is inactive</response>
         [HttpPost("login")]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
-            var response = _authService.Login(request);
+            var (response, errorMessage) = await _authService.Login(request);
 
             if (response == null)
             {
-                return Unauthorized(new { message = "Invalid credentials or account is inactive" });
+                return Unauthorized(new { message = errorMessage });
             }
 
             return Ok(response);
         }
 
         /// <summary>
-        /// 🔑 Change password on first login
+        /// Change password
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Đổi mật khẩu lần đầu đăng nhập  
-        /// Quyền: Authenticated user  
-        /// Body: oldPassword, newPassword (bắt buộc)  
-        /// Sau khi đổi thành công, user có thể truy cập API thông thường
-        /// </remarks>
         /// <param name="request">Old and new passwords</param>
         /// <response code="200">Password changed successfully</response>
         /// <response code="400">Invalid data or incorrect old password</response>
@@ -81,11 +63,11 @@ namespace DataLabel_Project_BE.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
             // Get current user ID from JWT token
@@ -95,7 +77,7 @@ namespace DataLabel_Project_BE.Controllers
                 return Unauthorized(new { message = "Invalid token" });
             }
 
-            var user = _authService.ChangePassword(
+            var (user, errorMessage) = await _authService.ChangePassword(
                 userId,
                 request.OldPassword,
                 request.NewPassword
@@ -103,7 +85,7 @@ namespace DataLabel_Project_BE.Controllers
 
             if (user == null)
             {
-                return BadRequest(new { message = "Incorrect old password or user not found" });
+                return BadRequest(new { message = errorMessage });
             }
 
             return Ok(new 

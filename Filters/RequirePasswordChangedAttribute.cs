@@ -11,7 +11,7 @@ namespace DataLabel_Project_BE.Filters
     /// </summary>
     public class RequirePasswordChangedAttribute : ActionFilterAttribute
     {
-        public override void OnActionExecuting(ActionExecutingContext context)
+        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             // Get AuthService from DI
             var authService = context.HttpContext.RequestServices.GetService<AuthService>();
@@ -25,12 +25,12 @@ namespace DataLabel_Project_BE.Filters
             var userIdClaim = context.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(userIdClaim, out var userId))
             {
-                base.OnActionExecuting(context);
+                await next();
                 return;
             }
 
             // Check if user needs to change password
-            var user = authService.GetUserById(userId);
+            var user = await authService.GetUserById(userId);
             if (user != null && user.IsFirstLogin)
             {
                 context.Result = new ObjectResult(new
@@ -44,7 +44,7 @@ namespace DataLabel_Project_BE.Filters
                 return;
             }
 
-            base.OnActionExecuting(context);
+            await next();
         }
     }
 }

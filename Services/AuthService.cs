@@ -1,5 +1,7 @@
+using DataLabel_Project_BE.Data;
 using DataLabel_Project_BE.DTOs.Auth;
 using DataLabel_Project_BE.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -12,10 +14,9 @@ namespace DataLabel_Project_BE.Services
     /// <summary>
     /// Authentication service for handling user login and management
     /// 
-    /// MOCK DATA IMPLEMENTATION:
-    /// - Uses IN-MEMORY storage (List&lt;User&gt;, List&lt;Role&gt;)
-    /// - Data resets on application restart
-    /// - Seed users: admin (ready), reviewer_demo (requires password change)
+    /// DATABASE IMPLEMENTATION (PostgreSQL - Supabase):
+    /// - Uses EF Core with Npgsql
+    /// - Role table is pre-seeded (4 fixed roles)
     /// - Default password for new users: configured in appsettings.json
     /// 
     /// Implements password hashing using SHA256 and JWT token generation
@@ -23,24 +24,12 @@ namespace DataLabel_Project_BE.Services
     public class AuthService
     {
         private readonly IConfiguration _configuration;
-        private static readonly List<User> _users = new List<User>();
-        private static readonly List<Role> _roles = new List<Role>();
-        private static bool _isInitialized = false;
-        private static readonly object _lock = new object();
+        private readonly AppDbContext _context;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(IConfiguration configuration, AppDbContext context)
         {
             _configuration = configuration;
-            
-            // Thread-safe initialization
-            lock (_lock)
-            {
-                if (!_isInitialized)
-                {
-                    InitializeSeedData();
-                    _isInitialized = true;
-                }
-            }
+            _context = context;
         }
 
         /// <summary>
@@ -66,36 +55,38 @@ namespace DataLabel_Project_BE.Services
 
         /// <summary>
         /// Login method - validates user credentials and generates JWT token
-        /// Uses IN-MEMORY mock data
         /// Validates username/email, password, and active status
+        /// Returns specific error messages for different failure scenarios
         /// </summary>
-        public LoginResponse? Login(LoginRequest request)
+        public async Task<(LoginResponse? Response, string? ErrorMessage)> Login(LoginRequest request)
         {
             // Find user by username or email (case-insensitive)
-            var user = _users.FirstOrDefault(u =>
-                u.Username.Equals(request.UsernameOrEmail, StringComparison.OrdinalIgnoreCase) ||
-                (u.Email != null && u.Email.Equals(request.UsernameOrEmail, StringComparison.OrdinalIgnoreCase)));
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u =>
+                    u.Username.ToLower() == request.UsernameOrEmail.ToLower() ||
+                    (u.Email != null && u.Email.ToLower() == request.UsernameOrEmail.ToLower()));
 
             // Check if user exists
             if (user == null)
             {
-                return null; // User not found
+                return (null, "Username or email not found");
             }
 
             // Check if user is active
             if (!user.IsActive)
             {
-                return null; // User is deactivated
+                return (null, "Account has been deactivated. Please contact administrator");
             }
 
             // Verify password
             if (!VerifyPassword(request.Password, user.PasswordHash))
             {
-                return null; // Invalid password
+                return (null, "Incorrect password");
             }
 
             // Get role name
-            var role = _roles.FirstOrDefault(r => r.RoleId == user.RoleId);
+            var role = await _context.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.RoleId == user.RoleId);
             var roleName = role?.RoleName ?? "Unknown";
 
             // Generate JWT token
@@ -109,7 +100,7 @@ namespace DataLabel_Project_BE.Services
                 ? "Login successful. You must change your password before accessing other features."
                 : "Login successful";
 
-            return new LoginResponse
+            var response = new LoginResponse
             {
                 UserId = user.UserId,
                 Username = user.Username,
@@ -119,6 +110,8 @@ namespace DataLabel_Project_BE.Services
                 Message = message,
                 RequirePasswordChange = requirePasswordChange
             };
+            
+            return (response, null);
         }
 
         /// <summary>
@@ -155,48 +148,59 @@ namespace DataLabel_Project_BE.Services
         /// <summary>
         /// Get all users (for Admin)
         /// </summary>
-        public List<User> GetAllUsers()
+        public async Task<List<User>> GetAllUsers()
         {
-            return _users.ToList();
+            return await _context.Users.AsNoTracking().ToListAsync();
         }
 
         /// <summary>
-        /// Change password for first login users
+        /// Change password for users
         /// Verifies old password before updating
         /// Sets IsFirstLogin = false
+        /// Returns error message if validation fails
         /// </summary>
-        public User? ChangePassword(Guid userId, string oldPassword, string newPassword)
+        public async Task<(User? User, string? ErrorMessage)> ChangePassword(Guid userId, string oldPassword, string newPassword)
         {
-            var user = _users.FirstOrDefault(u => u.UserId == userId);
-            if (user == null) return null;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+            {
+                return (null, "User not found");
+            }
 
             // Verify old password
             if (!VerifyPassword(oldPassword, user.PasswordHash))
             {
-                return null; // Old password is incorrect
+                return (null, "Incorrect old password");
+            }
+
+            // Check if new password is same as old
+            if (VerifyPassword(newPassword, user.PasswordHash))
+            {
+                return (null, "New password cannot be the same as old password");
             }
 
             // Hash and update password
             user.PasswordHash = HashPassword(newPassword);
             user.IsFirstLogin = false;
 
-            return user;
+            await _context.SaveChangesAsync();
+            return (user, null);
         }
 
         /// <summary>
         /// Get all roles
         /// </summary>
-        public List<Role> GetAllRoles()
+        public async Task<List<Role>> GetAllRoles()
         {
-            return _roles.ToList();
+            return await _context.Roles.AsNoTracking().ToListAsync();
         }
 
         /// <summary>
         /// Get user by ID
         /// </summary>
-        public User? GetUserById(Guid userId)
+        public async Task<User?> GetUserById(Guid userId)
         {
-            return _users.FirstOrDefault(u => u.UserId == userId);
+            return await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
         }
 
         /// <summary>
@@ -204,16 +208,16 @@ namespace DataLabel_Project_BE.Services
         /// Uses default password from configuration
         /// Sets IsFirstLogin = true
         /// </summary>
-        public User CreateUser(string username, string? displayName, string? email, string? phoneNumber, Guid roleId)
+        public async Task<User> CreateUser(string username, string? displayName, string? email, string? phoneNumber, Guid roleId)
         {
             // Check if username already exists
-            if (_users.Any(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
+            if (await _context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
             {
                 throw new Exception("Username already exists");
             }
 
             // Verify role exists
-            if (!_roles.Any(r => r.RoleId == roleId))
+            if (!await _context.Roles.AnyAsync(r => r.RoleId == roleId))
             {
                 throw new Exception("Role not found");
             }
@@ -242,7 +246,8 @@ namespace DataLabel_Project_BE.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _users.Add(user);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
             return user;
         }
 
@@ -250,9 +255,9 @@ namespace DataLabel_Project_BE.Services
         /// Update user (Admin only)
         /// Prevents admin from disabling themselves
         /// </summary>
-        public User? UpdateUser(Guid userId, Guid currentUserId, string? displayName, string? email, string? phoneNumber, bool? isActive)
+        public async Task<User?> UpdateUser(Guid userId, Guid currentUserId, string? displayName, string? email, string? phoneNumber, bool? isActive)
         {
-            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return null;
 
             // Prevent admin from disabling themselves
@@ -266,6 +271,7 @@ namespace DataLabel_Project_BE.Services
             if (phoneNumber != null) user.PhoneNumber = phoneNumber;
             if (isActive.HasValue) user.IsActive = isActive.Value;
 
+            await _context.SaveChangesAsync();
             return user;
         }
 
@@ -274,9 +280,9 @@ namespace DataLabel_Project_BE.Services
         /// User can update their own profile information
         /// Requires password to be changed first (IsFirstLogin = false)
         /// </summary>
-        public User? UpdateProfile(Guid userId, string? displayName, string? email, string? phoneNumber)
+        public async Task<User?> UpdateProfile(Guid userId, string? displayName, string? email, string? phoneNumber)
         {
-            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return null;
 
             // Enforce password change requirement
@@ -290,6 +296,7 @@ namespace DataLabel_Project_BE.Services
             if (email != null) user.Email = email;
             if (phoneNumber != null) user.PhoneNumber = phoneNumber;
 
+            await _context.SaveChangesAsync();
             return user;
         }
 
@@ -297,9 +304,9 @@ namespace DataLabel_Project_BE.Services
         /// Soft delete user (Admin only) - Sets IsActive to false
         /// Prevents admin from disabling themselves
         /// </summary>
-        public bool DisableUser(Guid userId, Guid currentUserId)
+        public async Task<bool> DisableUser(Guid userId, Guid currentUserId)
         {
-            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return false;
 
             // Prevent admin from disabling themselves
@@ -309,6 +316,7 @@ namespace DataLabel_Project_BE.Services
             }
 
             user.IsActive = false;
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -316,19 +324,19 @@ namespace DataLabel_Project_BE.Services
         /// Assign role to user (Admin only)
         /// Prevents admin from removing their own admin role
         /// </summary>
-        public User? AssignRole(Guid userId, Guid roleId, Guid currentUserId)
+        public async Task<User?> AssignRole(Guid userId, Guid roleId, Guid currentUserId)
         {
-            var user = _users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return null;
 
             // Verify role exists
-            var role = _roles.FirstOrDefault(r => r.RoleId == roleId);
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == roleId);
             if (role == null) return null;
 
             // Prevent admin from removing their own Admin role
             if (userId == currentUserId)
             {
-                var currentRole = _roles.FirstOrDefault(r => r.RoleId == user.RoleId);
+                var currentRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == user.RoleId);
                 if (currentRole?.RoleName == "Admin" && role.RoleName != "Admin")
                 {
                     throw new Exception("You cannot remove your own Admin role");
@@ -336,24 +344,25 @@ namespace DataLabel_Project_BE.Services
             }
 
             user.RoleId = roleId;
+            await _context.SaveChangesAsync();
             return user;
         }
 
         /// <summary>
         /// Get role by ID
         /// </summary>
-        public Role? GetRoleById(Guid roleId)
+        public async Task<Role?> GetRoleById(Guid roleId)
         {
-            return _roles.FirstOrDefault(r => r.RoleId == roleId);
+            return await _context.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.RoleId == roleId);
         }
 
         /// <summary>
         /// Create new role (Admin only)
         /// </summary>
-        public Role CreateRole(string roleName)
+        public async Task<Role> CreateRole(string roleName)
         {
             // Check if role name already exists
-            if (_roles.Any(r => r.RoleName.Equals(roleName, StringComparison.OrdinalIgnoreCase)))
+            if (await _context.Roles.AnyAsync(r => r.RoleName.ToLower() == roleName.ToLower()))
             {
                 throw new Exception("Role name already exists");
             }
@@ -364,115 +373,54 @@ namespace DataLabel_Project_BE.Services
                 RoleName = roleName
             };
 
-            _roles.Add(role);
+            _context.Roles.Add(role);
+            await _context.SaveChangesAsync();
             return role;
         }
 
         /// <summary>
         /// Update role (Admin only)
         /// </summary>
-        public Role? UpdateRole(Guid roleId, string roleName)
+        public async Task<Role?> UpdateRole(Guid roleId, string roleName)
         {
-            var role = _roles.FirstOrDefault(r => r.RoleId == roleId);
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == roleId);
             if (role == null) return null;
 
             // Check if new role name already exists (excluding current role)
-            if (_roles.Any(r => r.RoleId != roleId && r.RoleName.Equals(roleName, StringComparison.OrdinalIgnoreCase)))
+            if (await _context.Roles.AnyAsync(r => r.RoleId != roleId && r.RoleName.ToLower() == roleName.ToLower()))
             {
                 throw new Exception("Role name already exists");
             }
 
             role.RoleName = roleName;
+            await _context.SaveChangesAsync();
             return role;
         }
 
         /// <summary>
         /// Delete role (Admin only)
         /// </summary>
-        public bool DeleteRole(Guid roleId)
+        public async Task<bool> DeleteRole(Guid roleId)
         {
-            var role = _roles.FirstOrDefault(r => r.RoleId == roleId);
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == roleId);
             if (role == null) return false;
 
+            // Protect system roles from deletion
+            var systemRoles = new[] { "admin", "manager", "reviewer", "annotator" };
+            if (systemRoles.Contains(role.RoleName.ToLower()))
+            {
+                throw new Exception("Cannot delete system role");
+            }
+
             // Check if any users have this role
-            if (_users.Any(u => u.RoleId == roleId))
+            if (await _context.Users.AnyAsync(u => u.RoleId == roleId))
             {
                 throw new Exception("Cannot delete role because users are assigned to it");
             }
 
-            _roles.Remove(role);
+            _context.Roles.Remove(role);
+            await _context.SaveChangesAsync();
             return true;
-        }
-
-        /// <summary>
-        /// Initialize seed data with FIXED GUIDs for testing
-        /// 
-        /// MOCK DATA BEHAVIOR:
-        /// - Data is stored IN-MEMORY only
-        /// - Restarting the app resets all users except these seeded ones
-        /// - Default password for demo users: see "DefaultPassword" in appsettings.json
-        /// 
-        /// Creates:
-        /// - 4 fixed roles: Admin, Manager, Reviewer, Annotator
-        /// - 1 admin account (ready to use)
-        /// - 1 demo reviewer (requires password change on first login)
-        /// </summary>
-        private void InitializeSeedData()
-        {
-            // Create roles with FIXED GUIDs
-            var adminRoleId = new Guid("11111111-1111-1111-1111-111111111111");
-            var managerRoleId = new Guid("22222222-2222-2222-2222-222222222222");
-            var reviewerRoleId = new Guid("33333333-3333-3333-3333-333333333333");
-            var annotatorRoleId = new Guid("44444444-4444-4444-4444-444444444444");
-
-            _roles.Add(new Role { RoleId = adminRoleId, RoleName = "Admin" });
-            _roles.Add(new Role { RoleId = managerRoleId, RoleName = "Manager" });
-            _roles.Add(new Role { RoleId = reviewerRoleId, RoleName = "Reviewer" });
-            _roles.Add(new Role { RoleId = annotatorRoleId, RoleName = "Annotator" });
-
-            // Get default password from configuration
-            var defaultPassword = _configuration["DefaultPassword"];
-            if (string.IsNullOrWhiteSpace(defaultPassword))
-            {
-                throw new InvalidOperationException("DefaultPassword is not configured in appsettings");
-            }
-            
-            Console.WriteLine("[DEBUG] DefaultPassword loaded successfully at startup");
-
-            // Create admin user with FIXED GUID (ready to use, no password change required)
-            var adminUserId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-            var adminUser = new User
-            {
-                UserId = adminUserId,
-                Username = "admin",
-                Email = "admin@datalabel.com",
-                PasswordHash = HashPassword("Admin@123"), // Admin has custom password
-                DisplayName = "System Administrator",
-                PhoneNumber = null,
-                RoleId = adminRoleId,
-                IsActive = true,
-                IsFirstLogin = false, // Admin doesn't need to change password
-                CreatedAt = DateTime.UtcNow
-            };
-
-            // Create demo reviewer user (for testing first-login flow)
-            var reviewerUserId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-            var reviewerUser = new User
-            {
-                UserId = reviewerUserId,
-                Username = "reviewer_demo",
-                Email = "reviewer@datalabel.com",
-                PasswordHash = HashPassword(defaultPassword), // Uses default password
-                DisplayName = "Demo Reviewer",
-                PhoneNumber = null,
-                RoleId = reviewerRoleId,
-                IsActive = true,
-                IsFirstLogin = true, // Must change password on first login
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _users.Add(adminUser);
-            _users.Add(reviewerUser);
         }
     }
 }

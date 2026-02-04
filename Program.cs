@@ -1,5 +1,7 @@
+using DataLabel_Project_BE.Data;
 using DataLabel_Project_BE.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
@@ -8,9 +10,37 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================
+// Database Configuration (Supabase Session Pooler)
+// =======================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionString 'DefaultConnection' is not configured");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        // Enable retry on failure for transient errors
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+        
+        // Set command timeout
+        npgsqlOptions.CommandTimeout(30);
+    });
+    
+    // Enable sensitive data logging in Development only
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
+// =======================
 // Register services
 // =======================
-builder.Services.AddSingleton<AuthService>(); // Singleton for in-memory mock data
+builder.Services.AddScoped<AuthService>(); // Scoped for database operations
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -46,7 +76,26 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtKey)
-        )
+        ),
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
+    };
+
+    // Tự động xử lý token không cần "Bearer " prefix
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(token))
+            {
+                // Tự động thêm "Bearer " nếu chưa có
+                if (!token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Token = token;
+                }
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -64,11 +113,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Backend API cho hệ thống Data Labeling – Quản lý người dùng & phân quyền"
     });
 
-    // XML comments (Swagger tiếng Việt)
+    // XML comments (English descriptions, no emojis)
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 
-    // 🔐 JWT Security Scheme (CHỈ DÁN TOKEN – KHÔNG CẦN 'Bearer')
+    // JWT Security Scheme
     options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
     {
         Name = "Authorization",

@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace DataLabel_Project_BE.Controllers
 {
     /// <summary>
-    /// 👤 Quản lý Profile Cá nhân
+    /// User Profile Management
     /// </summary>
     [ApiController]
     [Route("api/profile")]
@@ -31,31 +31,19 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 📝 Cập nhật thông tin cá nhân
+        /// Update user profile
         /// </summary>
-        /// <remarks>
-        /// Chức năng: Cho phép user tự cập nhật thông tin cá nhân  
-        /// Điều kiện: Đã đổi mật khẩu lần đầu (IsFirstLogin = false)  
-        /// Có thể cập nhật: DisplayName, Email, PhoneNumber  
-        /// Không thể cập nhật: Username, Password, RoleId, IsActive  
-        /// Quyền: User đã xác thực (token hợp lệ)  
-        /// 
-        /// Lỗi có thể xảy ra:
-        /// - 400: Chưa đổi mật khẩu lần đầu
-        /// - 401: Token không hợp lệ hoặc hết hạn
-        /// - 404: User không tồn tại
-        /// </remarks>
-        /// <param name="request">Thông tin cần cập nhật (tất cả các field đều optional)</param>
-        /// <response code="200">Cập nhật thành công</response>
-        /// <response code="400">Vi phạm business rules (chưa đổi mật khẩu)</response>
-        /// <response code="401">Chưa xác thực hoặc token không hợp lệ</response>
-        /// <response code="404">User không tồn tại</response>
+        /// <param name="request">Profile update details (all fields are optional)</param>
+        /// <response code="200">Profile updated successfully</response>
+        /// <response code="400">Invalid data or business rule violation</response>
+        /// <response code="401">Not authenticated or invalid token</response>
+        /// <response code="404">User not found</response>
         [HttpPut]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult UpdateProfile([FromBody] UpdateProfileRequest request)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             try
             {
@@ -67,7 +55,7 @@ namespace DataLabel_Project_BE.Controllers
                 }
 
                 // Update profile
-                var updatedUser = _authService.UpdateProfile(
+                var updatedUser = await _authService.UpdateProfile(
                     userId,
                     request.DisplayName,
                     request.Email,
@@ -80,7 +68,7 @@ namespace DataLabel_Project_BE.Controllers
                 }
 
                 // Get role name for response
-                var role = _authService.GetRoleById(updatedUser.RoleId);
+                var role = await _authService.GetRoleById(updatedUser.RoleId);
 
                 // Return updated profile (exclude password)
                 return Ok(new
@@ -99,6 +87,19 @@ namespace DataLabel_Project_BE.Controllers
                         createdAt = updatedUser.CreatedAt
                     }
                 });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("Users_email_key") == true)
+                {
+                    return BadRequest(new { message = "Email already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_phoneNumber_key") == true)
+                {
+                    return BadRequest(new { message = "Phone number already exists" });
+                }
+                return BadRequest(new { message = "Database error occurred", details = dbEx.Message });
             }
             catch (Exception ex)
             {
