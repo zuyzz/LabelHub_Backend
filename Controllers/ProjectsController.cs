@@ -18,10 +18,40 @@ namespace DataLabel_Project_BE.Controllers
 
         [HttpGet]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> GetProjects()
+        public async Task<IActionResult> GetProjects([FromQuery] DTOs.ProjectQueryParameters query)
         {
-            var projects = await _service.GetAllAsync();
+            var projects = await _service.GetProjectsAsync(query ?? new DTOs.ProjectQueryParameters());
             return Ok(projects);
+        }
+
+        /// <summary>
+        /// Get projects that current authenticated user has joined
+        /// </summary>
+        [HttpGet("mine")]
+        [Authorize]
+        public async Task<IActionResult> GetMyProjects([FromQuery] DTOs.ProjectQueryParameters query)
+        {
+            var projects = await _service.GetUserProjectsAsync(query ?? new DTOs.ProjectQueryParameters());
+            return Ok(projects);
+        }
+
+        /// <summary>
+        /// Join the project by id for the current authenticated user
+        /// </summary>
+        [HttpPost("{id}/join")]
+        [Authorize]
+        public async Task<IActionResult> JoinProject(Guid id)
+        {
+            var result = await _service.JoinProjectAsync(id);
+            return result switch
+            {
+                DTOs.JoinProjectResult.ProjectNotFound => NotFound(),
+                DTOs.JoinProjectResult.Unauthorized => Unauthorized(),
+                DTOs.JoinProjectResult.Forbidden => Forbid(),
+                DTOs.JoinProjectResult.AlreadyMember => Conflict(new { message = "Already a member" }),
+                DTOs.JoinProjectResult.Success => NoContent(),
+                _ => StatusCode(500)
+            };
         }
 
         [HttpGet("{id}")]

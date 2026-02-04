@@ -47,6 +47,8 @@ public partial class User
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 
+    public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
+
     public virtual ICollection<Review> ReviewApprovedByUsers { get; set; } = new List<Review>();
 
     public virtual ICollection<Review> ReviewUsers { get; set; } = new List<Review>();
