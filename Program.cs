@@ -39,6 +39,16 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 
 // Configure multipart form limits to allow larger uploads (512 MB)
@@ -190,6 +200,7 @@ app.UseSwaggerUI(options =>
 app.UseHttpsRedirection();
 
 app.UseRouting();
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
