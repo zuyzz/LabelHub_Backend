@@ -1,3 +1,7 @@
+using DataLabel_Project_BE.Models;
+
+namespace DataLabel_Project_BE.Services;
+
 public interface ILabelService
 {
     Task<List<Label>> GetLabelsByLabelSetAsync(Guid labelSetId);

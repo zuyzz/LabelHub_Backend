@@ -1,5 +1,5 @@
 using DataLabel_Project_BE.DTOs.Category;
-using DataLabel_Project_BE.Services.Category;
+using DataLabel_Project_BE.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DataLabel_Project_BE.Controllers

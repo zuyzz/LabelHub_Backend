@@ -1,6 +1,6 @@
 using DataLabel_Project_BE.DTOs.Category;
 
-namespace DataLabel_Project_BE.Services.Category
+namespace DataLabel_Project_BE.Services
 {
     public interface ICategoryService
     {

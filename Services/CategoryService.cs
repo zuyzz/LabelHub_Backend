@@ -2,7 +2,7 @@ using DataLabel_Project_BE.DTOs.Category;
 using DataLabel_Project_BE.Models;
 using DataLabel_Project_BE.Repositories;
 
-namespace DataLabel_Project_BE.Services.Category
+namespace DataLabel_Project_BE.Services
 {
     public class CategoryService : ICategoryService
     {
