@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace DataLabel_Project_BE.Controllers 
 {
     /// <summary>
-    /// 👥 Quản lý Người dùng
+    /// User Management
     /// </summary>
     [ApiController]
     [Route("api/users")]
@@ -30,9 +30,15 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 📋 Lấy danh sách người dùng
+        /// Get all users
         /// </summary>
+        /// <response code="200">List of users</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAll()
         {
             var users = await _userService.GetAllAsync();
@@ -55,13 +61,25 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🔍 Xem chi tiết người dùng
+        /// Get user by ID
         /// </summary>
+        /// <param name="id">User ID</param>
+        /// <response code="200">User details</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(Guid id)
         {
             var user = await _userService.GetByIdAsync(id);
-            if (user == null) return NotFound(new { message = "User not found" });
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
 
             var role = await _roleService.GetByIdAsync(user.RoleId);
 
@@ -82,17 +100,33 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// ➕ Tạo tài khoản mới
+        /// Create new user
         /// </summary>
+        /// <param name="request">User details</param>
+        /// <response code="201">User created</response>
+        /// <response code="400">Invalid data</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
 
             try
             {
+                // Verify role exists
                 var role = await _roleService.GetByIdAsync(request.RoleId);
-                if (role == null) return BadRequest(new { message = "Invalid role specified" });
+                if (role == null)
+                {
+                    return BadRequest(new { message = "Invalid role specified" });
+                }
 
                 var user = await _userService.CreateUserAsync(
                     request.Username,
@@ -118,6 +152,23 @@ namespace DataLabel_Project_BE.Controllers
 
                 return CreatedAtAction(nameof(GetById), new { id = user.UserId }, response);
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("Users_username_key") == true)
+                {
+                    return BadRequest(new { message = "Username already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_email_key") == true)
+                {
+                    return BadRequest(new { message = "Email already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_phoneNumber_key") == true)
+                {
+                    return BadRequest(new { message = "Phone number already exists" });
+                }
+                return BadRequest(new { message = "Database error occurred", details = dbEx.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -125,17 +176,40 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// ✏️ Cập nhật người dùng
+        /// Update user
         /// </summary>
+        /// <param name="id">User ID</param>
+        /// <param name="request">Update details</param>
+        /// <response code="200">User updated</response>
+        /// <response code="400">Invalid data</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
 
             try
             {
                 var currentUserId = GetCurrentUserId();
-                var user = await _userService.UpdateUserAsync(id, currentUserId, request.DisplayName, request.Email, request.PhoneNumber, request.IsActive);
+
+                var user = await _userService.UpdateUserAsync(
+                    id,
+                    currentUserId,
+                    request.DisplayName,
+                    request.Email,
+                    request.PhoneNumber,
+                    request.IsActive
+                );
 
                 if (user == null) return NotFound(new { message = "User not found" });
 
@@ -156,6 +230,19 @@ namespace DataLabel_Project_BE.Controllers
 
                 return Ok(response);
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("Users_email_key") == true)
+                {
+                    return BadRequest(new { message = "Email already exists" });
+                }
+                if (dbEx.InnerException?.Message.Contains("Users_phoneNumber_key") == true)
+                {
+                    return BadRequest(new { message = "Phone number already exists" });
+                }
+                return BadRequest(new { message = "Database error occurred", details = dbEx.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
@@ -163,16 +250,32 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🗑️ Vô hiệu hóa người dùng
+        /// Disable user
         /// </summary>
+        /// <param name="id">User ID</param>
+        /// <response code="200">User disabled</response>
+        /// <response code="400">Invalid operation</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(Guid id)
         {
             try
             {
                 var currentUserId = GetCurrentUserId();
                 var success = await _userService.DisableUserAsync(id, currentUserId);
-                if (!success) return NotFound(new { message = "User not found" });
+
+                if (!success)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
                 return Ok(new { message = "User disabled successfully" });
             }
             catch (Exception ex)
@@ -182,21 +285,45 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         /// <summary>
-        /// 🎭 Gán vai trò
+        /// Assign role to user
         /// </summary>
+        /// <param name="id">User ID</param>
+        /// <param name="request">Role assignment details</param>
+        /// <response code="200">Role assigned</response>
+        /// <response code="400">Invalid operation</response>
+        /// <response code="401">Unauthorized</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not found</response>
         [HttpPut("{id}/role")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
 
             try
             {
                 var currentUserId = GetCurrentUserId();
+                
+                // Verify role exists
                 var targetRole = await _roleService.GetByIdAsync(request.RoleId);
-                if (targetRole == null) return BadRequest(new { message = "Invalid role specified" });
+                if (targetRole == null)
+                {
+                    return BadRequest(new { message = "Invalid role specified" });
+                }
 
                 var user = await _userService.AssignRoleAsync(id, request.RoleId, currentUserId);
-                if (user == null) return NotFound(new { message = "User not found" });
+
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
 
                 var response = new UserResponse
                 {

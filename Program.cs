@@ -1,7 +1,7 @@
+using DataLabel_Project_BE.Data;
 using DataLabel_Project_BE.Services;
 using DataLabel_Project_BE.Services.Storage;
 using DataLabel_Project_BE.Services.Uploads;
-using DataLabel_Project_BE.Data;
 using DataLabel_Project_BE.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,14 +18,36 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================
+// Database Configuration (Supabase Session Pooler)
+// =======================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionString 'DefaultConnection' is not configured");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        // Enable retry on failure for transient errors
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+        
+        // Set command timeout
+        npgsqlOptions.CommandTimeout(30);
+    });
+    
+    // Enable sensitive data logging in Development only
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
+// =======================
 // Register services
 // =======================
-var connectionString = builder.Configuration.GetConnectionString("Default");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException("Connection string 'Default' is not configured.");
-}
-
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -68,6 +90,12 @@ builder.Services.Configure<FormOptions>(options =>
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured");
 
+// Warn if using placeholder key (safe for GitHub but needs real key for production)
+if (jwtKey == "CHANGE_ME_FOR_LOCAL_DEVELOPMENT")
+{
+    Console.WriteLine("⚠️  WARNING: Using placeholder JWT key. Copy appsettings.json to appsettings.Development.json and set a real secret key for local development.");
+}
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
 
@@ -88,7 +116,26 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtKey)
-        )
+        ),
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
+    };
+
+    // Tự động xử lý token không cần "Bearer " prefix
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(token))
+            {
+                // Tự động thêm "Bearer " nếu chưa có
+                if (!token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Token = token;
+                }
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -106,11 +153,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Backend API cho hệ thống Data Labeling – Quản lý người dùng & phân quyền"
     });
 
-    // XML comments (Swagger tiếng Việt)
+    // XML comments (English descriptions, no emojis)
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 
-    // 🔐 JWT Security Scheme (CHỈ DÁN TOKEN – KHÔNG CẦN 'Bearer')
+    // JWT Security Scheme
     options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
     {
         Name = "Authorization",
