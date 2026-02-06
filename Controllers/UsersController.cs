@@ -4,7 +4,7 @@ using DataLabel_Project_BE.DTOs;
 using DataLabel_Project_BE.Services;
 using System.Security.Claims;
 
-namespace DataLabel_Project_BE.Controllers 
+namespace DataLabel_Project_BE.Controllers
 {
     /// <summary>
     /// User Management
@@ -23,6 +23,9 @@ namespace DataLabel_Project_BE.Controllers
             _roleService = roleService;
         }
 
+        /// <summary>
+        /// Get current user's ID from JWT token
+        /// </summary>
         private Guid GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -44,6 +47,7 @@ namespace DataLabel_Project_BE.Controllers
             var users = await _userService.GetAllAsync();
             var roles = await _roleService.GetAllAsync();
 
+            // Map to UserResponse DTOs
             var response = users.Select(u => new UserResponse
             {
                 UserId = u.UserId,
@@ -55,7 +59,9 @@ namespace DataLabel_Project_BE.Controllers
                 RoleName = roles.FirstOrDefault(r => r.RoleId == u.RoleId)?.RoleName ?? "Unknown",
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
-            }).OrderBy(u => u.Username).ToList();
+            })
+            .OrderBy(u => u.Username)
+            .ToList();
 
             return Ok(response);
         }
@@ -211,7 +217,10 @@ namespace DataLabel_Project_BE.Controllers
                     request.IsActive
                 );
 
-                if (user == null) return NotFound(new { message = "User not found" });
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
 
                 var role = await _roleService.GetByIdAsync(user.RoleId);
 
@@ -347,4 +356,3 @@ namespace DataLabel_Project_BE.Controllers
         }
     }
 }
-
