@@ -1,4 +1,4 @@
-# 🏷️ DataLabel – Data Labeling Support System
+# 🏷️ LabelHub – Data Labeling Support System
 
 Hệ thống hỗ trợ gán nhãn dữ liệu phục vụ huấn luyện mô hình Machine Learning / AI.  
 Dự án được phát triển trong khuôn khổ môn học **SWP391 – Software Project**.
@@ -6,7 +6,7 @@ Dự án được phát triển trong khuôn khổ môn học **SWP391 – Softw
 ---
 
 ## 📌 Tổng quan đề tài
-**DataLabel** là một nền tảng web full-stack giúp tổ chức, quản lý và thực hiện quy trình **gán nhãn dữ liệu** một cách có kiểm soát, minh bạch và dễ mở rộng.
+**LabelHub** là một nền tảng web full-stack giúp tổ chức, quản lý và thực hiện quy trình **gán nhãn dữ liệu** một cách có kiểm soát, minh bạch và dễ mở rộng.
 
 Hệ thống hỗ trợ nhiều vai trò người dùng, cho phép:
 - Phân công công việc gán nhãn
