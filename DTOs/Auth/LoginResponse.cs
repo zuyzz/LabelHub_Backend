@@ -8,5 +8,10 @@ namespace DataLabel_Project_BE.DTOs.Auth
         public string Token { get; set; } = string.Empty;
         public DateTime ExpiresAt { get; set; }
         public string Message { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Indicates if user must change password before accessing other APIs
+        /// </summary>
+        public bool RequirePasswordChange { get; set; }
     }
 }

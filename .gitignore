@@ -7,3 +7,7 @@ obj/
 *.log
 appsettings.Development.json
 DTOs.zip
+
+!README.md
+*.md
+*.sql

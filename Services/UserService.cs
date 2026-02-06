@@ -1,5 +1,7 @@
 using DataLabel_Project_BE.Models;
 using DataLabel_Project_BE.Repositories;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DataLabel_Project_BE.Services;
 
@@ -35,10 +37,15 @@ public class UserService : IUserService
 
         // Verify role exists
         var role = await _roleRepo.GetByIdAsync(roleId);
-        if (role == null) throw new Exception("Role not found");
+        if (role == null) {
+            throw new Exception("Role not found");
+        } else if (role.RoleName == "admin")
+        {
+            throw new Exception("Cannot create user with [admin] role");
+        }
 
         // Hash password
-        var passwordHash = AuthService.HashPasswordStatic(password);
+        var passwordHash = AuthService.HashPassword(password);
 
         var user = new User
         {
@@ -107,9 +114,9 @@ public class UserService : IUserService
         if (userId == currentUserId)
         {
             var currentRole = await _roleRepo.GetByIdAsync(user.RoleId);
-            if (currentRole?.RoleName == "Admin" && role.RoleName != "Admin")
+            if (currentRole?.RoleName == "admin" && role.RoleName != "admin")
             {
-                throw new Exception("You cannot remove your own Admin role");
+                throw new Exception("You cannot remove your own [admin] role");
             }
         }
 
