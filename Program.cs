@@ -11,6 +11,7 @@ builder.Services.AddDatabase(builder.Configuration, builder.Environment);
 builder.Services.AddApplicationServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();
+builder.Services.AddCorsPolicy(builder.Configuration);
 
 var app = builder.Build();
 
