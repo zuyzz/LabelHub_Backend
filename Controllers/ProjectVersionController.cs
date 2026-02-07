@@ -51,8 +51,7 @@ namespace DataLabel_Project_BE.Controllers
                 projectId,
                 request.DatasetId,
                 request.LabelSetId,
-                request.GuidelineId,
-                userId
+                request.GuidelineId
             );
 
             return CreatedAtAction(nameof(GetAll), new { projectId }, pv);

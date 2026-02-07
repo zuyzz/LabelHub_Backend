@@ -14,9 +14,9 @@ namespace DataLabel_Project_BE.Services
 
         Task<ProjectVersion> CreateDraftAsync(
             Guid projectId,
-            Guid datasetId,
-            Guid labelSetId,
-            Guid guidelineId
+            Guid? datasetId,
+            Guid? labelSetId,
+            Guid? guidelineId
         );
 
         Task ReleaseAsync(Guid projectVersionId);

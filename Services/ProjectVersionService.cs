@@ -38,9 +38,9 @@ namespace DataLabel_Project_BE.Services
 
         public async Task<ProjectVersion> CreateDraftAsync(
             Guid projectId,
-            Guid datasetId,
-            Guid labelSetId,
-            Guid guidelineId
+            Guid? datasetId,
+            Guid? labelSetId,
+            Guid? guidelineId
         )
         {
             var existingDraft = await _projectVersionRepo.GetDraftByProjectIdAsync(projectId);
