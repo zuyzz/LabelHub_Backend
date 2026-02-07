@@ -16,4 +16,6 @@ public partial class Guideline
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
+
+    public virtual ICollection<ProjectVersion> ProjectVersions { get; set; } = new List<ProjectVersion>();
 }

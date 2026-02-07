@@ -17,5 +17,11 @@ public class GuidelineConfiguration : IEntityTypeConfiguration<Guideline>
         entity.Property(e => e.Content).HasColumnName("content");
         entity.Property(e => e.Version).HasColumnName("version").HasDefaultValue(1);
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
+
+        entity.HasMany(p => p.ProjectVersions)
+            .WithOne(pv => pv.Guideline)
+            .HasForeignKey(pv => pv.GuidelineId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("ProjectVersion_guidelineId_fkey");
     }
 }

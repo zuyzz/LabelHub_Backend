@@ -27,5 +27,11 @@ public class LabelSetConfiguration : IEntityTypeConfiguration<LabelSet>
         entity.HasOne(d => d.LabelSetGuideline).WithMany(p => p.LabelSets)
             .HasForeignKey(d => d.GuidelineId)
             .HasConstraintName("LabelSet_guidelineId_fkey");
+
+        entity.HasMany(p => p.ProjectVersions)
+            .WithOne(pv => pv.LabelSet)
+            .HasForeignKey(pv => pv.LabelSetId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("ProjectVersion_labelSetId_fkey");
     }
 }
