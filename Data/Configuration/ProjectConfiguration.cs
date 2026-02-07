@@ -30,5 +30,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         entity.HasOne(d => d.CreatedByUser).WithMany(p => p.Projects)
             .HasForeignKey(d => d.CreatedBy)
             .HasConstraintName("Project_createdBy_fkey");
+
+        entity.HasMany(p => p.ProjectVersions)
+            .WithOne(pv => pv.Project)
+            .HasForeignKey(pv => pv.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("ProjectVersion_projectId_fkey");
     }
 }
