@@ -16,8 +16,7 @@ namespace DataLabel_Project_BE.Services
             Guid projectId,
             Guid datasetId,
             Guid labelSetId,
-            Guid guidelineId,
-            Guid createdBy
+            Guid guidelineId
         );
 
         Task ReleaseAsync(Guid projectVersionId);
