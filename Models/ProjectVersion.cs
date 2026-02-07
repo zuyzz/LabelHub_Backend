@@ -18,8 +18,8 @@ namespace DataLabel_Project_BE.Models
         public DateTime? ReleasedAt { get; set; }
 
         public Project Project { get; set; } = null!;
-        public Dataset Dataset { get; set; } = null!;
-        public LabelSet LabelSet { get; set; } = null!;
-        public Guideline Guideline { get; set; } = null!;
+        public Dataset? Dataset { get; set; } = null;
+        public LabelSet? LabelSet { get; set; } = null;
+        public Guideline? Guideline { get; set; } = null;
     }
 }

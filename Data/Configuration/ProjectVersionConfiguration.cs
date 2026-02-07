@@ -23,16 +23,13 @@ namespace DataLabel_Project_BE.Data.Configuration
                    .IsRequired();
 
             builder.Property(pv => pv.DatasetId)
-                   .HasColumnName("datasetId")
-                   .IsRequired();
+                   .HasColumnName("datasetId");
 
             builder.Property(pv => pv.LabelSetId)
-                   .HasColumnName("labelSetId")
-                   .IsRequired();
+                   .HasColumnName("labelSetId");
 
             builder.Property(pv => pv.GuidelineId)
-                   .HasColumnName("guidelineId")
-                   .IsRequired();
+                   .HasColumnName("guidelineId");
 
             // Version number
             builder.Property(pv => pv.VersionNumber)
