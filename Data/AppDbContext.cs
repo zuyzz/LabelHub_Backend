@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using DataLabel_Project_BE.Models;
+using DataLabelProject.Business.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace DataLabel_Project_BE.Data;
+namespace DataLabelProject.Data;
 
 public partial class AppDbContext : DbContext
 {

@@ -1,8 +1,8 @@
-using DataLabel_Project_BE.Models;
+using DataLabelProject.Business.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DataLabel_Project_BE.Data.Configuration
+namespace DataLabelProject.Data.Configuration
 {
     public class ProjectVersionConfiguration : IEntityTypeConfiguration<ProjectVersion>
     {
@@ -23,16 +23,13 @@ namespace DataLabel_Project_BE.Data.Configuration
                    .IsRequired();
 
             builder.Property(pv => pv.DatasetId)
-                   .HasColumnName("datasetId")
-                   .IsRequired();
+                   .HasColumnName("datasetId");
 
             builder.Property(pv => pv.LabelSetId)
-                   .HasColumnName("labelSetId")
-                   .IsRequired();
+                   .HasColumnName("labelSetId");
 
             builder.Property(pv => pv.GuidelineId)
-                   .HasColumnName("guidelineId")
-                   .IsRequired();
+                   .HasColumnName("guidelineId");
 
             // Version number
             builder.Property(pv => pv.VersionNumber)
