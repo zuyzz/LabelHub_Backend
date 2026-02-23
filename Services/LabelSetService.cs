@@ -6,16 +6,18 @@ namespace DataLabel_Project_BE.Services;
 
 public class LabelSetService : ILabelSetService
 {
-    private readonly ILabelSetRepository _repository;
+    private readonly ILabelSetRepository _labelSetRepository;
+    private readonly IProjectVersionRepository _projectVersionRepository;
 
-    public LabelSetService(ILabelSetRepository repository)
+    public LabelSetService(ILabelSetRepository labelSetRepository, IProjectVersionRepository projectVersionRepository)
     {
-        _repository = repository;
+        _labelSetRepository = labelSetRepository;
+        _projectVersionRepository = projectVersionRepository;
     }
 
     public async Task<List<LabelSetResponse>> GetAllAsync()
     {
-        var list = await _repository.GetAllAsync();
+        var list = await _labelSetRepository.GetAllAsync();
 
         return list.Select(ls => new LabelSetResponse
         {
@@ -28,20 +30,34 @@ public class LabelSetService : ILabelSetService
         }).ToList();
     }
 
-    public async Task<LabelSetResponse> CreateAsync(CreateLabelSetRequest request, Guid? createdBy)
+    public async Task<LabelSetResponse> CreateAsync(Guid projectId, CreateLabelSetRequest request, Guid? createdBy)
     {
-        var labelSet = new Models.LabelSet
+        var latest = await _labelSetRepository.GetLatestVersionAsync();
+        var verNum = latest?.VersionNumber ?? 0;
+
+        var labelSet = new LabelSet
         {
             LabelSetId = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
             GuidelineId = request.GuidelineId,
-            VersionNumber = 1,
+            VersionNumber = verNum + 1,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };
 
-        await _repository.CreateAsync(labelSet);
+        await _labelSetRepository.CreateAsync(labelSet);
+
+        var draftProjectVersion =
+            await _projectVersionRepository.GetDraftByProjectIdAsync(projectId);
+
+        if (draftProjectVersion != null)
+        {
+            draftProjectVersion.LabelSetId = labelSet.LabelSetId;
+            await _projectVersionRepository.UpdateAsync(draftProjectVersion);
+        }
+
+        await _labelSetRepository.SaveChangesAsync();
 
         return new LabelSetResponse
         {
@@ -54,35 +70,4 @@ public class LabelSetService : ILabelSetService
         };
     }
 
-    public async Task<LabelSetResponse?> CreateNewVersionAsync(
-        Guid labelSetId,
-        UpdateLabelSetRequest request,
-        Guid? createdBy)
-    {
-        var latest = await _repository.GetLatestVersionAsync(labelSetId);
-        if (latest == null) return null;
-
-        var newVersion = new Models.LabelSet
-        {
-            LabelSetId = latest.LabelSetId, // GIỮ NGUYÊN
-            Name = request.Name,
-            Description = request.Description,
-            GuidelineId = request.GuidelineId,
-            VersionNumber = latest.VersionNumber + 1,
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = createdBy
-        };
-
-        await _repository.CreateAsync(newVersion);
-
-        return new LabelSetResponse
-        {
-            LabelSetId = newVersion.LabelSetId,
-            Name = newVersion.Name,
-            Description = newVersion.Description,
-            VersionNumber = newVersion.VersionNumber,
-            GuidelineId = newVersion.GuidelineId,
-            CreatedAt = newVersion.CreatedAt
-        };
-    }
 }

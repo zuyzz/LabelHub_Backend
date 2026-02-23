@@ -25,8 +25,6 @@ public partial class LabelSet
 
     public virtual ICollection<Label> Labels { get; set; } = new List<Label>();
 
-    public virtual ICollection<ProjectVersion> ProjectVersions { get; set; } = new List<ProjectVersion>();
-
     public virtual User? CreatedByUser { get; set; }
 
     public virtual Guideline? LabelSetGuideline { get; set; }

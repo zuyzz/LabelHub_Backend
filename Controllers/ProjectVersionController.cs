@@ -19,21 +19,21 @@ namespace DataLabel_Project_BE.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll(Guid projectId)
+        public async Task<IActionResult> GetAll([FromRoute] Guid projectId)
         {
             var versions = await _projectVersionService.GetAllByProjectAsync(projectId);
             return Ok(versions);
         }
 
         [HttpGet("draft")]
-        public async Task<IActionResult> GetDraft(Guid projectId)
+        public async Task<IActionResult> GetDraft([FromRoute] Guid projectId)
         {
             var draft = await _projectVersionService.GetDraftAsync(projectId);
             return Ok(draft);
         }
 
         [HttpGet("latest")]
-        public async Task<IActionResult> GetLatestReleased(Guid projectId)
+        public async Task<IActionResult> GetLatestReleased([FromRoute] Guid projectId)
         {
             var version = await _projectVersionService.GetLatestReleasedAsync(projectId);
             return Ok(version);
@@ -41,7 +41,7 @@ namespace DataLabel_Project_BE.Controllers
 
         [HttpPost]
         public async Task<IActionResult> CreateDraft(
-            Guid projectId,
+            [FromRoute] Guid projectId,
             [FromBody] CreateProjectVersionRequest request
         )
         {
@@ -59,7 +59,7 @@ namespace DataLabel_Project_BE.Controllers
 
         [HttpPost("{projectVersionId}/release")]
         public async Task<IActionResult> Release(
-            Guid projectVersionId
+            [FromRoute] Guid projectVersionId
         )
         {
             await _projectVersionService.ReleaseAsync(projectVersionId);

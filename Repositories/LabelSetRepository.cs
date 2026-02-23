@@ -20,10 +20,9 @@ public class LabelSetRepository : ILabelSetRepository
             .ToListAsync();
     }
 
-    public async Task<LabelSet?> GetLatestVersionAsync(Guid labelSetId)
+    public async Task<LabelSet?> GetLatestVersionAsync()
     {
         return await _context.LabelSets
-            .Where(ls => ls.LabelSetId == labelSetId)
             .OrderByDescending(ls => ls.VersionNumber)
             .FirstOrDefaultAsync();
     }
@@ -31,6 +30,11 @@ public class LabelSetRepository : ILabelSetRepository
     public async Task CreateAsync(LabelSet labelSet)
     {
         _context.LabelSets.Add(labelSet);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task SaveChangesAsync()
+    {
         await _context.SaveChangesAsync();
     }
 }

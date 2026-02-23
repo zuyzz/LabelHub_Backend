@@ -27,8 +27,6 @@ public partial class Dataset
 
     public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
 
-    public virtual ICollection<ProjectVersion> ProjectVersions { get; set; } = new List<ProjectVersion>();
-
     public virtual User? CreatedByUser { get; set; }
 
     public virtual LabelSet? CurrentLabelSet { get; set; }

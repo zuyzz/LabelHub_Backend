@@ -35,11 +35,5 @@ public class DatasetConfiguration : IEntityTypeConfiguration<Dataset>
             .HasForeignKey(d => d.ProjectId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Dataset_projectId_fkey");
-
-        entity.HasMany(p => p.ProjectVersions)
-            .WithOne(pv => pv.Dataset)
-            .HasForeignKey(pv => pv.DatasetId)
-            .OnDelete(DeleteBehavior.Cascade)
-            .HasConstraintName("ProjectVersion_datasetId_fkey");
     }
 }
