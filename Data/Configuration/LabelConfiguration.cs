@@ -1,8 +1,8 @@
-using DataLabel_Project_BE.Models;
+using DataLabelProject.Business.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace DataLabel_Project_BE.Data.Configuration;
+namespace DataLabelProject.Data.Configuration;
 
 public class LabelConfiguration : IEntityTypeConfiguration<Label>
 {
