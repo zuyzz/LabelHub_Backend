@@ -21,13 +21,6 @@ public class LabelSetRepository : ILabelSetRepository
             .ToListAsync();
     }
 
-    public async Task<LabelSet?> GetLatestVersionAsync()
-    {
-        return await _context.LabelSets
-            .OrderByDescending(ls => ls.VersionNumber)
-            .FirstOrDefaultAsync();
-    }
-
     public async Task CreateAsync(LabelSet labelSet)
     {
         _context.LabelSets.Add(labelSet);

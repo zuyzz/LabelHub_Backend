@@ -18,7 +18,6 @@ public class DatasetConfiguration : IEntityTypeConfiguration<Dataset>
         entity.Property(e => e.Description).HasColumnName("description");
         entity.Property(e => e.StorageUri).HasColumnName("storageUri");
         entity.Property(e => e.Metadata).HasColumnName("metadata").HasColumnType("jsonb");
-        entity.Property(e => e.VersionNumber).HasColumnName("versionNumber").HasDefaultValue(1);
         entity.Property(e => e.CurrentLabelSetId).HasColumnName("currentLabelSetId");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
         entity.Property(e => e.CreatedBy).HasColumnName("createdBy");

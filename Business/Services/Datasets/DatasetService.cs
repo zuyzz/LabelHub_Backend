@@ -65,7 +65,6 @@ public class DatasetService : IDatasetService
             Name = datasetName,
             Description = request.Description,
             StorageUri = result.StoragePrefix,
-            VersionNumber = 1,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = userId
         };

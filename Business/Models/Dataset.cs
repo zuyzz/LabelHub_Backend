@@ -17,8 +17,6 @@ public partial class Dataset
 
     public string? Metadata { get; set; }
 
-    public int VersionNumber { get; set; }
-
     public Guid? CurrentLabelSetId { get; set; }
 
     public DateTime CreatedAt { get; set; }

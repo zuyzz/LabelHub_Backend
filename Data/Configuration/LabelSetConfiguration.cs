@@ -15,7 +15,6 @@ public class LabelSetConfiguration : IEntityTypeConfiguration<LabelSet>
         entity.Property(e => e.LabelSetId).HasColumnName("labelSetId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.Name).HasColumnName("name").HasColumnType("character varying");
         entity.Property(e => e.Description).HasColumnName("description");
-        entity.Property(e => e.VersionNumber).HasColumnName("versionNumber").HasDefaultValue(1);
         entity.Property(e => e.GuidelineId).HasColumnName("guidelineId");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
         entity.Property(e => e.CreatedBy).HasColumnName("createdBy");

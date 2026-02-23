@@ -11,8 +11,6 @@ public partial class LabelSet
 
     public string? Description { get; set; }
 
-    public int VersionNumber { get; set; }
-
     public Guid? GuidelineId { get; set; }
 
     public DateTime CreatedAt { get; set; }

@@ -10,13 +10,11 @@ namespace DataLabelProject.Business.Services.Projects
     public class ProjectService : IProjectService
     {
         private readonly IProjectRepository _projectRepo;
-        private readonly IProjectVersionService _projectVersionService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ProjectService(IProjectRepository projectRepo, IProjectVersionService projectVersionService, IHttpContextAccessor httpContextAccessor)
+        public ProjectService(IProjectRepository projectRepo, IHttpContextAccessor httpContextAccessor)
         {
             _projectRepo = projectRepo;
-            _projectVersionService = projectVersionService;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -87,14 +85,6 @@ namespace DataLabelProject.Business.Services.Projects
                 if (added)
                     await _projectRepo.SaveChangesAsync();
             }
-
-            // create intial draft project version
-            await _projectVersionService.CreateDraftAsync(
-                projectId: project.ProjectId,
-                datasetId: null,
-                labelSetId: null,
-                guidelineId: null
-            );
 
             return MapToResponse(project);
         }

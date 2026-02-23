@@ -13,7 +13,6 @@ public partial class Annotation
 
     public Guid LabelSetId { get; set; }
 
-    public int LabelSetVersionNumber { get; set; }
 
     public string AnnotationPayload { get; set; } = null!;
 

@@ -30,7 +30,6 @@ public static class ServiceExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
-        services.AddScoped<IProjectVersionRepository, ProjectVersionRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
@@ -41,7 +40,6 @@ public static class ServiceExtensions
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProjectService, ProjectService>();
-        services.AddScoped<IProjectVersionService, ProjectVersionService>();
         services.AddScoped<ILabelService, LabelService>();
         services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
