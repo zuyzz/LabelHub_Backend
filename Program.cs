@@ -1,4 +1,4 @@
-using DataLabel_Project_BE.Extensions;
+using DataLabelProject.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
