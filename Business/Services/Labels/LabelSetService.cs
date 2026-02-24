@@ -22,7 +22,7 @@ public class LabelSetService : ILabelSetService
             LabelSetId = ls.LabelSetId,
             Name = ls.Name,
             Description = ls.Description,
-            GuidelineId = ls.GuidelineId,
+            ProjectId = ls.ProjectId,
             CreatedAt = ls.CreatedAt
         }).ToList();
     }
@@ -34,7 +34,7 @@ public class LabelSetService : ILabelSetService
             LabelSetId = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
-            GuidelineId = request.GuidelineId,
+            ProjectId = request.ProjectId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };
@@ -47,7 +47,7 @@ public class LabelSetService : ILabelSetService
             LabelSetId = labelSet.LabelSetId,
             Name = labelSet.Name,
             Description = labelSet.Description,
-            GuidelineId = labelSet.GuidelineId,
+            ProjectId = labelSet.ProjectId,
             CreatedAt = labelSet.CreatedAt
         };
     }

@@ -86,9 +86,6 @@ public class GuidelineService : IGuidelineService
         if (guideline == null)
             return (false, "Guideline not found");
 
-        if (await _repository.IsGuidelineInUseAsync(id))
-            return (false, "Cannot delete guideline that is being used by label sets");
-
         await _repository.DeleteAsync(guideline);
         return (true, "Guideline deleted successfully");
     }

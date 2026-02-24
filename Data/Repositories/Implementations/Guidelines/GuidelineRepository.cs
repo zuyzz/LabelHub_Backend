@@ -42,10 +42,4 @@ public class GuidelineRepository : IGuidelineRepository
         _context.Guidelines.Remove(guideline);
         await _context.SaveChangesAsync();
     }
-
-    public async Task<bool> IsGuidelineInUseAsync(Guid guidelineId)
-    {
-        return await _context.LabelSets
-            .AnyAsync(ls => ls.GuidelineId == guidelineId);
-    }
 }
