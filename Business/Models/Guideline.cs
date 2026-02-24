@@ -13,5 +13,9 @@ public partial class Guideline
 
     public DateTime CreatedAt { get; set; }
 
+    public Guid? ProjectId { get; set; }
+
     public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
+
+    public virtual Project? GuidelineProject { get; set; }
 }

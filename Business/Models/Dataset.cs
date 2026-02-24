@@ -7,8 +7,6 @@ public partial class Dataset
 {
     public Guid DatasetId { get; set; }
 
-    public Guid ProjectId { get; set; }
-
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
@@ -17,17 +15,13 @@ public partial class Dataset
 
     public string? Metadata { get; set; }
 
-    public Guid? CurrentLabelSetId { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public Guid? CreatedBy { get; set; }
 
     public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
 
+    public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
+
     public virtual User? CreatedByUser { get; set; }
-
-    public virtual LabelSet? CurrentLabelSet { get; set; }
-
-    public virtual Project DatasetProject { get; set; } = null!;
 }

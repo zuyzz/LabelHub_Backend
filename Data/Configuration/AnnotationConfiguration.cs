@@ -16,6 +16,7 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.Property(e => e.TaskId).HasColumnName("taskId");
         entity.Property(e => e.AnnotatorId).HasColumnName("annotatorId");
         entity.Property(e => e.LabelSetId).HasColumnName("labelSetId");
+        entity.Property(e => e.LabelSetVersionNumber).HasColumnName("labelSetVersionNumber");
         entity.Property(e => e.AnnotationPayload).HasColumnName("annotationPayload").HasColumnType("jsonb");
         entity.Property(e => e.IsDraft).HasColumnName("isDraft");
         entity.Property(e => e.SubmittedAt).HasColumnName("submittedAt");

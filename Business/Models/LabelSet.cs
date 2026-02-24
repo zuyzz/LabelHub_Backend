@@ -11,19 +11,17 @@ public partial class LabelSet
 
     public string? Description { get; set; }
 
-    public Guid? GuidelineId { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public Guid? CreatedBy { get; set; }
 
-    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
+    public Guid? ProjectId { get; set; }
 
-    public virtual ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
+    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 
     public virtual ICollection<Label> Labels { get; set; } = new List<Label>();
 
     public virtual User? CreatedByUser { get; set; }
 
-    public virtual Guideline? LabelSetGuideline { get; set; }
+    public virtual Project? LabelSetProject { get; set; }
 }

@@ -24,6 +24,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Dataset> Datasets { get; set; }
 
+    public virtual DbSet<DatasetItem> DatasetItems { get; set; }
+
     public virtual DbSet<ExportJob> ExportJobs { get; set; }
 
     public virtual DbSet<Guideline> Guidelines { get; set; }
@@ -33,6 +35,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<LabelSet> LabelSets { get; set; }
 
     public virtual DbSet<Project> Projects { get; set; }
+
+    public virtual DbSet<ProjectDatasetItem> ProjectDatasetItems { get; set; }
 
     public virtual DbSet<ProjectMember> ProjectMembers { get; set; }
 

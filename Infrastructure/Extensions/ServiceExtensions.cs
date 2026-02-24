@@ -5,6 +5,7 @@ using DataLabelProject.Data.Repositories.Implementations.Labels;
 using DataLabelProject.Data.Repositories.Implementations.Projects;
 using DataLabelProject.Data.Repositories.Implementations.Roles;
 using DataLabelProject.Data.Repositories.Implementations.Users;
+using DataLabelProject.Data.Repositories.Implementations.Datasets;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -33,6 +34,7 @@ public static class ServiceExtensions
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
+        services.AddScoped<IDatasetRepository, DatasetRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -43,6 +45,16 @@ public static class ServiceExtensions
         services.AddScoped<ILabelService, LabelService>();
         services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
+        services.AddScoped<IDatasetService, DatasetService>();
+
+        // Storage
+        services.AddScoped<IFileStorage, SupabaseFileStorage>();
+        services.AddHttpClient<IFileStorage, SupabaseFileStorage>();
+
+        // File upload strategies
+        services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
+        services.AddScoped<IFileUploadStrategy, TextUploadStrategy>();
+        services.AddScoped<IFileUploadStrategy, ArchiveUploadStrategy>();
 
         return services;
     }
