@@ -3,19 +3,22 @@ using Microsoft.AspNetCore.Http;
 namespace DataLabelProject.Application.DTOs.Datasets
 {
     /// <summary>
-    /// Model bound from multipart/form-data in the import endpoint.
+    /// Request model for creating a new dataset.
     /// </summary>
-    public class DatasetImportRequest
+    public class CreateDatasetRequest
     {
+        /// <summary>
+        /// Optional file. Can be a single image or archive containing images.
+        /// </summary>
         public IFormFile? File { get; set; }
 
         /// <summary>
-        /// Optional dataset display name (used as dataset.Name). If not provided, a default is generated.
+        /// Optional dataset name. If not provided, a default name will be generated from the file name.
         /// </summary>
         public string? Name { get; set; }
 
         /// <summary>
-        /// Optional dataset description stored on the dataset record.
+        /// Optional dataset description.
         /// </summary>
         public string? Description { get; set; }
     }

@@ -12,5 +12,7 @@ public interface IFileUploadStrategy
     bool CanHandle(IFormFile file);
 
     /// Process the uploaded file and upload individual items into storage; return list of uploaded items.
-    Task<FileProcessResult> ProcessAsync(IFormFile file, Guid projectId, string datasetName);
+    /// Storage folder structure: [datasetId] datasetName/[random-uuid]/
+    Task<FileProcessResult> ProcessAsync(IFormFile file, Guid datasetId, string datasetName);
 }
+

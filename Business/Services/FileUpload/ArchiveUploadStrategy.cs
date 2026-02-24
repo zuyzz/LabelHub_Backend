@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using SharpCompress.Archives;
-using SharpCompress.Common;
 
 namespace DataLabelProject.Business.Services.FileUpload;
 
@@ -21,7 +20,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
     public async Task<FileProcessResult> ProcessAsync(
         IFormFile file,
-        Guid projectId,
+        Guid datasetId,
         string datasetName)
     {
         using var mem = new MemoryStream();
@@ -31,21 +30,14 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         using var archive = ArchiveFactory.Open(mem);
 
         var entries = archive.Entries
-            .Where(e => !e.IsDirectory)
+            .Where(e => !e.IsDirectory && IsImageExt(Path.GetExtension(e.Key)))
             .ToList();
 
         if (!entries.Any())
-            throw new InvalidOperationException("Archive contains no files");
+            throw new InvalidOperationException("Archive contains no image files");
 
-        bool allImages = entries.All(e => IsImageExt(Path.GetExtension(e.Key)));
-        bool allText   = entries.All(e => IsTextExt(Path.GetExtension(e.Key)));
-
-        if (!allImages && !allText)
-            throw new InvalidOperationException(
-                "Archive must contain only images OR only text files");
-
-        var baseFolder =
-            $"project-{projectId}/{datasetName}/{Guid.NewGuid()}";
+        // Folder structure: [datasetId] datasetName/[random-uuid]/
+        var baseFolder = $"[{datasetId}] {datasetName}/{Guid.NewGuid()}";
 
         await _storage.EnsureFolderAsync(baseFolder);
 
@@ -57,8 +49,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
             var filename = Path.GetFileName(entry.Key);
             var path = $"{baseFolder}/{filename}";
-            var contentType = GetContentTypeByExtension(
-                Path.GetExtension(filename));
+            var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
 
             var uri = await _storage.UploadFileAsync(
                 entryStream,
@@ -70,28 +61,21 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
         return new FileProcessResult(
             uploaded,
-            $"project-{projectId}/{datasetName}");
+            $"[{datasetId}] {datasetName}");
     }
 
     private static bool IsImageExt(string ext)
         => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }
             .Contains(ext.ToLowerInvariant());
 
-    private static bool IsTextExt(string ext)
-        => new[] { ".txt", ".json", ".xml" }
-            .Contains(ext.ToLowerInvariant());
-
     private static string GetContentTypeByExtension(string ext)
         => ext.ToLowerInvariant() switch
         {
-            ".png"  => "image/png",
-            ".jpg"  => "image/jpeg",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
             ".jpeg" => "image/jpeg",
-            ".gif"  => "image/gif",
+            ".gif" => "image/gif",
             ".webp" => "image/webp",
-            ".json" => "application/json",
-            ".xml"  => "application/xml",
-            ".txt"  => "text/plain",
-            _       => "application/octet-stream"
+            _ => "application/octet-stream"
         };
 }

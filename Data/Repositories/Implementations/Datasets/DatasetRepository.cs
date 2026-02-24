@@ -20,14 +20,40 @@ public class DatasetRepository : IDatasetRepository
         return dataset;
     }
 
-    public async Task AddAnnotationTasksAsync(IEnumerable<AnnotationTask> tasks)
+    public async Task<Dataset?> GetDatasetByIdAsync(Guid datasetId)
     {
-        await _context.AnnotationTasks.AddRangeAsync(tasks);
+        return await _context.Datasets
+            .Include(d => d.DatasetItems)
+            .FirstOrDefaultAsync(d => d.DatasetId == datasetId);
     }
 
-    public async Task<bool> ProjectExistsAsync(Guid projectId)
+    public async Task<Dataset> UpdateDatasetAsync(Dataset dataset)
     {
-        return await _context.Projects.AnyAsync(p => p.ProjectId == projectId);
+        _context.Datasets.Update(dataset);
+        return dataset;
+    }
+
+    public async Task DeleteDatasetAsync(Guid datasetId)
+    {
+        var dataset = await _context.Datasets
+            .Include(d => d.DatasetItems)
+            .FirstOrDefaultAsync(d => d.DatasetId == datasetId);
+
+        if (dataset != null)
+        {
+            // Delete related annotation tasks
+            var tasks = await _context.AnnotationTasks
+                .Where(t => t.DatasetId == datasetId)
+                .ToListAsync();
+
+            _context.AnnotationTasks.RemoveRange(tasks);
+
+            // Delete dataset items
+            _context.DatasetItems.RemoveRange(dataset.DatasetItems);
+
+            // Delete dataset
+            _context.Datasets.Remove(dataset);
+        }
     }
 
     public async Task SaveChangesAsync()

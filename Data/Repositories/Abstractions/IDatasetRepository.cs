@@ -5,7 +5,9 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 public interface IDatasetRepository
 {
     Task<Dataset> CreateDatasetAsync(Dataset dataset);
-    Task AddAnnotationTasksAsync(IEnumerable<AnnotationTask> tasks);
-    Task<bool> ProjectExistsAsync(Guid projectId);
+    Task<Dataset?> GetDatasetByIdAsync(Guid datasetId);
+    Task<Dataset> UpdateDatasetAsync(Dataset dataset);
+    Task DeleteDatasetAsync(Guid datasetId);
     Task SaveChangesAsync();
 }
+

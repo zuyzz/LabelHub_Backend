@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.Http;
 using DataLabelProject.Application.DTOs.Datasets;
 
 namespace DataLabelProject.Business.Services.Datasets;
 
 public interface IDatasetService
 {
-    Task<DatasetImportResponse> ImportDatasetAsync(Guid projectId, DatasetImportRequest request);
+    Task<CreateDatasetResponse> CreateDatasetAsync(CreateDatasetRequest request);
+    Task<DatasetResponse> GetDatasetByIdAsync(Guid datasetId);
+    Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request);
+    Task DeleteDatasetAsync(Guid datasetId);
 }

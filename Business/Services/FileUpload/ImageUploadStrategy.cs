@@ -19,19 +19,34 @@ public class ImageUploadStrategy : IFileUploadStrategy
         return ImageTypes.Contains(ct) && !IsArchive(file.FileName);
     }
 
-    public async Task<FileProcessResult> ProcessAsync(IFormFile file, Guid projectId, string datasetName)
+    public async Task<FileProcessResult> ProcessAsync(
+        IFormFile file,
+        Guid datasetId,
+        string datasetName)
     {
-        var folder = Path.Combine($"project-{projectId}", datasetName, Guid.NewGuid().ToString());
-        await _storage.EnsureFolderAsync(folder);
+        var fileId = Guid.NewGuid().ToString();
+        var extension = Path.GetExtension(file.FileName);
+        var filename = $"{fileId}{extension}";
 
-        var filename = Path.GetFileName(file.FileName!);
-        var path = Path.Combine(folder, filename).Replace('\\', '/');
+        // Folder structure: [datasetId] datasetName/[random-uuid]/
+        var baseFolder = $"[{datasetId}] {datasetName}/{Guid.NewGuid()}";
+        var path = $"{baseFolder}/{filename}";
 
         using var stream = file.OpenReadStream();
-        var uri = await _storage.UploadFileAsync(stream, path, file.ContentType ?? "application/octet-stream");
 
-        var item = new FileItem(filename, file.ContentType ?? "application/octet-stream", uri);
-        return new FileProcessResult(new[] { item }, Path.Combine($"project-{projectId}", datasetName).Replace('\\', '/'));
+        var uri = await _storage.UploadFileAsync(
+            stream,
+            path,
+            file.ContentType ?? "application/octet-stream");
+
+        var item = new FileItem(
+            filename,
+            file.ContentType ?? "application/octet-stream",
+            uri);
+
+        return new FileProcessResult(
+            new[] { item },
+            $"[{datasetId}] {datasetName}");
     }
 
     private static bool IsArchive(string? fileName)

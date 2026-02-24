@@ -2,7 +2,6 @@ using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Business.Services.FileUpload;
-using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 
 namespace DataLabelProject.Business.Services.Datasets;
@@ -10,100 +9,117 @@ namespace DataLabelProject.Business.Services.Datasets;
 public class DatasetService : IDatasetService
 {
     private readonly IDatasetRepository _repo;
-    private readonly IProjectRepository _projectRepo;
     private readonly IEnumerable<IFileUploadStrategy> _strategies;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly Storage.IFileStorage _storage;
 
-    public DatasetService(IDatasetRepository repo, IProjectRepository projectRepo, IEnumerable<IFileUploadStrategy> strategies, IHttpContextAccessor httpContextAccessor, Storage.IFileStorage storage)
+    public DatasetService(
+        IDatasetRepository repo,
+        IEnumerable<IFileUploadStrategy> strategies,
+        IHttpContextAccessor httpContextAccessor,
+        Storage.IFileStorage storage)
     {
         _repo = repo;
-        _projectRepo = projectRepo;
         _strategies = strategies;
         _httpContextAccessor = httpContextAccessor;
         _storage = storage;
     }
 
-    public async Task<DatasetImportResponse> ImportDatasetAsync(Guid projectId, DatasetImportRequest request)
+    public async Task<CreateDatasetResponse> CreateDatasetAsync(CreateDatasetRequest request)
     {
-        Console.WriteLine("STEP 1: ImportDatasetAsync entered");
-        // Validate project exists
-        if (!await _repo.ProjectExistsAsync(projectId)) throw new KeyNotFoundException("Project not found");
-
-        // Validate user allowed: must be authenticated and (manager/admin) or project member
+        // Get current user ID
         var user = _httpContextAccessor.HttpContext?.User;
         var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId)) throw new UnauthorizedAccessException();
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            throw new UnauthorizedAccessException("User not authenticated");
 
-        var isAdminOrManager = user?.IsInRole("admin") == true || user?.IsInRole("manager") == true;
-        var isMember = await _projectRepo.ProjectMemberExistsAsync(projectId, userId);
-        if (!isAdminOrManager && !isMember) throw new UnauthorizedAccessException();
+        // Generate dataset ID
+        var datasetId = Guid.NewGuid();
+        var datasetName = request.Name ?? "untitled-dataset";
 
-        // Ensure project folder exists in storage: project-{projectId}
-        await _storage.EnsureFolderAsync($"project-{projectId}");
+        string storageUri = string.Empty;
+        int fileCount = 0;
 
-        // Determine the file to process: either the uploaded file or a server-local path
-        var file = request.File;
+        // Process file if provided
+        if (request.File != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                datasetName = Path.GetFileNameWithoutExtension(request.File.FileName ?? "dataset");
 
-        if (file == null) throw new InvalidOperationException("No file to process");
+            // Choose strategy based on file type
+            var strategy = _strategies.FirstOrDefault(s => s.CanHandle(request.File));
+            if (strategy == null)
+                throw new InvalidOperationException("File type is not supported. Only image files or archives containing image files are accepted.");
 
-        // choose strategy
-        var strategy = _strategies.FirstOrDefault(s => s.CanHandle(file));
-        if (strategy == null) throw new InvalidOperationException("No upload strategy can handle this file type");
-
-        var datasetName = string.IsNullOrWhiteSpace(request.Name) ? Path.GetFileNameWithoutExtension(file.FileName ?? "dataset") + "-import" : request.Name!;
-
-        Console.WriteLine("STEP 2: About to upload file");
-        var result = await strategy.ProcessAsync(file, projectId, datasetName);
-        Console.WriteLine("STEP 3: Upload finished");
+            // Process file upload
+            var result = await strategy.ProcessAsync(request.File, datasetId, datasetName);
+            storageUri = result.StoragePrefix;
+            fileCount = result.Items.Count();
+        }
 
         // Create dataset record
         var dataset = new Dataset
         {
-            DatasetId = Guid.NewGuid(),
-            ProjectId = projectId,
+            DatasetId = datasetId,
             Name = datasetName,
             Description = request.Description,
-            StorageUri = result.StoragePrefix,
+            StorageUri = storageUri,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = userId
         };
 
         await _repo.CreateDatasetAsync(dataset);
-
-        // Create annotation tasks for each item
-        var tasks = result.Items.Select(item => new AnnotationTask
-        {
-            TaskId = Guid.NewGuid(),
-            DatasetId = dataset.DatasetId,
-            ScopeUri = item.StorageUri,
-            Status = "unstarted",
-            CreatedAt = DateTime.UtcNow
-        }).ToList();
-
-        if (tasks.Any()) await _repo.AddAnnotationTasksAsync(tasks);
-
         await _repo.SaveChangesAsync();
 
-        Console.WriteLine($"ImportDatasetAsync completed for projectId: {projectId}");
-        return new DatasetImportResponse(dataset.DatasetId, dataset.Name, dataset.Description, dataset.StorageUri, tasks.Count);
+        return new CreateDatasetResponse(
+            datasetId,
+            datasetName,
+            dataset.Description,
+            storageUri,
+            fileCount);
     }
 
-    private static string GetContentTypeByExtension(string? ext)
+    public async Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request)
     {
-        if (string.IsNullOrWhiteSpace(ext)) return "application/octet-stream";
-        return ext.ToLowerInvariant() switch
-        {
-            ".png" => "image/png",
-            ".jpg" => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            ".json" => "application/json",
-            ".xml" => "application/xml",
-            ".zip" => "application/zip",
-            ".rar" => "application/vnd.rar",
-            _ => "application/octet-stream",
-        };
+        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        if (dataset == null)
+            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+            dataset.Name = request.Name;
+
+        if (request.Description != null)
+            dataset.Description = request.Description;
+
+        await _repo.UpdateDatasetAsync(dataset);
+        await _repo.SaveChangesAsync();
+
+        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description);
+    }
+
+    public async Task DeleteDatasetAsync(Guid datasetId)
+    {
+        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        if (dataset == null)
+            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+
+        await _repo.DeleteDatasetAsync(datasetId);
+        await _repo.SaveChangesAsync();
+    }
+
+    public async Task<DatasetResponse> GetDatasetByIdAsync(Guid datasetId)
+    {
+        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        if (dataset == null)
+            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+
+        return new DatasetResponse(
+            dataset.DatasetId,
+            dataset.Name,
+            dataset.Description,
+            dataset.StorageUri ?? string.Empty,
+            dataset.CreatedAt,
+            dataset.CreatedBy,
+            dataset.DatasetItems?.Count ?? 0);
     }
 }

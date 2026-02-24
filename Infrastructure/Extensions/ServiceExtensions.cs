@@ -6,6 +6,7 @@ using DataLabelProject.Data.Repositories.Implementations.Projects;
 using DataLabelProject.Data.Repositories.Implementations.Roles;
 using DataLabelProject.Data.Repositories.Implementations.Users;
 using DataLabelProject.Data.Repositories.Implementations.Datasets;
+using DataLabelProject.Data.Repositories.Implementations.DatasetItems;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -15,6 +16,7 @@ using DataLabelProject.Business.Services.Projects;
 using DataLabelProject.Business.Services.Labels;
 using DataLabelProject.Business.Services.Guidelines;
 using DataLabelProject.Business.Services.Datasets;
+using DataLabelProject.Business.Services.DatasetItems;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
 
@@ -35,6 +37,7 @@ public static class ServiceExtensions
         services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();
+        services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -46,14 +49,10 @@ public static class ServiceExtensions
         services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();
-
-        // Storage
-        services.AddScoped<IFileStorage, SupabaseFileStorage>();
-        services.AddHttpClient<IFileStorage, SupabaseFileStorage>();
+        services.AddScoped<IDatasetItemService, DatasetItemService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
-        services.AddScoped<IFileUploadStrategy, TextUploadStrategy>();
         services.AddScoped<IFileUploadStrategy, ArchiveUploadStrategy>();
 
         return services;
