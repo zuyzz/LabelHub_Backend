@@ -7,16 +7,20 @@ using Microsoft.AspNetCore.Mvc;
 namespace DataLabelProject.Application.Controllers
 {
     [ApiController]
-    [Route("api/dataset")]
+    [Route("api/datasets")]
+    [Authorize(Roles = "admin,manager")]
     public class DatasetsController : ControllerBase
     {
         private readonly IDatasetService _datasetService;
         private readonly IDatasetItemService _itemService;
+        private readonly IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> _strategies;
 
-        public DatasetsController(IDatasetService datasetService, IDatasetItemService itemService)
+        public DatasetsController(IDatasetService datasetService, IDatasetItemService itemService,
+            IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> strategies)
         {
             _datasetService = datasetService;
             _itemService = itemService;
+            _strategies = strategies;
         }
 
         /// <summary>
@@ -24,9 +28,7 @@ namespace DataLabelProject.Application.Controllers
         /// Accepts image files or archive files (zip/rar) containing only image files.
         /// </summary>
         [HttpPost]
-        [Consumes("multipart/form-data")]
-        [Authorize]
-        public async Task<IActionResult> CreateDataset([FromForm] CreateDatasetRequest request)
+        public async Task<IActionResult> CreateDataset([FromBody] CreateDatasetRequest request)
         {
             var result = await _datasetService.CreateDatasetAsync(request);
             return Ok(result);
@@ -36,10 +38,16 @@ namespace DataLabelProject.Application.Controllers
         /// Get dataset by ID with item count and metadata.
         /// </summary>
         [HttpGet("{datasetId:guid}")]
-        [Authorize]
         public async Task<IActionResult> GetDataset([FromRoute] Guid datasetId)
         {
             var result = await _datasetService.GetDatasetByIdAsync(datasetId);
+            return Ok(result);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDatasets()
+        {
+            var result = await _datasetService.GetDatasetsAsync();
             return Ok(result);
         }
 
@@ -47,7 +55,6 @@ namespace DataLabelProject.Application.Controllers
         /// Get all dataset items for a specific dataset.
         /// </summary>
         [HttpGet("{datasetId:guid}/items")]
-        [Authorize]
         public async Task<IActionResult> GetDatasetItems([FromRoute] Guid datasetId)
         {
             var result = await _itemService.GetDatasetItemsAsync(datasetId);
@@ -55,34 +62,12 @@ namespace DataLabelProject.Application.Controllers
         }
 
         /// <summary>
-        /// Get a single dataset item by ID.
-        /// </summary>
-        [HttpGet("item/{itemId:guid}")]
-        [Authorize]
-        public async Task<IActionResult> GetDatasetItem([FromRoute] Guid itemId)
-        {
-            var result = await _itemService.GetDatasetItemByIdAsync(itemId);
-            return Ok(result);
-        }
-
-        /// <summary>
-        /// Create a new dataset item manually (e.g., for programmatic uploads or batch operations).
-        /// </summary>
-        [HttpPost("item")]
-        [Authorize]
-        public async Task<IActionResult> CreateDatasetItem([FromBody] CreateDatasetItemRequest request)
-        {
-            var result = await _itemService.CreateDatasetItemAsync(request.DatasetId, request.MediaType, request.StorageUri);
-            return Ok(result);
-        }
-
-        /// <summary>
         /// Delete a dataset item by ID.
         /// </summary>
-        [HttpDelete("item/{itemId:guid}")]
-        [Authorize]
+        [HttpDelete("items/{itemId:guid}")]
         public async Task<IActionResult> DeleteDatasetItem([FromRoute] Guid itemId)
         {
+            // Service will validate item belongs to dataset and remove storage
             await _itemService.DeleteDatasetItemAsync(itemId);
             return NoContent();
         }
@@ -91,7 +76,6 @@ namespace DataLabelProject.Application.Controllers
         /// Update an existing dataset. Can update name and description.
         /// </summary>
         [HttpPut("{datasetId:guid}")]
-        [Authorize]
         public async Task<IActionResult> UpdateDataset([FromRoute] Guid datasetId, [FromBody] UpdateDatasetRequest request)
         {
             var result = await _datasetService.UpdateDatasetAsync(datasetId, request);
@@ -102,11 +86,41 @@ namespace DataLabelProject.Application.Controllers
         /// Delete a dataset and all its associated data.
         /// </summary>
         [HttpDelete("{datasetId:guid}")]
-        [Authorize]
         public async Task<IActionResult> DeleteDataset([FromRoute] Guid datasetId)
         {
             await _datasetService.DeleteDatasetAsync(datasetId);
             return NoContent();
+        }
+
+        /// <summary>
+        /// Upload a file or archive into an existing dataset.
+        /// Accepts single image/audio/text or archive (zip/rar) containing allowed files.
+        /// </summary>
+        [HttpPost("{datasetId:guid}/items")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadDatasetItems([FromRoute] Guid datasetId, [FromForm] CreateDatasetItemRequest request)
+        {
+            var file = request.File;
+            if (file == null) return BadRequest(new { message = "File is required" });
+
+            // Validate dataset exists and get name
+            var ds = await _datasetService.GetDatasetByIdAsync(datasetId);
+
+            // select a strategy
+            var strategy = _strategies.FirstOrDefault(s => s.CanHandle(file));
+            if (strategy == null)
+                return BadRequest(new { message = "File type not supported" });
+
+            var process = await strategy.ProcessAsync(file, datasetId, ds.Name);
+
+            var created = new List<object>();
+            foreach (var item in process.Items)
+            {
+                var createdItem = await _itemService.CreateDatasetItemAsync(datasetId, item.ContentType, item.StorageUri);
+                created.Add(createdItem);
+            }
+
+            return Ok(created);
         }
     }
 }

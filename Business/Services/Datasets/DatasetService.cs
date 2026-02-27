@@ -32,32 +32,21 @@ public class DatasetService : IDatasetService
         var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             throw new UnauthorizedAccessException("User not authenticated");
-
         // Generate dataset ID
         var datasetId = Guid.NewGuid();
-        var datasetName = request.Name ?? "untitled-dataset";
+        var datasetName = request.Name?.Trim() ?? throw new InvalidOperationException("Name is required");
 
-        string storageUri = string.Empty;
-        int fileCount = 0;
-
-        // Process file if provided
-        if (request.File != null)
+        // If user is manager, enforce uniqueness per creator
+        if (user?.IsInRole("manager") == true)
         {
-            if (string.IsNullOrWhiteSpace(request.Name))
-                datasetName = Path.GetFileNameWithoutExtension(request.File.FileName ?? "dataset");
-
-            // Choose strategy based on file type
-            var strategy = _strategies.FirstOrDefault(s => s.CanHandle(request.File));
-            if (strategy == null)
-                throw new InvalidOperationException("File type is not supported. Only image files or archives containing image files are accepted.");
-
-            // Process file upload
-            var result = await strategy.ProcessAsync(request.File, datasetId, datasetName);
-            storageUri = result.StoragePrefix;
-            fileCount = result.Items.Count();
+            var exists = await _repo.GetByNameAndCreatorAsync(datasetName, userId);
+            if (exists != null)
+                throw new InvalidOperationException("You already have a dataset with the same name");
         }
 
-        // Create dataset record
+        // Storage prefix per guide
+        var storageUri = $"datasets/{datasetId}/";
+
         var dataset = new Dataset
         {
             DatasetId = datasetId,
@@ -71,12 +60,7 @@ public class DatasetService : IDatasetService
         await _repo.CreateDatasetAsync(dataset);
         await _repo.SaveChangesAsync();
 
-        return new CreateDatasetResponse(
-            datasetId,
-            datasetName,
-            dataset.Description,
-            storageUri,
-            fileCount);
+        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, storageUri, 0);
     }
 
     public async Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request)
@@ -84,9 +68,22 @@ public class DatasetService : IDatasetService
         var dataset = await _repo.GetDatasetByIdAsync(datasetId);
         if (dataset == null)
             throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+        var user = _httpContextAccessor.HttpContext?.User;
+        var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdClaim, out var userId);
 
         if (!string.IsNullOrWhiteSpace(request.Name))
-            dataset.Name = request.Name;
+        {
+            var newName = request.Name!.Trim();
+            if (user?.IsInRole("manager") == true)
+            {
+                var existing = await _repo.GetByNameAndCreatorAsync(newName, userId);
+                if (existing != null && existing.DatasetId != datasetId)
+                    throw new InvalidOperationException("You already have a dataset with the same name");
+            }
+
+            dataset.Name = newName;
+        }
 
         if (request.Description != null)
             dataset.Description = request.Description;
@@ -102,6 +99,12 @@ public class DatasetService : IDatasetService
         var dataset = await _repo.GetDatasetByIdAsync(datasetId);
         if (dataset == null)
             throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+
+        // delete objects in storage
+        if (!string.IsNullOrWhiteSpace(dataset.StorageUri))
+        {
+            await _storage.DeleteFolderAsync(dataset.StorageUri);
+        }
 
         await _repo.DeleteDatasetAsync(datasetId);
         await _repo.SaveChangesAsync();
@@ -121,5 +124,32 @@ public class DatasetService : IDatasetService
             dataset.CreatedAt,
             dataset.CreatedBy,
             dataset.DatasetItems?.Count ?? 0);
+    }
+
+    public async Task<IEnumerable<DatasetResponse>> GetDatasetsAsync()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            throw new UnauthorizedAccessException("User not authenticated");
+
+        IEnumerable<Business.Models.Dataset> list;
+        if (user?.IsInRole("admin") == true)
+        {
+            list = await _repo.GetAllDatasetsAsync();
+        }
+        else
+        {
+            list = await _repo.GetDatasetsByCreatorAsync(userId);
+        }
+
+        return list.Select(dataset => new DatasetResponse(
+            dataset.DatasetId,
+            dataset.Name,
+            dataset.Description,
+            dataset.StorageUri ?? string.Empty,
+            dataset.CreatedAt,
+            dataset.CreatedBy,
+            dataset.DatasetItems?.Count ?? 0));
     }
 }

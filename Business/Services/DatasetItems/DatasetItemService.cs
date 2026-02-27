@@ -7,10 +7,12 @@ namespace DataLabelProject.Business.Services.DatasetItems;
 public class DatasetItemService : IDatasetItemService
 {
     private readonly IDatasetItemRepository _repo;
+    private readonly Storage.IFileStorage _storage;
 
-    public DatasetItemService(IDatasetItemRepository repo)
+    public DatasetItemService(IDatasetItemRepository repo, Storage.IFileStorage storage)
     {
         _repo = repo;
+        _storage = storage;
     }
 
     public async Task<IEnumerable<DatasetItemResponse>> GetDatasetItemsAsync(Guid datasetId)
@@ -62,6 +64,22 @@ public class DatasetItemService : IDatasetItemService
 
     public async Task DeleteDatasetItemAsync(Guid itemId)
     {
+        var item = await _repo.GetDatasetItemByIdAsync(itemId);
+        if (item == null) return;
+
+        // delete storage object if exists
+        if (!string.IsNullOrWhiteSpace(item.StorageUri))
+        {
+            try
+            {
+                await _storage.DeleteFileAsync(item.StorageUri);
+            }
+            catch
+            {
+                // swallow storage delete errors but still remove DB record
+            }
+        }
+
         await _repo.DeleteDatasetItemAsync(itemId);
         await _repo.SaveChangesAsync();
     }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace DataLabelProject.Application.DTOs.Datasets
 {
@@ -8,14 +8,10 @@ namespace DataLabelProject.Application.DTOs.Datasets
     public class CreateDatasetRequest
     {
         /// <summary>
-        /// Optional file. Can be a single image or archive containing images.
+        /// Dataset name (required).
         /// </summary>
-        public IFormFile? File { get; set; }
-
-        /// <summary>
-        /// Optional dataset name. If not provided, a default name will be generated from the file name.
-        /// </summary>
-        public string? Name { get; set; }
+        [Required]
+        public string Name { get; set; } = null!;
 
         /// <summary>
         /// Optional dataset description.

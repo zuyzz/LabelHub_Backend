@@ -36,10 +36,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         if (!entries.Any())
             throw new InvalidOperationException("Archive contains no image files");
 
-        // Folder structure: [datasetId] datasetName/[random-uuid]/
-        var baseFolder = $"[{datasetId}] {datasetName}/{Guid.NewGuid()}";
-
-        await _storage.EnsureFolderAsync(baseFolder);
+        var baseFolder = $"datasets/{datasetId}";
 
         var uploaded = new List<FileItem>();
 
@@ -51,7 +48,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
             var path = $"{baseFolder}/{filename}";
             var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
 
-            var uri = await _storage.UploadFileAsync(
+            var uri = await _storage.CreateFileAsync(
                 entryStream,
                 path,
                 contentType);

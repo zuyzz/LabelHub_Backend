@@ -28,13 +28,13 @@ public class ImageUploadStrategy : IFileUploadStrategy
         var extension = Path.GetExtension(file.FileName);
         var filename = $"{fileId}{extension}";
 
-        // Folder structure: [datasetId] datasetName/[random-uuid]/
-        var baseFolder = $"[{datasetId}] {datasetName}/{Guid.NewGuid()}";
+        var baseFolder = $"datasets/{datasetId}";
+
         var path = $"{baseFolder}/{filename}";
 
         using var stream = file.OpenReadStream();
 
-        var uri = await _storage.UploadFileAsync(
+        var uri = await _storage.CreateFileAsync(
             stream,
             path,
             file.ContentType ?? "application/octet-stream");
