@@ -24,6 +24,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Dataset> Datasets { get; set; }
 
+    public virtual DbSet<DatasetItem> DatasetItems { get; set; }
+
     public virtual DbSet<ExportJob> ExportJobs { get; set; }
 
     public virtual DbSet<Guideline> Guidelines { get; set; }
@@ -47,7 +49,12 @@ public partial class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureSupabaseOptions(modelBuilder);
+        
+        // Apply all configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        
+        // Explicitly apply AnnotationTaskConfiguration to ensure it's not overridden
+        modelBuilder.ApplyConfiguration(new Configuration.AnnotationTaskConfiguration());
     }
 
     private void ConfigureSupabaseOptions(ModelBuilder modelBuilder)

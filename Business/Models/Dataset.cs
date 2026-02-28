@@ -25,7 +25,7 @@ public partial class Dataset
 
     public Guid? CreatedBy { get; set; }
 
-    public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
+    public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
 
     public virtual User? CreatedByUser { get; set; }
 

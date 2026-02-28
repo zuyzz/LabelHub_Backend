@@ -13,7 +13,7 @@ public class AnnotationTaskConfiguration : IEntityTypeConfiguration<AnnotationTa
         entity.ToTable("AnnotationTask");
 
         entity.Property(e => e.TaskId).HasColumnName("taskId").HasDefaultValueSql("uuid_generate_v4()");
-        entity.Property(e => e.DatasetId).HasColumnName("datasetId");
+        entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
         entity.Property(e => e.ScopeUri).HasColumnName("scopeUri");
         entity.Property(e => e.Status).HasColumnName("status").HasColumnType("character varying");
         entity.Property(e => e.Consensus).HasColumnName("consensus").HasColumnType("jsonb");
@@ -21,9 +21,9 @@ public class AnnotationTaskConfiguration : IEntityTypeConfiguration<AnnotationTa
         entity.Property(e => e.AssignedAt).HasColumnName("assignedAt");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
 
-        entity.HasOne(d => d.TaskDataset).WithMany(p => p.AnnotationTasks)
-            .HasForeignKey(d => d.DatasetId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("AnnotationTask_datasetId_fkey");
+        entity.HasOne(d => d.TaskDatasetItem).WithMany(p => p.AnnotationTasks)
+            .HasForeignKey(d => d.DatasetItemId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("AnnotationTask_datasetItemId_fkey");
     }
 }

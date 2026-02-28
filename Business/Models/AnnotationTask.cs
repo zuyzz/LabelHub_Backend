@@ -7,7 +7,7 @@ public partial class AnnotationTask
 {
     public Guid TaskId { get; set; }
 
-    public Guid DatasetId { get; set; }
+    public Guid DatasetItemId { get; set; }
 
     public string ScopeUri { get; set; } = null!;
 
@@ -25,5 +25,5 @@ public partial class AnnotationTask
 
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
-    public virtual Dataset TaskDataset { get; set; } = null!;
+    public virtual DatasetItem TaskDatasetItem { get; set; } = null!;
 }
