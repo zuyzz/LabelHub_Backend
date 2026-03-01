@@ -21,6 +21,8 @@ public partial class AnnotationTask
 
     public DateTime CreatedAt { get; set; }
 
+    public bool Deleted { get; set; }
+
     public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();

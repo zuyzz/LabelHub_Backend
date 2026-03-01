@@ -11,9 +11,11 @@ public partial class Guideline
 
     public string Content { get; set; } = null!;
 
-    public int Version { get; set; }
-
     public DateTime CreatedAt { get; set; }
+
+    public Guid ProjectId { get; set; }
+
+    public virtual Project GuidelineProject { get; set; } = null!;
 
     public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
 }

@@ -19,7 +19,7 @@ namespace DataLabelProject.Application.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,manager")]
         public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters query)
         {
             var projects = await _service.GetProjectsAsync(query ?? new ProjectQueryParameters());

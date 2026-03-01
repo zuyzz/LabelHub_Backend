@@ -25,6 +25,8 @@ public partial class Project
 
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
+    public virtual ICollection<Guideline> Guidelines { get; set; } = new List<Guideline>();
+
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
     
     public ICollection<ProjectVersion> ProjectVersions { get; set; } = new List<ProjectVersion>();

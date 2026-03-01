@@ -22,8 +22,8 @@ public class GuidelineService : IGuidelineService
             GuidelineId = g.GuidelineId,
             Title = g.Title,
             Content = g.Content,
-            Version = g.Version,
-            CreatedAt = g.CreatedAt
+            CreatedAt = g.CreatedAt,
+            ProjectId = g.ProjectId
         }).ToList();
     }
 
@@ -37,8 +37,8 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
-            CreatedAt = guideline.CreatedAt
+            CreatedAt = guideline.CreatedAt,
+            ProjectId = guideline.ProjectId
         };
     }
 
@@ -49,8 +49,8 @@ public class GuidelineService : IGuidelineService
             GuidelineId = Guid.NewGuid(),
             Title = request.Title,
             Content = request.Content,
-            Version = 1,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ProjectId = request.ProjectId
         };
 
         await _repository.AddAsync(guideline);
@@ -60,8 +60,8 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
-            CreatedAt = guideline.CreatedAt
+            CreatedAt = guideline.CreatedAt,
+            ProjectId = guideline.ProjectId
         };
     }
 
@@ -72,7 +72,6 @@ public class GuidelineService : IGuidelineService
 
         guideline.Title = request.Title;
         guideline.Content = request.Content;
-        guideline.Version++;
 
         await _repository.UpdateAsync(guideline);
 
@@ -81,8 +80,8 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
-            CreatedAt = guideline.CreatedAt
+            CreatedAt = guideline.CreatedAt,
+            ProjectId = guideline.ProjectId
         };
     }
 

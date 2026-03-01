@@ -89,7 +89,7 @@ public class AnnotationTaskService
             ProjectId = dataset.ProjectId,
             UserId = managerId,
             EventType = "TASK_CREATED",
-            TargetEntity = "AnnotationTask",
+            TargetEntity = "Task",
             TargetId = task.TaskId,
             Details = System.Text.Json.JsonSerializer.Serialize(new
             {
@@ -133,7 +133,7 @@ public class AnnotationTaskService
         // Verify task exists
         var task = await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
-            .FirstOrDefaultAsync(t => t.TaskId == taskId);
+            .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
         if (task == null)
         {
             return (null, "Task not found");
@@ -241,6 +241,7 @@ public class AnnotationTaskService
     public async Task<List<TaskResponse>> GetTasksForManager(Guid managerId)
     {
         var tasks = await _context.AnnotationTasks
+            .Where(t => !t.Deleted)
             .Include(t => t.TaskDatasetItem)
             .Include(t => t.Assignments)
                 .ThenInclude(a => a.AssignmentUser)
@@ -258,6 +259,7 @@ public class AnnotationTaskService
     public async Task<List<TaskResponse>> GetTasksForAnnotator(Guid annotatorId)
     {
         var tasks = await _context.AnnotationTasks
+            .Where(t => !t.Deleted)
             .Include(t => t.TaskDatasetItem)
             .Include(t => t.Assignments)
                 .ThenInclude(a => a.AssignmentUser)
@@ -281,7 +283,7 @@ public class AnnotationTaskService
                 .ThenInclude(a => a.AssignmentUser)
             .Include(t => t.Assignments)
                 .ThenInclude(a => a.AssignedByUser)
-            .FirstOrDefaultAsync(t => t.TaskId == taskId);
+            .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
 
         return task == null ? null : MapToTaskResponse(task);
     }
@@ -296,7 +298,7 @@ public class AnnotationTaskService
         var task = await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
             .Include(t => t.Assignments)
-            .FirstOrDefaultAsync(t => t.TaskId == taskId);
+            .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
 
         if (task == null)
         {
@@ -354,7 +356,7 @@ public class AnnotationTaskService
             ProjectId = projectId,
             UserId = userId,
             EventType = "TASK_STATUS_UPDATED",
-            TargetEntity = "AnnotationTask",
+            TargetEntity = "Task",
             TargetId = taskId,
             Details = System.Text.Json.JsonSerializer.Serialize(new
             {
@@ -407,7 +409,7 @@ public class AnnotationTaskService
         var task = await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
             .Include(t => t.Assignments)
-            .FirstOrDefaultAsync(t => t.TaskId == taskId);
+            .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
 
         if (task == null)
         {
@@ -447,7 +449,7 @@ public class AnnotationTaskService
             ProjectId = projectId,
             UserId = managerId,
             EventType = "TASK_REOPENED",
-            TargetEntity = "AnnotationTask",
+            TargetEntity = "Task",
             TargetId = taskId,
             Details = System.Text.Json.JsonSerializer.Serialize(new
             {
@@ -465,4 +467,64 @@ public class AnnotationTaskService
 
         return (MapToTaskResponse(task), null);
     }
-}
+
+    /// <summary>
+    /// Soft delete task (Manager only)
+    /// BR-29: Only pending tasks can be deleted (not yet assigned or in progress)
+    /// </summary>
+    public async Task<(bool success, string? errorMessage)> DeleteTask(Guid taskId, Guid managerId)
+    {
+        var task = await _context.AnnotationTasks
+            .Include(t => t.TaskDatasetItem)
+            .Include(t => t.Assignments)
+            .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
+
+        if (task == null)
+            return (false, "Task not found or already deleted");
+
+        // BR-29: Only delete pending tasks (chưa ai làm)
+        if (task.Status != "pending")
+            return (false, "Cannot delete task that is assigned, in progress, or completed. Use reopen instead.");
+
+        // Soft delete
+        task.Deleted = true;
+
+        // Remove assignments if any (should not have for pending, but just in case)
+        if (task.Assignments.Any())
+        {
+            _context.Assignments.RemoveRange(task.Assignments);
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Get projectId for ActivityLog
+        var projectId = await _context.DatasetItems
+            .Where(di => di.ItemId == task.DatasetItemId)
+            .Select(di => di.Dataset.ProjectId)
+            .FirstOrDefaultAsync();
+
+        // BR-04: Log activity
+        var activityLog = new ActivityLog
+        {
+            ActivityLogId = Guid.NewGuid(),
+            ProjectId = projectId,
+            UserId = managerId,
+            EventType = "TASK_DELETED",
+            TargetEntity = "Task",
+            TargetId = taskId,
+            Details = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                taskId = taskId.ToString(),
+                datasetItemId = task.DatasetItemId.ToString(),
+                status = task.Status,
+                deletedBy = managerId.ToString(),
+                deletedAt = DateTime.UtcNow
+            }),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.ActivityLogs.Add(activityLog);
+        await _context.SaveChangesAsync();
+
+        return (true, null);
+    }}
