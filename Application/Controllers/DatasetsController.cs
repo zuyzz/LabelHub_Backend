@@ -1,7 +1,8 @@
 using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.DatasetItems;
-using DataLabelProject.Business.Services.FileUpload.Metadata;
+using DataLabelProject.Business.Services.Projects;
+using DataLabelProject.Business.Services.FileUpload;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,17 +15,16 @@ namespace DataLabelProject.Application.Controllers
     {
         private readonly IDatasetService _datasetService;
         private readonly IDatasetItemService _itemService;
-        private readonly IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> _strategies;
-        private readonly MetadataExtractorFactory _metadataExtractorFactory;
-
+        private readonly IProjectDatasetService _projectDatasetService;
+        private readonly IEnumerable<IFileUploadStrategy> _strategies;
         public DatasetsController(IDatasetService datasetService, IDatasetItemService itemService,
-            IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> strategies,
-            IEnumerable<IMetadataExtractor> metadataExtractors)
+            IProjectDatasetService projectDatasetService,
+            IEnumerable<IFileUploadStrategy> strategies)
         {
             _datasetService = datasetService;
             _itemService = itemService;
+            _projectDatasetService = projectDatasetService;
             _strategies = strategies;
-            _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
         }
 
         /// <summary>
@@ -120,29 +120,23 @@ namespace DataLabelProject.Application.Controllers
             var created = new List<object>();
             foreach (var item in process.Items)
             {
-                // Extract metadata if available
-                string? metadata = null;
-                var extractor = _metadataExtractorFactory.GetExtractor(item.ContentType);
-                if (extractor != null)
-                {
-                    try
-                    {
-                        // Create a temporary IFormFile from the StorageUri to extract metadata
-                        // Note: In a real scenario, you might want to refactor this to extract metadata
-                        // directly from the file before storage
-                        metadata = await _metadataExtractorFactory.ExtractMetadataAsync(file);
-                    }
-                    catch
-                    {
-                        // Swallow metadata extraction errors - item will be created without metadata
-                    }
-                }
-
-                var createdItem = await _itemService.CreateDatasetItemAsync(datasetId, item.ContentType, item.StorageUri, metadata);
+                // Use metadata extracted by the strategy
+                var createdItem = await _itemService.CreateDatasetItemAsync(datasetId, item.ContentType, item.StorageUri, item.Metadata);
                 created.Add(createdItem);
             }
 
             return Ok(created);
+        }
+
+        /// <summary>
+        /// Attach a dataset to a project.
+        /// Only the creator of both the dataset and project can perform this operation.
+        /// </summary>
+        [HttpPost("{datasetId:guid}/attach/{projectId:guid}")]
+        public async Task<IActionResult> AttachDatasetToProject([FromRoute] Guid datasetId, [FromRoute] Guid projectId)
+        {
+            var result = await _projectDatasetService.AttachDatasetAsync(datasetId, projectId);
+            return Ok(result);
         }
     }
 }

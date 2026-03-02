@@ -44,24 +44,19 @@ public class DatasetService : IDatasetService
                 throw new InvalidOperationException("You already have a dataset with the same name");
         }
 
-        // Storage prefix per guide
-        var storageUri = $"datasets/{datasetId}/";
-
         var dataset = new Dataset
         {
             DatasetId = datasetId,
             Name = datasetName,
             Description = request.Description,
-            StorageUri = storageUri,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId,
-            ProjectId = request.ProjectId
+            CreatedBy = userId
         };
 
         await _repo.CreateDatasetAsync(dataset);
         await _repo.SaveChangesAsync();
 
-        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, storageUri, request.ProjectId, 0);
+        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, 0);
     }
 
     public async Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request)
@@ -92,7 +87,7 @@ public class DatasetService : IDatasetService
         await _repo.UpdateDatasetAsync(dataset);
         await _repo.SaveChangesAsync();
 
-        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description, dataset.ProjectId);
+        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description);
     }
 
     public async Task DeleteDatasetAsync(Guid datasetId)
@@ -101,11 +96,9 @@ public class DatasetService : IDatasetService
         if (dataset == null)
             throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
 
-        // delete objects in storage
-        if (!string.IsNullOrWhiteSpace(dataset.StorageUri))
-        {
-            await _storage.DeleteFolderAsync(dataset.StorageUri);
-        }
+        // delete objects in storage using predictable prefix
+        var storagePrefix = $"datasets/{datasetId}/";
+        await _storage.DeleteFolderAsync(storagePrefix);
 
         await _repo.DeleteDatasetAsync(datasetId);
         await _repo.SaveChangesAsync();
@@ -121,10 +114,8 @@ public class DatasetService : IDatasetService
             dataset.DatasetId,
             dataset.Name,
             dataset.Description,
-            dataset.StorageUri ?? string.Empty,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.ProjectId,
             dataset.DatasetItems?.Count ?? 0);
     }
 
@@ -149,10 +140,8 @@ public class DatasetService : IDatasetService
             dataset.DatasetId,
             dataset.Name,
             dataset.Description,
-            dataset.StorageUri ?? string.Empty,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.ProjectId,
             dataset.DatasetItems?.Count ?? 0));
     }
 }

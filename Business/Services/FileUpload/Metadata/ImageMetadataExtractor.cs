@@ -1,10 +1,10 @@
-using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace DataLabelProject.Business.Services.FileUpload.Metadata;
 
 /// <summary>
 /// Extracts metadata from image files (width, height).
+/// Reads only header bytes (8KB) for efficient processing.
 /// </summary>
 public class ImageMetadataExtractor : IMetadataExtractor
 {
@@ -23,16 +23,21 @@ public class ImageMetadataExtractor : IMetadataExtractor
         return ImageTypes.Contains(ct);
     }
 
-    public async Task<string?> ExtractAsync(IFormFile file)
+    public async Task<string?> ExtractAsync(Stream stream, int maxBytesRead = 8192)
     {
         try
         {
-            using var stream = file.OpenReadStream();
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-            memoryStream.Seek(0, SeekOrigin.Begin);
+            // Read only header bytes from stream
+            byte[] headerBuffer = new byte[Math.Min(maxBytesRead, 8192)];
+            int bytesRead = await stream.ReadAsync(headerBuffer, 0, headerBuffer.Length);
+            
+            if (bytesRead < 8)
+                return null;
 
-            var (width, height) = ExtractDimensionsFromBytes(memoryStream.ToArray());
+            // Trim buffer to actual bytes read
+            Array.Resize(ref headerBuffer, bytesRead);
+
+            var (width, height) = ExtractDimensionsFromBytes(headerBuffer);
             
             if (width > 0 && height > 0)
             {

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+using System.Text.Json;
 
 namespace DataLabelProject.Business.Services.FileUpload.Metadata;
 
@@ -15,9 +15,10 @@ public interface IMetadataExtractor
     bool CanHandle(string contentType);
 
     /// <summary>
-    /// Extracts metadata from the file as a JSON string.
+    /// Extracts metadata from a stream by reading only header bytes.
     /// </summary>
-    /// <param name="file">The file to extract metadata from.</param>
+    /// <param name="stream">The file stream to extract metadata from.</param>
+    /// <param name="maxBytesRead">Maximum header bytes to read (default 8KB).</param>
     /// <returns>JSON string representation of the metadata, or null if extraction fails.</returns>
-    Task<string?> ExtractAsync(IFormFile file);
+    Task<string?> ExtractAsync(Stream stream, int maxBytesRead = 8192);
 }

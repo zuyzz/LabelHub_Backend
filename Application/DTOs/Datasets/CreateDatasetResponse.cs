@@ -7,8 +7,6 @@ namespace DataLabelProject.Application.DTOs.Datasets
         Guid DatasetId,
         string Name,
         string? Description,
-        string StorageUri,
-        Guid? ProjectId,
         int ItemCount
     );
 }

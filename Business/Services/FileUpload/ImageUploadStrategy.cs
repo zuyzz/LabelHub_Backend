@@ -1,16 +1,19 @@
 using Microsoft.AspNetCore.Http;
+using DataLabelProject.Business.Services.FileUpload.Metadata;
 
 namespace DataLabelProject.Business.Services.FileUpload;
 
 public class ImageUploadStrategy : IFileUploadStrategy
 {
     private readonly Storage.IFileStorage _storage;
+    private readonly MetadataExtractorFactory _metadataExtractorFactory;
 
     private static readonly string[] ImageTypes = new[] { "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp" };
 
-    public ImageUploadStrategy(Storage.IFileStorage storage)
+    public ImageUploadStrategy(Storage.IFileStorage storage, IEnumerable<IMetadataExtractor> metadataExtractors)
     {
         _storage = storage;
+        _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
     }
 
     public bool CanHandle(IFormFile file)
@@ -29,11 +32,22 @@ public class ImageUploadStrategy : IFileUploadStrategy
         var filename = $"{fileId}{extension}";
 
         var baseFolder = $"datasets/{datasetId}";
-
         var path = $"{baseFolder}/{filename}";
 
         using var stream = file.OpenReadStream();
 
+        // Extract metadata from header bytes
+        string? metadata = null;
+        try
+        {
+            metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream);
+        }
+        catch
+        {
+            // Swallow metadata extraction errors - item will be created without metadata
+        }
+
+        // Upload file
         var uri = await _storage.CreateFileAsync(
             stream,
             path,
@@ -42,7 +56,8 @@ public class ImageUploadStrategy : IFileUploadStrategy
         var item = new FileItem(
             filename,
             file.ContentType ?? "application/octet-stream",
-            uri);
+            uri,
+            metadata);
 
         return new FileProcessResult(
             new[] { item },

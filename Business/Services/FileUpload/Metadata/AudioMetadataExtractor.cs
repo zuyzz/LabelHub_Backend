@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace DataLabelProject.Business.Services.FileUpload.Metadata;
@@ -31,7 +30,7 @@ public class AudioMetadataExtractor : IMetadataExtractor
         return AudioTypes.Any(t => ct.Contains(t) || ct.StartsWith("audio/"));
     }
 
-    public async Task<string?> ExtractAsync(IFormFile file)
+    public async Task<string?> ExtractAsync(Stream stream, int maxBytesRead = 8192)
     {
         try
         {
@@ -46,9 +45,9 @@ public class AudioMetadataExtractor : IMetadataExtractor
             };
 
             // TODO: Integrate with FFmpeg to extract actual metadata
-            // Example: await ExtractWithFFmpegAsync(file, metadata)
+            // Example: await ExtractWithFFmpegAsync(stream, metadata)
 
-            return JsonSerializer.Serialize(metadata);
+            return await Task.FromResult(JsonSerializer.Serialize(metadata));
         }
         catch
         {
