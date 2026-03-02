@@ -17,5 +17,10 @@ namespace DataLabelProject.Application.DTOs.Datasets
         /// Optional dataset description.
         /// </summary>
         public string? Description { get; set; }
+
+        /// <summary>
+        /// Optional project ID - if provided, this dataset will be associated with a project.
+        /// </summary>
+        public Guid? ProjectId { get; set; }
     }
 }

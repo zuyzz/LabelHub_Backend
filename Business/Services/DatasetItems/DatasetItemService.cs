@@ -23,6 +23,7 @@ public class DatasetItemService : IDatasetItemService
             item.DatasetId,
             item.MediaType,
             item.StorageUri,
+            item.Metadata,
             item.CreatedAt));
     }
 
@@ -37,10 +38,11 @@ public class DatasetItemService : IDatasetItemService
             item.DatasetId,
             item.MediaType,
             item.StorageUri,
+            item.Metadata,
             item.CreatedAt);
     }
 
-    public async Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri)
+    public async Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string? metadata = null)
     {
         var item = new DatasetItem
         {
@@ -48,6 +50,7 @@ public class DatasetItemService : IDatasetItemService
             DatasetId = datasetId,
             MediaType = mediaType,
             StorageUri = storageUri,
+            Metadata = metadata,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -59,6 +62,7 @@ public class DatasetItemService : IDatasetItemService
             item.DatasetId,
             item.MediaType,
             item.StorageUri,
+            item.Metadata,
             item.CreatedAt);
     }
 

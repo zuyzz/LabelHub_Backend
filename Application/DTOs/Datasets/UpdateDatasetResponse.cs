@@ -6,6 +6,7 @@ namespace DataLabelProject.Application.DTOs.Datasets
     public record UpdateDatasetResponse(
         Guid DatasetId,
         string Name,
-        string? Description
+        string? Description,
+        Guid? ProjectId
     );
 }

@@ -54,13 +54,14 @@ public class DatasetService : IDatasetService
             Description = request.Description,
             StorageUri = storageUri,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId
+            CreatedBy = userId,
+            ProjectId = request.ProjectId
         };
 
         await _repo.CreateDatasetAsync(dataset);
         await _repo.SaveChangesAsync();
 
-        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, storageUri, 0);
+        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, storageUri, request.ProjectId, 0);
     }
 
     public async Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request)
@@ -91,7 +92,7 @@ public class DatasetService : IDatasetService
         await _repo.UpdateDatasetAsync(dataset);
         await _repo.SaveChangesAsync();
 
-        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description);
+        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description, dataset.ProjectId);
     }
 
     public async Task DeleteDatasetAsync(Guid datasetId)
@@ -123,6 +124,7 @@ public class DatasetService : IDatasetService
             dataset.StorageUri ?? string.Empty,
             dataset.CreatedAt,
             dataset.CreatedBy,
+            dataset.ProjectId,
             dataset.DatasetItems?.Count ?? 0);
     }
 
@@ -150,6 +152,7 @@ public class DatasetService : IDatasetService
             dataset.StorageUri ?? string.Empty,
             dataset.CreatedAt,
             dataset.CreatedBy,
+            dataset.ProjectId,
             dataset.DatasetItems?.Count ?? 0));
     }
 }

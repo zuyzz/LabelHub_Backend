@@ -27,8 +27,6 @@ public partial class Project
 
     public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
 
-    public virtual ICollection<ProjectDatasetItem> ProjectDatasetItems { get; set; } = new List<ProjectDatasetItem>();
-
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
 
     public virtual Category ProjectCategory { get; set; } = null!;

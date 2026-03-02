@@ -19,6 +19,7 @@ using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.DatasetItems;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
+using DataLabelProject.Business.Services.FileUpload.Metadata;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -54,6 +55,11 @@ public static class ServiceExtensions
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
         services.AddScoped<IFileUploadStrategy, ArchiveUploadStrategy>();
+
+        // Metadata extractors
+        services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
+        services.AddScoped<IMetadataExtractor, VideoMetadataExtractor>();
+        services.AddScoped<IMetadataExtractor, AudioMetadataExtractor>();
 
         return services;
     }

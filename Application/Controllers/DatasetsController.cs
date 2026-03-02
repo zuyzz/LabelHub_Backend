@@ -1,6 +1,7 @@
 using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.DatasetItems;
+using DataLabelProject.Business.Services.FileUpload.Metadata;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,13 +15,16 @@ namespace DataLabelProject.Application.Controllers
         private readonly IDatasetService _datasetService;
         private readonly IDatasetItemService _itemService;
         private readonly IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> _strategies;
+        private readonly MetadataExtractorFactory _metadataExtractorFactory;
 
         public DatasetsController(IDatasetService datasetService, IDatasetItemService itemService,
-            IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> strategies)
+            IEnumerable<DataLabelProject.Business.Services.FileUpload.IFileUploadStrategy> strategies,
+            IEnumerable<IMetadataExtractor> metadataExtractors)
         {
             _datasetService = datasetService;
             _itemService = itemService;
             _strategies = strategies;
+            _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
         }
 
         /// <summary>
@@ -116,7 +120,25 @@ namespace DataLabelProject.Application.Controllers
             var created = new List<object>();
             foreach (var item in process.Items)
             {
-                var createdItem = await _itemService.CreateDatasetItemAsync(datasetId, item.ContentType, item.StorageUri);
+                // Extract metadata if available
+                string? metadata = null;
+                var extractor = _metadataExtractorFactory.GetExtractor(item.ContentType);
+                if (extractor != null)
+                {
+                    try
+                    {
+                        // Create a temporary IFormFile from the StorageUri to extract metadata
+                        // Note: In a real scenario, you might want to refactor this to extract metadata
+                        // directly from the file before storage
+                        metadata = await _metadataExtractorFactory.ExtractMetadataAsync(file);
+                    }
+                    catch
+                    {
+                        // Swallow metadata extraction errors - item will be created without metadata
+                    }
+                }
+
+                var createdItem = await _itemService.CreateDatasetItemAsync(datasetId, item.ContentType, item.StorageUri, metadata);
                 created.Add(createdItem);
             }
 

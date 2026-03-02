@@ -8,6 +8,7 @@ namespace DataLabelProject.Application.DTOs.Datasets
         Guid DatasetId,
         string MediaType,
         string StorageUri,
+        string? Metadata,
         DateTime? CreatedAt
     );
 }
