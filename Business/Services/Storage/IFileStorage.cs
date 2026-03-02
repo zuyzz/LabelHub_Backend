@@ -3,12 +3,17 @@ namespace DataLabelProject.Business.Services.Storage;
 public interface IFileStorage
 {
     /// <summary>
-    /// Upload a file stream and return a public storage URI (or path) where it can be accessed.
+    /// Create a file from a stream and return a public storage URI (or path) where it can be accessed.
     /// </summary>
-    Task<string> UploadFileAsync(Stream content, string path, string contentType);
+    Task<string> CreateFileAsync(Stream content, string path, string contentType);
 
     /// <summary>
-    /// Ensure a folder path exists (if applicable).
+    /// Delete a single file by its storage URI or object path.
     /// </summary>
-    Task EnsureFolderAsync(string folderPath);
+    Task DeleteFileAsync(string storageUriOrPath);
+
+    /// <summary>
+    /// Delete all objects under a folder/prefix.
+    /// </summary>
+    Task DeleteFolderAsync(string folderPrefix);
 }

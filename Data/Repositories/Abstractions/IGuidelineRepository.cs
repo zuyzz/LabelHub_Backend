@@ -9,5 +9,4 @@ public interface IGuidelineRepository
     Task AddAsync(Guideline guideline);
     Task UpdateAsync(Guideline guideline);
     Task DeleteAsync(Guideline guideline);
-    Task<bool> IsGuidelineInUseAsync(Guid guidelineId);
 }

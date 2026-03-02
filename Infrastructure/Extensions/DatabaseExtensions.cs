@@ -1,3 +1,4 @@
+using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +30,16 @@ public static class DatabaseExtensions
                 options.EnableDetailedErrors();
             }
         });
+
+        return services;
+    }
+
+    public static IServiceCollection AddObjectStorage(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SupabaseStorageOptions>(
+            configuration.GetSection("SupabaseStorage"));
+
+        services.AddHttpClient<IFileStorage, SupabaseFileStorage>();
 
         return services;
     }

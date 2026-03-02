@@ -8,6 +8,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 // Infrastructure
 builder.Services.AddDatabase(builder.Configuration, builder.Environment);
+builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();

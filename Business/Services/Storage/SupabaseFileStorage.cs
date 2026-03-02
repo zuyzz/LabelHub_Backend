@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 
 namespace DataLabelProject.Business.Services.Storage;
@@ -19,7 +20,7 @@ public class SupabaseFileStorage : IFileStorage
         _logger = logger;
     }
 
-    public async Task<string> UploadFileAsync(Stream content, string path, string contentType)
+    public async Task<string> CreateFileAsync(Stream content, string path, string contentType)
     {
         // 🔥 BUFFER STREAM (NO HANG)
         await using var ms = new MemoryStream();
@@ -72,9 +73,117 @@ public class SupabaseFileStorage : IFileStorage
         return $"{_options.Url.TrimEnd('/')}/storage/v1/object/public/{_options.Bucket}/{escapedPath}";
     }
 
-    public Task EnsureFolderAsync(string folderPath)
+    public async Task DeleteFileAsync(string storageUriOrPath)
     {
-        // Supabase uses virtual folders
-        return Task.CompletedTask;
+        // If a full public URL was provided, extract the object path
+        var escapedPath = storageUriOrPath;
+        var basePublic = $"{_options.Url.TrimEnd('/')}/storage/v1/object/public/{_options.Bucket}/";
+        if (storageUriOrPath.StartsWith(basePublic, StringComparison.OrdinalIgnoreCase))
+        {
+            escapedPath = storageUriOrPath.Substring(basePublic.Length);
+        }
+
+        // ensure encoding
+        var requestUri = $"{_options.Url.TrimEnd('/')}/storage/v1/object/{_options.Bucket}/{escapedPath}";
+
+        var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        request.Headers.TryAddWithoutValidation("apikey", _options.ApiKey);
+
+        var resp = await _http.SendAsync(request);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+        {
+            _logger.LogError("Supabase delete file failed {Status}: {Body}", resp.StatusCode, body);
+            throw new InvalidOperationException(body);
+        }
+    }
+
+    public async Task DeleteFolderAsync(string folderPrefix)
+    {
+        var files = await ListFilesAsync(folderPrefix);
+
+        if (!files.Any())
+            return;
+
+        var requestUri =
+            $"{_options.Url.TrimEnd('/')}/storage/v1/object/{_options.Bucket}";
+
+        var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+
+        request.Headers.TryAddWithoutValidation("apikey", _options.ApiKey);
+
+        var bodyObject = new
+        {
+            prefixes = files
+        };
+
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(bodyObject),
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        var resp = await _http.SendAsync(request);
+        var body = await resp.Content.ReadAsStringAsync();
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            _logger.LogError("Supabase delete folder failed {Status}: {Body}",
+                resp.StatusCode, body);
+            throw new InvalidOperationException(body);
+        }
+    }
+
+    private async Task<List<string>> ListFilesAsync(string folderPrefix)
+    {
+        var requestUri =
+            $"{_options.Url.TrimEnd('/')}/storage/v1/object/list/{_options.Bucket}";
+
+        var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        request.Headers.TryAddWithoutValidation("apikey", _options.ApiKey);
+
+        var bodyObject = new
+        {
+            prefix = folderPrefix.EndsWith("/") 
+                ? folderPrefix 
+                : folderPrefix + "/",
+            limit = 1000,
+            offset = 0
+        };
+
+        request.Content = new StringContent(
+            System.Text.Json.JsonSerializer.Serialize(bodyObject),
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        var resp = await _http.SendAsync(request);
+        var body = await resp.Content.ReadAsStringAsync();
+
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(body);
+
+        using var doc = System.Text.Json.JsonDocument.Parse(body);
+
+        var files = new List<string>();
+
+        foreach (var element in doc.RootElement.EnumerateArray())
+        {
+            if (element.TryGetProperty("name", out var nameProp))
+            {
+                var name = nameProp.GetString();
+                if (!string.IsNullOrEmpty(name))
+                {
+                    files.Add($"{folderPrefix.TrimEnd('/')}/{name}");
+                }
+            }
+        }
+
+        return files;
     }
 }

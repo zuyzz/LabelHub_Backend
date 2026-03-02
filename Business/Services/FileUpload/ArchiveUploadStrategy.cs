@@ -1,16 +1,30 @@
 using Microsoft.AspNetCore.Http;
 using SharpCompress.Archives;
-using SharpCompress.Common;
+using DataLabelProject.Business.Services.FileUpload.Metadata;
 
 namespace DataLabelProject.Business.Services.FileUpload;
 
+/// <summary>
+/// Processes archive uploads with production-grade optimizations.
+/// - Streams archive to temp file (not RAM)
+/// - Extracts metadata from header bytes only (8KB)
+/// - Enforces resource limits
+/// - Uses bounded parallelism
+/// </summary>
 public class ArchiveUploadStrategy : IFileUploadStrategy
 {
     private readonly Storage.IFileStorage _storage;
+    private readonly MetadataExtractorFactory _metadataExtractorFactory;
+    
+    // Resource limits
+    private const long MaxArchiveSize = 500 * 1024 * 1024; // 500 MB
+    private const long MaxEntrySize = 100 * 1024 * 1024;   // 100 MB per file
+    private const int MaxFileCount = 1000;
 
-    public ArchiveUploadStrategy(Storage.IFileStorage storage)
+    public ArchiveUploadStrategy(Storage.IFileStorage storage, IEnumerable<IMetadataExtractor> metadataExtractors)
     {
         _storage = storage;
+        _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
     }
 
     public bool CanHandle(IFormFile file)
@@ -21,77 +35,129 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
     public async Task<FileProcessResult> ProcessAsync(
         IFormFile file,
-        Guid projectId,
+        Guid datasetId,
         string datasetName)
     {
-        using var mem = new MemoryStream();
-        await file.CopyToAsync(mem);
-        mem.Position = 0;
+        // Validate archive size upfront
+        if (file.Length > MaxArchiveSize)
+            throw new InvalidOperationException($"Archive size {file.Length} exceeds maximum {MaxArchiveSize}");
 
-        using var archive = ArchiveFactory.Open(mem);
+        string? tempArchivePath = null;
+        try
+        {
+            // Stream archive to temporary disk file (not RAM)
+            tempArchivePath = Path.Combine(Path.GetTempPath(), $"archive_{Guid.NewGuid()}.tmp");
+            using (var fileStream = file.OpenReadStream())
+            using (var tempFileStream = File.Create(tempArchivePath))
+            {
+                await fileStream.CopyToAsync(tempFileStream);
+            }
 
-        var entries = archive.Entries
-            .Where(e => !e.IsDirectory)
-            .ToList();
+            // Process archive from temp file with bounded parallelism
+            var uploaded = new List<FileItem>();
+            var baseFolder = $"datasets/{datasetId}";
+            
+            // Read archive entries from temp file
+            using (var fileStream = File.OpenRead(tempArchivePath))
+            using (var archive = ArchiveFactory.Open(fileStream))
+            {
+                var entries = archive.Entries
+                    .Where(e => !e.IsDirectory && IsImageExt(Path.GetExtension(e.Key)))
+                    .ToList();
 
-        if (!entries.Any())
-            throw new InvalidOperationException("Archive contains no files");
+                if (!entries.Any())
+                    throw new InvalidOperationException("Archive contains no image files");
 
-        bool allImages = entries.All(e => IsImageExt(Path.GetExtension(e.Key)));
-        bool allText   = entries.All(e => IsTextExt(Path.GetExtension(e.Key)));
+                // Enforce file count limit
+                if (entries.Count > MaxFileCount)
+                    throw new InvalidOperationException($"Archive contains {entries.Count} files, exceeds maximum {MaxFileCount}");
 
-        if (!allImages && !allText)
-            throw new InvalidOperationException(
-                "Archive must contain only images OR only text files");
+                // Process entries with bounded concurrency (4 concurrent uploads)
+                using (var semaphore = new SemaphoreSlim(4, 4))
+                {
+                    var tasks = entries.Select(entry => 
+                        ProcessEntryAsync(entry, datasetId, baseFolder, semaphore));
+                    
+                    uploaded.AddRange(await Task.WhenAll(tasks));
+                }
+            }
 
-        var baseFolder =
-            $"project-{projectId}/{datasetName}/{Guid.NewGuid()}";
+            return new FileProcessResult(
+                uploaded,
+                $"[{datasetId}] {datasetName}");
+        }
+        finally
+        {
+            // Cleanup temp file
+            if (tempArchivePath != null && File.Exists(tempArchivePath))
+            {
+                try { File.Delete(tempArchivePath); } 
+                catch { /* ignore cleanup errors */ }
+            }
+        }
+    }
 
-        await _storage.EnsureFolderAsync(baseFolder);
-
-        var uploaded = new List<FileItem>();
-
-        foreach (var entry in entries)
+    private async Task<FileItem> ProcessEntryAsync(
+        IArchiveEntry entry,
+        Guid datasetId,
+        string baseFolder,
+        SemaphoreSlim semaphore)
+    {
+        await semaphore.WaitAsync();
+        try
         {
             using var entryStream = entry.OpenEntryStream();
 
+            // Validate entry size
+            if (entryStream.Length > MaxEntrySize)
+                throw new InvalidOperationException($"File {entry.Key} exceeds maximum size {MaxEntrySize}");
+
             var filename = Path.GetFileName(entry.Key);
             var path = $"{baseFolder}/{filename}";
-            var contentType = GetContentTypeByExtension(
-                Path.GetExtension(filename));
+            var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
 
-            var uri = await _storage.UploadFileAsync(
+            // Extract metadata from header bytes only (8KB)
+            string? metadata = null;
+            try
+            {
+                metadata = await _metadataExtractorFactory.ExtractMetadataAsync(entryStream);
+            }
+            catch
+            {
+                // Swallow metadata extraction errors - item will be created without metadata
+            }
+
+            // Reset stream for upload
+            if (entryStream.CanSeek)
+                entryStream.Seek(0, SeekOrigin.Begin);
+
+            // Upload file
+            var uri = await _storage.CreateFileAsync(
                 entryStream,
                 path,
                 contentType);
 
-            uploaded.Add(new FileItem(filename, contentType, uri));
+            return new FileItem(filename, contentType, uri, metadata);
         }
-
-        return new FileProcessResult(
-            uploaded,
-            $"project-{projectId}/{datasetName}");
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     private static bool IsImageExt(string ext)
         => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }
             .Contains(ext.ToLowerInvariant());
 
-    private static bool IsTextExt(string ext)
-        => new[] { ".txt", ".json", ".xml" }
-            .Contains(ext.ToLowerInvariant());
-
     private static string GetContentTypeByExtension(string ext)
         => ext.ToLowerInvariant() switch
         {
-            ".png"  => "image/png",
-            ".jpg"  => "image/jpeg",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
             ".jpeg" => "image/jpeg",
-            ".gif"  => "image/gif",
+            ".gif" => "image/gif",
             ".webp" => "image/webp",
-            ".json" => "application/json",
-            ".xml"  => "application/xml",
-            ".txt"  => "text/plain",
-            _       => "application/octet-stream"
+            _ => "application/octet-stream"
         };
 }
+
