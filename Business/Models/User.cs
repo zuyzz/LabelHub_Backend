@@ -44,8 +44,6 @@ public partial class User
 
     public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 
-    public virtual ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
-
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
     public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();

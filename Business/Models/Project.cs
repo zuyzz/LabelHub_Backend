@@ -21,13 +21,13 @@ public partial class Project
 
     public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
 
-    public virtual ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
-
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
+    public virtual ICollection<Guideline> Guidelines { get; set; } = new List<Guideline>();
+
+    public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
+
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
-    
-    public ICollection<ProjectVersion> ProjectVersions { get; set; } = new List<ProjectVersion>();
 
     public virtual Category ProjectCategory { get; set; } = null!;
 

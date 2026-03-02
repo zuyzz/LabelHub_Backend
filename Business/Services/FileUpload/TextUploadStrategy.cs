@@ -24,13 +24,12 @@ public class TextUploadStrategy : IFileUploadStrategy
     {
         // Store the text file as a single scope item. Consumers can parse content later if desired.
         var folder = Path.Combine($"project-{projectId}", datasetName, Guid.NewGuid().ToString());
-        await _storage.EnsureFolderAsync(folder);
 
         var filename = Path.GetFileName(file.FileName!);
         var path = Path.Combine(folder, filename).Replace('\\', '/');
 
         using var stream = file.OpenReadStream();
-        var uri = await _storage.UploadFileAsync(stream, path, file.ContentType ?? "text/plain");
+        var uri = await _storage.CreateFileAsync(stream, path, file.ContentType ?? "text/plain");
 
         var item = new FileItem(filename, file.ContentType ?? "text/plain", uri);
         return new FileProcessResult(new[] { item }, Path.Combine($"project-{projectId}", datasetName).Replace('\\', '/'));

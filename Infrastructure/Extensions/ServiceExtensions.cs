@@ -5,6 +5,8 @@ using DataLabelProject.Data.Repositories.Implementations.Labels;
 using DataLabelProject.Data.Repositories.Implementations.Projects;
 using DataLabelProject.Data.Repositories.Implementations.Roles;
 using DataLabelProject.Data.Repositories.Implementations.Users;
+using DataLabelProject.Data.Repositories.Implementations.Datasets;
+using DataLabelProject.Data.Repositories.Implementations.DatasetItems;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -14,8 +16,10 @@ using DataLabelProject.Business.Services.Projects;
 using DataLabelProject.Business.Services.Labels;
 using DataLabelProject.Business.Services.Guidelines;
 using DataLabelProject.Business.Services.Datasets;
+using DataLabelProject.Business.Services.DatasetItems;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
+using DataLabelProject.Business.Services.FileUpload.Metadata;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -30,10 +34,12 @@ public static class ServiceExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
-        services.AddScoped<IProjectVersionRepository, ProjectVersionRepository>();
+        services.AddScoped<IProjectDatasetRepository, ProjectDatasetRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
+        services.AddScoped<IDatasetRepository, DatasetRepository>();
+        services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -41,10 +47,21 @@ public static class ServiceExtensions
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProjectService, ProjectService>();
-        services.AddScoped<IProjectVersionService, ProjectVersionService>();
+        services.AddScoped<IProjectDatasetService, ProjectDatasetService>();
         services.AddScoped<ILabelService, LabelService>();
         services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
+        services.AddScoped<IDatasetService, DatasetService>();
+        services.AddScoped<IDatasetItemService, DatasetItemService>();
+
+        // File upload strategies
+        services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
+        services.AddScoped<IFileUploadStrategy, ArchiveUploadStrategy>();
+
+        // Metadata extractors
+        services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
+        services.AddScoped<IMetadataExtractor, VideoMetadataExtractor>();
+        services.AddScoped<IMetadataExtractor, AudioMetadataExtractor>();
 
         return services;
     }

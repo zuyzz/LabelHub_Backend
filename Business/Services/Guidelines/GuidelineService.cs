@@ -22,7 +22,6 @@ public class GuidelineService : IGuidelineService
             GuidelineId = g.GuidelineId,
             Title = g.Title,
             Content = g.Content,
-            Version = g.Version,
             CreatedAt = g.CreatedAt
         }).ToList();
     }
@@ -37,7 +36,6 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
             CreatedAt = guideline.CreatedAt
         };
     }
@@ -49,7 +47,6 @@ public class GuidelineService : IGuidelineService
             GuidelineId = Guid.NewGuid(),
             Title = request.Title,
             Content = request.Content,
-            Version = 1,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -60,7 +57,6 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
             CreatedAt = guideline.CreatedAt
         };
     }
@@ -72,7 +68,6 @@ public class GuidelineService : IGuidelineService
 
         guideline.Title = request.Title;
         guideline.Content = request.Content;
-        guideline.Version++;
 
         await _repository.UpdateAsync(guideline);
 
@@ -81,7 +76,6 @@ public class GuidelineService : IGuidelineService
             GuidelineId = guideline.GuidelineId,
             Title = guideline.Title,
             Content = guideline.Content,
-            Version = guideline.Version,
             CreatedAt = guideline.CreatedAt
         };
     }
@@ -91,9 +85,6 @@ public class GuidelineService : IGuidelineService
         var guideline = await _repository.GetByIdAsync(id);
         if (guideline == null)
             return (false, "Guideline not found");
-
-        if (await _repository.IsGuidelineInUseAsync(id))
-            return (false, "Cannot delete guideline that is being used by label sets");
 
         await _repository.DeleteAsync(guideline);
         return (true, "Guideline deleted successfully");

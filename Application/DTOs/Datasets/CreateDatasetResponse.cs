@@ -1,10 +1,12 @@
 namespace DataLabelProject.Application.DTOs.Datasets
 {
-    public record DatasetImportResponse(
+    /// <summary>
+    /// Response model for creating a dataset.
+    /// </summary>
+    public record CreateDatasetResponse(
         Guid DatasetId,
         string Name,
         string? Description,
-        string? StorageUri,
         int ItemCount
     );
 }
