@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataLabel_Project_BE.DTOs.AnnotationTask;
-using DataLabel_Project_BE.Services;
+using DataLabelProject.Business.Services.AnnotationTasks;
 using System.Security.Claims;
 
 namespace DataLabel_Project_BE.Controllers;
@@ -14,9 +14,9 @@ namespace DataLabel_Project_BE.Controllers;
 [Authorize]
 public class AnnotationTasksController : ControllerBase
 {
-    private readonly AnnotationTaskService _taskService;
+    private readonly IAnnotationTaskService _taskService;
 
-    public AnnotationTasksController(AnnotationTaskService taskService)
+    public AnnotationTasksController(IAnnotationTaskService taskService)
     {
         _taskService = taskService;
     }
