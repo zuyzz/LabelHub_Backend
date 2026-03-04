@@ -20,6 +20,11 @@ public class DatasetRepository : IDatasetRepository
         return dataset;
     }
 
+    public async Task AddDatasetItemsAsync(IEnumerable<DatasetItem> items)
+    {
+        await _context.DatasetItems.AddRangeAsync(items);
+    }
+
     public async Task AddAnnotationTasksAsync(IEnumerable<AnnotationTask> tasks)
     {
         await _context.AnnotationTasks.AddRangeAsync(tasks);

@@ -103,9 +103,9 @@ public class AnnotationTaskService : IAnnotationTaskService
             return (null, "Task not found");
         }
 
-        if (task.Status == "completed")
+        if (task.Status == "completed" || task.Status == "rejected")
         {
-            return (null, "Cannot assign completed task");
+            return (null, "Cannot assign task in completed or rejected status");
         }
 
         var existingAssignment = await _annotationTaskRepository.HasAssignmentAsync(taskId);
@@ -145,6 +145,14 @@ public class AnnotationTaskService : IAnnotationTaskService
         _annotationTaskRepository.AddAssignment(assignment);
         task.Status = "in_progress";
         task.AssignedAt = DateTime.UtcNow;
+
+        if (task.DeadlineAt == null)
+        {
+            var systemConfig = await _annotationTaskRepository.GetSystemConfigAsync();
+            int defaultDeadlineDays = systemConfig?.AnnotateDeadlineConfig ?? 7;
+            task.DeadlineAt = DateTime.UtcNow.AddDays(defaultDeadlineDays);
+        }
+
         await _annotationTaskRepository.SaveChangesAsync();
 
         var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(task.DatasetItemId);
@@ -212,8 +220,8 @@ public class AnnotationTaskService : IAnnotationTaskService
         {
             ["pending"] = new List<string> { "in_progress", "rejected" },
             ["in_progress"] = new List<string> { "completed", "rejected" },
-            ["completed"] = new List<string> { "pending" },
-            ["rejected"] = new List<string> { "pending" }
+            ["completed"] = new List<string>(),
+            ["rejected"] = new List<string>()
         };
 
         if (!validTransitions.ContainsKey(task.Status))
@@ -223,7 +231,7 @@ public class AnnotationTaskService : IAnnotationTaskService
 
         if (!validTransitions[task.Status].Contains(newStatus))
         {
-            return (null, $"Cannot change status from {task.Status} to {newStatus}");
+            return (null, $"Cannot change status from {task.Status} to {newStatus}. Use reopen for completed/rejected tasks");
         }
 
         if (userRole.ToLower() == "annotator")

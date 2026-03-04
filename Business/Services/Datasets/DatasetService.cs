@@ -72,13 +72,24 @@ public class DatasetService : IDatasetService
 
         await _repo.CreateDatasetAsync(dataset);
 
-        // Create annotation tasks for each item
-        var tasks = result.Items.Select(item => new AnnotationTask
+        var datasetItems = result.Items.Select(item => new DatasetItem
+        {
+            ItemId = Guid.NewGuid(),
+            DatasetId = dataset.DatasetId,
+            MediaType = item.ContentType,
+            StorageUri = item.StorageUri,
+            CreatedAt = DateTime.UtcNow
+        }).ToList();
+
+        if (datasetItems.Any()) await _repo.AddDatasetItemsAsync(datasetItems);
+
+        // Create annotation tasks for each dataset item
+        var tasks = datasetItems.Select(item => new AnnotationTask
         {
             TaskId = Guid.NewGuid(),
-            DatasetId = dataset.DatasetId,
-            ScopeUri = item.StorageUri,
-            Status = "unstarted",
+            DatasetItemId = item.ItemId,
+            ScopeUri = item.StorageUri ?? string.Empty,
+            Status = "pending",
             CreatedAt = DateTime.UtcNow
         }).ToList();
 
