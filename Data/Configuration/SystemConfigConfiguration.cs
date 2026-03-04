@@ -15,5 +15,6 @@ public class SystemConfigConfiguration : IEntityTypeConfiguration<SystemConfig>
         entity.Property(e => e.SystemConfigId).HasColumnName("systemConfigId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.AnnotateDeadlineConfig).HasColumnName("annotateDeadlineConfig");
         entity.Property(e => e.ReviewDeadlineInterval).HasColumnName("reviewDeadlineInterval");
+        entity.Property(e => e.RejectLimit).HasColumnName("rejectLimit");
     }
 }

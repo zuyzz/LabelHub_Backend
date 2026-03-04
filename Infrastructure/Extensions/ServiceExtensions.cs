@@ -6,6 +6,7 @@ using DataLabelProject.Data.Repositories.Implementations.Projects;
 using DataLabelProject.Data.Repositories.Implementations.Roles;
 using DataLabelProject.Data.Repositories.Implementations.Users;
 using DataLabelProject.Data.Repositories.Implementations.AnnotationTasks;
+using DataLabelProject.Data.Repositories.Implementations.Annotations;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -18,6 +19,8 @@ using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.AnnotationTasks;
+using DataLabelProject.Business.Services.Annotations;
+using DataLabelProject.Business.Services.Reviews;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -37,6 +40,7 @@ public static class ServiceExtensions
         services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IAnnotationTaskRepository, AnnotationTaskRepository>();
+        services.AddScoped<IAnnotationWorkflowRepository, AnnotationWorkflowRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -49,6 +53,8 @@ public static class ServiceExtensions
         services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IAnnotationTaskService, AnnotationTaskService>();
+        services.AddScoped<IAnnotationService, AnnotationService>();
+        services.AddScoped<IReviewService, ReviewService>();
 
         return services;
     }

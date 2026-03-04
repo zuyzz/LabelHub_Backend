@@ -10,4 +10,6 @@ public partial class SystemConfig
     public int? AnnotateDeadlineConfig { get; set; }
 
     public int? ReviewDeadlineInterval { get; set; }
+
+    public int? RejectLimit { get; set; }
 }
