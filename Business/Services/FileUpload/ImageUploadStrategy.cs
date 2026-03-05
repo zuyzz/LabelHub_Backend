@@ -25,7 +25,8 @@ public class ImageUploadStrategy : IFileUploadStrategy
     public async Task<FileProcessResult> ProcessAsync(
         IFormFile file,
         Guid datasetId,
-        string datasetName)
+        string datasetName,
+        string mediaType = "image")
     {
         var fileId = Guid.NewGuid().ToString();
         var extension = Path.GetExtension(file.FileName);

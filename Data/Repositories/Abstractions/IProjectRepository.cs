@@ -17,6 +17,9 @@ namespace DataLabelProject.Data.Repositories.Abstractions
         // Project member helpers
         Task<bool> ProjectMemberExistsAsync(Guid projectId, Guid userId);
         Task<bool> AddProjectMemberAsync(Guid projectId, Guid userId);
+        
+        // Get all active project members with user details
+        Task<IEnumerable<ProjectMember>> GetActiveProjectMembersAsync(Guid projectId);
 
         Task SaveChangesAsync();
     }
