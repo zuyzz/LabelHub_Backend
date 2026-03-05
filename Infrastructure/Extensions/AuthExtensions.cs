@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using DataLabelProject.Business.Services.Auth;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -49,6 +51,16 @@ public static class AuthExtensions
                             context.Token = token;
                         }
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var blacklist = context.HttpContext.RequestServices.GetRequiredService<ITokenBlacklistService>();
+                        var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+
+                        if (!string.IsNullOrWhiteSpace(jti) && await blacklist.IsTokenRevokedAsync(jti))
+                        {
+                            context.Fail("Token has been revoked");
+                        }
                     }
                 };
             });
