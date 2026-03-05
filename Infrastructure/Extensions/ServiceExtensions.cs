@@ -20,6 +20,7 @@ using DataLabelProject.Business.Services.DatasetItems;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.FileUpload.Metadata;
+using DataLabelProject.Business.Services.Export;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -53,6 +54,9 @@ public static class ServiceExtensions
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
+
+        // Export services
+        services.AddScoped<IExportService, ExportService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
