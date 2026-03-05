@@ -17,12 +17,18 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
 
         public async Task<IEnumerable<Project>> GetAllAsync()
         {
-            return await _context.Projects.ToListAsync();
+            return await _context.Projects
+                .Include(p => p.ProjectCategory)
+                .Include(p => p.ProjectTemplate)
+                .ToListAsync();
         }
 
         public async Task<(IEnumerable<Project> Items, int TotalCount)> GetFilteredAsync(ProjectQueryParameters query)
         {
-            var q = _context.Projects.AsQueryable();
+            var q = _context.Projects
+                .Include(p => p.ProjectCategory)
+                .Include(p => p.ProjectTemplate)
+                .AsQueryable();
 
             // Search by name (case-insensitive)
             if (!string.IsNullOrWhiteSpace(query.Search))
@@ -69,6 +75,11 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
                     join pm in _context.ProjectMembers on p.ProjectId equals pm.ProjectId
                     where pm.UserId == userId
                     select p;
+
+            // Include related entities
+            q = q.Include(p => p.ProjectCategory)
+                 .Include(p => p.ProjectTemplate)
+                 .AsQueryable();
 
             // Search by name (case-insensitive)
             if (!string.IsNullOrWhiteSpace(query.Search))
@@ -126,7 +137,10 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
 
         public async Task<Project?> GetByIdAsync(Guid id)
         {
-            return await _context.Projects.FindAsync(id);
+            return await _context.Projects
+                .Include(p => p.ProjectCategory)
+                .Include(p => p.ProjectTemplate)
+                .FirstOrDefaultAsync(p => p.ProjectId == id);
         }
 
         public async Task AddAsync(Project project)

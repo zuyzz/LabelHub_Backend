@@ -35,5 +35,5 @@ public partial class Project
 
     public virtual User? CreatedByUser { get; set; }
 
-    public virtual ProjectTemplate ProjectTemplate { get; set; }  = null!;
+    public virtual ProjectTemplate ProjectTemplate { get; set; } = null!;
 }
