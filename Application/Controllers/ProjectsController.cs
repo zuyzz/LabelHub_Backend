@@ -19,7 +19,7 @@ namespace DataLabelProject.Application.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters query)
         {
             var projects = await _service.GetProjectsAsync(query ?? new ProjectQueryParameters());
@@ -27,14 +27,18 @@ namespace DataLabelProject.Application.Controllers
         }
 
         /// <summary>
-        /// Get projects that current authenticated user has joined
+        /// Get all active members of a project
         /// </summary>
-        [HttpGet("mine")]
+        [HttpGet("{id}/members")]
         [Authorize]
-        public async Task<IActionResult> GetMyProjects([FromQuery] ProjectQueryParameters query)
+        public async Task<IActionResult> GetProjectMembers(Guid id)
         {
-            var projects = await _service.GetUserProjectsAsync(query ?? new ProjectQueryParameters());
-            return Ok(projects);
+            // Verify that the project exists
+            var project = await _service.GetByIdAsync(id);
+            if (project == null) return NotFound();
+
+            var members = await _service.GetProjectMembersAsync(id);
+            return Ok(members);
         }
 
         /// <summary>

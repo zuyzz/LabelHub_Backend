@@ -18,6 +18,7 @@ public class DatasetConfiguration : IEntityTypeConfiguration<Dataset>
         entity.Property(e => e.Metadata).HasColumnName("metadata").HasColumnType("jsonb");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
         entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
+        entity.Property(e => e.MediaType).HasColumnName("mediaType").HasColumnType("character varying").HasDefaultValue("image");
 
         entity.HasOne(d => d.CreatedByUser).WithMany()
             .HasForeignKey(d => d.CreatedBy)

@@ -20,7 +20,7 @@ public class TextUploadStrategy : IFileUploadStrategy
         return TextTypes.Contains(ct) || ext == ".txt" || ext == ".json" || ext == ".xml";
     }
 
-    public async Task<FileProcessResult> ProcessAsync(IFormFile file, Guid projectId, string datasetName)
+    public async Task<FileProcessResult> ProcessAsync(IFormFile file, Guid projectId, string datasetName, string mediaType = "image")
     {
         // Store the text file as a single scope item. Consumers can parse content later if desired.
         var folder = Path.Combine($"project-{projectId}", datasetName, Guid.NewGuid().ToString());

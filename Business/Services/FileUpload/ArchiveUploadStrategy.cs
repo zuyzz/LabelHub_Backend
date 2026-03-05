@@ -36,7 +36,8 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
     public async Task<FileProcessResult> ProcessAsync(
         IFormFile file,
         Guid datasetId,
-        string datasetName)
+        string datasetName,
+        string mediaType = "image")
     {
         // Validate archive size upfront
         if (file.Length > MaxArchiveSize)
@@ -62,24 +63,54 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
             using (var archive = ArchiveFactory.Open(fileStream))
             {
                 var entries = archive.Entries
-                    .Where(e => !e.IsDirectory && IsImageExt(Path.GetExtension(e.Key)))
+                    .Where(e => !e.IsDirectory && IsValidExtForMediaType(Path.GetExtension(e.Key), mediaType))
                     .ToList();
 
                 if (!entries.Any())
-                    throw new InvalidOperationException("Archive contains no image files");
+                    throw new InvalidOperationException($"Archive contains no {mediaType} files");
 
                 // Enforce file count limit
                 if (entries.Count > MaxFileCount)
                     throw new InvalidOperationException($"Archive contains {entries.Count} files, exceeds maximum {MaxFileCount}");
 
-                // Process entries with bounded concurrency (4 concurrent uploads)
-                using (var semaphore = new SemaphoreSlim(4, 4))
+                // CRITICAL FIX: Read archive entries sequentially, upload in parallel
+                // SharpCompress RAR streams are NOT thread-safe, especially MultiVolumeReadOnlyStream
+                // Multiple parallel reads corrupt the read pointer → ArgumentOutOfRangeException
+                var uploadTasks = new List<Task<FileItem>>();
+                var semaphore = new SemaphoreSlim(4, 4);
+
+                foreach (var entry in entries)
                 {
-                    var tasks = entries.Select(entry => 
-                        ProcessEntryAsync(entry, datasetId, baseFolder, semaphore));
-                    
-                    uploaded.AddRange(await Task.WhenAll(tasks));
+                    // Validate entry size using entry.Size (not entryStream.Length, which RAR doesn't support)
+                    if (entry.Size > MaxEntrySize)
+                        throw new InvalidOperationException($"File {entry.Key} exceeds maximum size {MaxEntrySize}");
+
+                    // Read entry sequentially into MemoryStream (now thread-safe)
+                    var ms = new MemoryStream();
+                    using (var entryStream = entry.OpenEntryStream())
+                    {
+                        await entryStream.CopyToAsync(ms);
+                    }
+                    ms.Position = 0;
+
+                    var filename = Path.GetFileName(entry.Key);
+
+                    // Queue parallel upload task
+                    uploadTasks.Add(Task.Run(async () =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            return await ProcessBufferedEntryAsync(ms, filename, datasetId, baseFolder);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }));
                 }
+
+                uploaded.AddRange(await Task.WhenAll(uploadTasks));
             }
 
             return new FileProcessResult(
@@ -97,67 +128,78 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         }
     }
 
-    private async Task<FileItem> ProcessEntryAsync(
-        IArchiveEntry entry,
+    private async Task<FileItem> ProcessBufferedEntryAsync(
+        MemoryStream stream,
+        string filename,
         Guid datasetId,
-        string baseFolder,
-        SemaphoreSlim semaphore)
+        string baseFolder)
     {
-        await semaphore.WaitAsync();
+        var path = $"{baseFolder}/{filename}";
+        var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
+
+        // Extract metadata from header bytes only (8KB)
+        string? metadata = null;
         try
         {
-            using var entryStream = entry.OpenEntryStream();
-
-            // Validate entry size
-            if (entryStream.Length > MaxEntrySize)
-                throw new InvalidOperationException($"File {entry.Key} exceeds maximum size {MaxEntrySize}");
-
-            var filename = Path.GetFileName(entry.Key);
-            var path = $"{baseFolder}/{filename}";
-            var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
-
-            // Extract metadata from header bytes only (8KB)
-            string? metadata = null;
-            try
-            {
-                metadata = await _metadataExtractorFactory.ExtractMetadataAsync(entryStream);
-            }
-            catch
-            {
-                // Swallow metadata extraction errors - item will be created without metadata
-            }
-
-            // Reset stream for upload
-            if (entryStream.CanSeek)
-                entryStream.Seek(0, SeekOrigin.Begin);
-
-            // Upload file
-            var uri = await _storage.CreateFileAsync(
-                entryStream,
-                path,
-                contentType);
-
-            return new FileItem(filename, contentType, uri, metadata);
+            metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream);
         }
-        finally
+        catch
         {
-            semaphore.Release();
+            // Swallow metadata extraction errors - item will be created without metadata
         }
+
+        // Reset stream for upload
+        stream.Position = 0;
+
+        // Upload file
+        var uri = await _storage.CreateFileAsync(
+            stream,
+            path,
+            contentType);
+
+        return new FileItem(filename, contentType, uri, metadata);
     }
 
-    private static bool IsImageExt(string ext)
-        => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }
-            .Contains(ext.ToLowerInvariant());
+    private static bool IsValidExtForMediaType(string ext, string mediaType)
+    {
+        ext = ext.ToLowerInvariant();
+        return mediaType.ToLowerInvariant() switch
+        {
+            "image" => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }.Contains(ext),
+            "audio" => new[] { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a" }.Contains(ext),
+            "video" => new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv" }.Contains(ext),
+            _ => false
+        };
+    }
 
     private static string GetContentTypeByExtension(string ext)
-        => ext.ToLowerInvariant() switch
+    {
+        ext = ext.ToLowerInvariant();
+        // Image types
+        return ext switch
         {
             ".png" => "image/png",
             ".jpg" => "image/jpeg",
             ".jpeg" => "image/jpeg",
             ".gif" => "image/gif",
             ".webp" => "image/webp",
+            // Audio types
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".flac" => "audio/flac",
+            ".aac" => "audio/aac",
+            ".ogg" => "audio/ogg",
+            ".m4a" => "audio/mp4",
+            // Video types
+            ".mp4" => "video/mp4",
+            ".avi" => "video/x-msvideo",
+            ".mov" => "video/quicktime",
+            ".mkv" => "video/x-matroska",
+            ".webm" => "video/webm",
+            ".flv" => "video/x-flv",
+            ".wmv" => "video/x-ms-wmv",
             _ => "application/octet-stream"
         };
+    }
 }
 
