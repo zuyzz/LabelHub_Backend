@@ -99,6 +99,7 @@ namespace DataLabelProject.Application.Controllers
         /// <summary>
         /// Upload a file or archive into an existing dataset.
         /// Accepts single image/audio/text or archive (zip/rar) containing allowed files.
+        /// Only files matching the dataset's mediaType (image/audio/video) will be uploaded.
         /// </summary>
         [HttpPost("{datasetId:guid}/items")]
         [Consumes("multipart/form-data")]
@@ -107,7 +108,7 @@ namespace DataLabelProject.Application.Controllers
             var file = request.File;
             if (file == null) return BadRequest(new { message = "File is required" });
 
-            // Validate dataset exists and get name
+            // Validate dataset exists and get name and mediaType
             var ds = await _datasetService.GetDatasetByIdAsync(datasetId);
 
             // select a strategy
@@ -115,7 +116,7 @@ namespace DataLabelProject.Application.Controllers
             if (strategy == null)
                 return BadRequest(new { message = "File type not supported" });
 
-            var process = await strategy.ProcessAsync(file, datasetId, ds.Name);
+            var process = await strategy.ProcessAsync(file, datasetId, ds.Name, ds.MediaType);
 
             var created = new List<object>();
             foreach (var item in process.Items)

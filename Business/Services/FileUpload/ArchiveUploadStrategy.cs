@@ -36,7 +36,8 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
     public async Task<FileProcessResult> ProcessAsync(
         IFormFile file,
         Guid datasetId,
-        string datasetName)
+        string datasetName,
+        string mediaType = "image")
     {
         // Validate archive size upfront
         if (file.Length > MaxArchiveSize)
@@ -62,11 +63,11 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
             using (var archive = ArchiveFactory.Open(fileStream))
             {
                 var entries = archive.Entries
-                    .Where(e => !e.IsDirectory && IsImageExt(Path.GetExtension(e.Key)))
+                    .Where(e => !e.IsDirectory && IsValidExtForMediaType(Path.GetExtension(e.Key), mediaType))
                     .ToList();
 
                 if (!entries.Any())
-                    throw new InvalidOperationException("Archive contains no image files");
+                    throw new InvalidOperationException($"Archive contains no {mediaType} files");
 
                 // Enforce file count limit
                 if (entries.Count > MaxFileCount)
@@ -159,19 +160,46 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         return new FileItem(filename, contentType, uri, metadata);
     }
 
-    private static bool IsImageExt(string ext)
-        => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }
-            .Contains(ext.ToLowerInvariant());
+    private static bool IsValidExtForMediaType(string ext, string mediaType)
+    {
+        ext = ext.ToLowerInvariant();
+        return mediaType.ToLowerInvariant() switch
+        {
+            "image" => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }.Contains(ext),
+            "audio" => new[] { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a" }.Contains(ext),
+            "video" => new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv" }.Contains(ext),
+            _ => false
+        };
+    }
 
     private static string GetContentTypeByExtension(string ext)
-        => ext.ToLowerInvariant() switch
+    {
+        ext = ext.ToLowerInvariant();
+        // Image types
+        return ext switch
         {
             ".png" => "image/png",
             ".jpg" => "image/jpeg",
             ".jpeg" => "image/jpeg",
             ".gif" => "image/gif",
             ".webp" => "image/webp",
+            // Audio types
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".flac" => "audio/flac",
+            ".aac" => "audio/aac",
+            ".ogg" => "audio/ogg",
+            ".m4a" => "audio/mp4",
+            // Video types
+            ".mp4" => "video/mp4",
+            ".avi" => "video/x-msvideo",
+            ".mov" => "video/quicktime",
+            ".mkv" => "video/x-matroska",
+            ".webm" => "video/webm",
+            ".flv" => "video/x-flv",
+            ".wmv" => "video/x-ms-wmv",
             _ => "application/octet-stream"
         };
+    }
 }
 
