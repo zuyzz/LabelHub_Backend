@@ -7,12 +7,10 @@ namespace DataLabelProject.Business.Services.Labels;
 public class LabelSetService : ILabelSetService
 {
     private readonly ILabelSetRepository _labelSetRepository;
-    private readonly IProjectVersionRepository _projectVersionRepository;
 
-    public LabelSetService(ILabelSetRepository labelSetRepository, IProjectVersionRepository projectVersionRepository)
+    public LabelSetService(ILabelSetRepository labelSetRepository)
     {
         _labelSetRepository = labelSetRepository;
-        _projectVersionRepository = projectVersionRepository;
     }
 
     public async Task<List<LabelSetResponse>> GetAllAsync()
@@ -47,15 +45,6 @@ public class LabelSetService : ILabelSetService
         };
 
         await _labelSetRepository.CreateAsync(labelSet);
-
-        var draftProjectVersion =
-            await _projectVersionRepository.GetDraftByProjectIdAsync(projectId);
-
-        if (draftProjectVersion != null)
-        {
-            draftProjectVersion.LabelSetId = labelSet.LabelSetId;
-            await _projectVersionRepository.UpdateAsync(draftProjectVersion);
-        }
 
         await _labelSetRepository.SaveChangesAsync();
 

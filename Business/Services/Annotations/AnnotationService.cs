@@ -34,7 +34,7 @@ public class AnnotationService : IAnnotationService
             return (null, "You are not assigned to this task");
         }
 
-        var labelSet = task.TaskDatasetItem.Dataset.CurrentLabelSet;
+        var labelSet = await _repository.GetLatestLabelSetAsync();
         if (labelSet == null)
         {
             return (null, "Dataset has no active LabelSet");
@@ -80,7 +80,7 @@ public class AnnotationService : IAnnotationService
             return (null, "You are not assigned to this task");
         }
 
-        var labelSet = task.TaskDatasetItem.Dataset.CurrentLabelSet;
+        var labelSet = await _repository.GetLatestLabelSetAsync();
         if (labelSet == null)
         {
             return (null, "Dataset has no active LabelSet");
@@ -113,23 +113,26 @@ public class AnnotationService : IAnnotationService
 
         var payloadHash = ComputeSha256(request.AnnotationPayload);
         var projectId = await _repository.GetProjectIdByTaskIdAsync(taskId);
-        _repository.AddActivityLog(new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = annotatorId,
-            EventType = "ANNOTATION_SUBMIT",
-            TargetEntity = "Annotation",
-            TargetId = annotation.AnnotationId,
-            Details = JsonSerializer.Serialize(new
+            _repository.AddActivityLog(new ActivityLog
             {
-                annotationId = annotation.AnnotationId,
-                taskId,
-                submittedAt = annotation.SubmittedAt,
-                payloadHash
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = annotatorId,
+                EventType = "ANNOTATION_SUBMIT",
+                TargetEntity = "Annotation",
+                TargetId = annotation.AnnotationId,
+                Details = JsonSerializer.Serialize(new
+                {
+                    annotationId = annotation.AnnotationId,
+                    taskId,
+                    submittedAt = annotation.SubmittedAt,
+                    payloadHash
+                }),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         await _repository.SaveChangesAsync();
         return (Map(annotation), null);
