@@ -21,6 +21,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         entity.Property(e => e.CategoryId).HasColumnName("categoryId");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
         entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
+        entity.Property(e => e.TemplateId).HasColumnName("templateId");
 
         entity.HasOne(d => d.ProjectCategory).WithMany(p => p.Projects)
             .HasForeignKey(d => d.CategoryId)
@@ -30,5 +31,9 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         entity.HasOne(d => d.CreatedByUser).WithMany(p => p.Projects)
             .HasForeignKey(d => d.CreatedBy)
             .HasConstraintName("Project_createdBy_fkey");
+
+        entity.HasOne(d => d.ProjectTemplate).WithMany(p => p.Projects)
+            .HasForeignKey(d => d.TemplateId)
+            .HasConstraintName("Project_templateId_fkey");
     }
 }

@@ -17,6 +17,8 @@ public partial class Dataset
 
     public Guid? CreatedBy { get; set; }
 
+    public string MediaType { get; set; } = "image";
+
     public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
 
     public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
