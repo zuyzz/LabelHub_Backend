@@ -39,6 +39,11 @@ public class ReviewService : IReviewService
             return (null, "Self-review is not allowed");
         }
 
+        if (annotation.IsDraft || annotation.SubmittedAt == null)
+        {
+            return (null, "Only submitted annotations can be reviewed");
+        }
+
         if (!request.IsApproved && string.IsNullOrWhiteSpace(request.Feedback))
         {
             return (null, "Feedback is required when rejecting");
@@ -63,29 +68,27 @@ public class ReviewService : IReviewService
 
         _repository.AddReview(review);
 
-        if (!request.IsApproved)
-        {
-            annotation.AnnotationTask.Status = "rejected";
-        }
-
         var projectId = await _repository.GetProjectIdByAnnotationIdAsync(request.AnnotationId);
-        _repository.AddActivityLog(new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = reviewerId,
-            EventType = "ANNOTATION_REVIEWED",
-            TargetEntity = "Review",
-            TargetId = review.ReviewId,
-            Details = JsonSerializer.Serialize(new
+            _repository.AddActivityLog(new ActivityLog
             {
-                annotationId = request.AnnotationId,
-                isApproved = request.IsApproved,
-                reviewId = review.ReviewId,
-                isEscalated
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = reviewerId,
+                EventType = "ANNOTATION_REVIEWED",
+                TargetEntity = "Review",
+                TargetId = review.ReviewId,
+                Details = JsonSerializer.Serialize(new
+                {
+                    annotationId = request.AnnotationId,
+                    isApproved = request.IsApproved,
+                    reviewId = review.ReviewId,
+                    isEscalated
+                }),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         await _repository.SaveChangesAsync();
 

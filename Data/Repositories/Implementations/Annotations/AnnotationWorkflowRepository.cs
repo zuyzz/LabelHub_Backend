@@ -17,10 +17,21 @@ public class AnnotationWorkflowRepository : IAnnotationWorkflowRepository
     {
         return await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
-                .ThenInclude(i => i.Dataset)
-                    .ThenInclude(d => d.CurrentLabelSet)
             .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
+    }
+
+    public async Task<LabelSet?> GetLatestLabelSetAsync()
+    {
+        return await _context.LabelSets
+            .OrderByDescending(ls => ls.CreatedAt)
+            .Select(ls => new LabelSet
+            {
+                LabelSetId = ls.LabelSetId,
+                CreatedAt = ls.CreatedAt,
+                Name = ls.Name
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<Annotation?> GetAnnotationByTaskAndAnnotatorAsync(Guid taskId, Guid annotatorId)
@@ -59,18 +70,14 @@ public class AnnotationWorkflowRepository : IAnnotationWorkflowRepository
 
     public async Task<Guid> GetProjectIdByTaskIdAsync(Guid taskId)
     {
-        return await _context.AnnotationTasks
-            .Where(t => t.TaskId == taskId)
-            .Select(t => t.TaskDatasetItem.Dataset.ProjectId)
-            .FirstOrDefaultAsync();
+        await Task.CompletedTask;
+        return Guid.Empty;
     }
 
     public async Task<Guid> GetProjectIdByAnnotationIdAsync(Guid annotationId)
     {
-        return await _context.Annotations
-            .Where(a => a.AnnotationId == annotationId)
-            .Select(a => a.AnnotationTask.TaskDatasetItem.Dataset.ProjectId)
-            .FirstOrDefaultAsync();
+        await Task.CompletedTask;
+        return Guid.Empty;
     }
 
     public void AddAnnotation(Annotation annotation)

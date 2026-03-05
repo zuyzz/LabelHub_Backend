@@ -22,5 +22,7 @@ public class GuidelineConfiguration : IEntityTypeConfiguration<Guideline>
             .HasForeignKey(d => d.ProjectId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Guideline_projectId_fkey");
+
+        entity.Ignore(e => e.LabelSets);
     }
 }

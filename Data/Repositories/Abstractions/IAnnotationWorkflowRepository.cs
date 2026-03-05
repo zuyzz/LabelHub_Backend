@@ -5,6 +5,7 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 public interface IAnnotationWorkflowRepository
 {
     Task<AnnotationTask?> GetTaskWithDatasetContextAsync(Guid taskId);
+    Task<LabelSet?> GetLatestLabelSetAsync();
     Task<Annotation?> GetAnnotationByTaskAndAnnotatorAsync(Guid taskId, Guid annotatorId);
     Task<Annotation?> GetAnnotationWithContextAsync(Guid annotationId);
     Task<User?> GetUserByIdAsync(Guid userId);
