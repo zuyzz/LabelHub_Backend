@@ -43,6 +43,7 @@ public static class ServiceExtensions
         services.AddScoped<IAnnotationWorkflowRepository, AnnotationWorkflowRepository>();
 
         // Services
+        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();

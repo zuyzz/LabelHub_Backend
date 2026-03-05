@@ -96,6 +96,27 @@ namespace DataLabelProject.Application.Controllers
             });
         }
 
+        /// <summary>
+        /// Logout current user session
+        /// </summary>
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> Logout()
+        {
+            var authorizationHeader = Request.Headers.Authorization.ToString();
+            var (success, errorMessage) = await _authService.LogoutAsync(authorizationHeader);
+
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new { message = "Logout successful" });
+        }
+
         // ❌ NO REGISTER ENDPOINT
         // Only Admin can create user accounts via /api/users endpoint
     }

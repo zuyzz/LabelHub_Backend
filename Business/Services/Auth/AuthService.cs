@@ -17,12 +17,14 @@ namespace DataLabelProject.Business.Services.Auth
         private readonly IConfiguration _configuration;
         private readonly IUserRepository _userRepo;
         private readonly IRoleRepository _roleRepo;
+        private readonly ITokenBlacklistService _tokenBlacklistService;
 
-        public AuthService(IConfiguration configuration, IUserRepository userRepo, IRoleRepository roleRepo)
+        public AuthService(IConfiguration configuration, IUserRepository userRepo, IRoleRepository roleRepo, ITokenBlacklistService tokenBlacklistService)
         {
             _configuration = configuration;
             _userRepo = userRepo;
             _roleRepo = roleRepo;
+            _tokenBlacklistService = tokenBlacklistService;
         }
 
         /// <summary>
@@ -120,7 +122,8 @@ namespace DataLabelProject.Business.Services.Auth
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, roleName)
+                new Claim(ClaimTypes.Role, roleName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var token = new JwtSecurityToken(
@@ -167,6 +170,41 @@ namespace DataLabelProject.Business.Services.Auth
             await _userRepo.UpdateAsync(user);
             await _userRepo.SaveChangesAsync();
             return (user, null);
+        }
+
+        public Task<(bool Success, string? ErrorMessage)> LogoutAsync(string bearerToken)
+        {
+            if (string.IsNullOrWhiteSpace(bearerToken) || !bearerToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult((Success: false, ErrorMessage: (string?)"Authorization header is missing or invalid"));
+            }
+
+            var token = bearerToken["Bearer ".Length..].Trim();
+            var handler = new JwtSecurityTokenHandler();
+            JwtSecurityToken jwtToken;
+
+            try
+            {
+                jwtToken = handler.ReadJwtToken(token);
+            }
+            catch
+            {
+                return Task.FromResult((Success: false, ErrorMessage: (string?)"Invalid token"));
+            }
+
+            var jti = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            if (string.IsNullOrWhiteSpace(jti))
+            {
+                return Task.FromResult((Success: false, ErrorMessage: (string?)"Token identifier not found"));
+            }
+
+            return RevokeAndReturnAsync(jti, jwtToken.ValidTo.ToUniversalTime());
+        }
+
+        private async Task<(bool Success, string? ErrorMessage)> RevokeAndReturnAsync(string jti, DateTime expiresAtUtc)
+        {
+            await _tokenBlacklistService.RevokeTokenAsync(jti, expiresAtUtc);
+            return (Success: true, ErrorMessage: null);
         }
     }
 }
