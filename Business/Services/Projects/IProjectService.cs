@@ -7,6 +7,7 @@ namespace DataLabelProject.Business.Services.Projects
     {
         Task<PagedResponse<ProjectResponse>> GetProjectsAsync(ProjectQueryParameters query);
         Task<PagedResponse<ProjectResponse>> GetUserProjectsAsync(ProjectQueryParameters query);
+        Task<IEnumerable<ProjectMemberResponse>> GetProjectMembersAsync(Guid projectId);
         Task<JoinProjectResult> JoinProjectAsync(Guid projectId);
         Task<IEnumerable<ProjectResponse>> GetAllAsync();
         Task<ProjectResponse?> GetByIdAsync(Guid id);

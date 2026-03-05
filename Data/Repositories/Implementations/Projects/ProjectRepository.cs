@@ -151,6 +151,15 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
             return await _context.Projects.AnyAsync(p => p.ProjectId == id);
         }
 
+        public async Task<IEnumerable<ProjectMember>> GetActiveProjectMembersAsync(Guid projectId)
+        {
+            return await _context.ProjectMembers
+                .Where(pm => pm.ProjectId == projectId && pm.ProjectMemberUser.IsActive)
+                .Include(pm => pm.ProjectMemberUser)
+                .ThenInclude(u => u.UserRole)
+                .ToListAsync();
+        }
+
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();

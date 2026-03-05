@@ -28,7 +28,13 @@ namespace DataLabelProject.Business.Services.Projects
         {
             if (query.Page < 1) query.Page = 1;
 
-            var (items, total) = await _projectRepo.GetFilteredAsync(query);
+            // Check if current user is admin
+            var user = _httpContextAccessor.HttpContext?.User;
+            var isAdmin = user?.IsInRole("admin") == true;
+
+            var (items, total) = isAdmin
+                ? await _projectRepo.GetFilteredAsync(query)  // Show all projects for admin
+                : await _projectRepo.GetUserProjectsAsync(query, GetCurrentUserId());  // Show only user's projects for non-admin
 
             var mapped = items.Select(MapToResponse);
 
@@ -163,7 +169,34 @@ namespace DataLabelProject.Business.Services.Projects
             return true;
         }
 
+        public async Task<IEnumerable<ProjectMemberResponse>> GetProjectMembersAsync(Guid projectId)
+        {
+            var members = await _projectRepo.GetActiveProjectMembersAsync(projectId);
+            return members.Select(MapMemberToResponse);
+        }
+
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+        }
+
         private static ProjectResponse MapToResponse(Project p) =>
             new ProjectResponse(p.ProjectId, p.Name, p.Description, p.Status, p.CategoryId, p.CreatedAt, p.CreatedBy);
+
+        private static ProjectMemberResponse MapMemberToResponse(ProjectMember pm) =>
+            new ProjectMemberResponse
+            {
+                ProjectMemberId = pm.ProjectMemberId,
+                UserId = pm.ProjectMemberUser.UserId,
+                Username = pm.ProjectMemberUser.Username,
+                DisplayName = pm.ProjectMemberUser.DisplayName,
+                Email = pm.ProjectMemberUser.Email,
+                PhoneNumber = pm.ProjectMemberUser.PhoneNumber,
+                RoleId = pm.ProjectMemberUser.RoleId,
+                RoleName = pm.ProjectMemberUser.UserRole?.RoleName ?? string.Empty,
+                IsActive = pm.ProjectMemberUser.IsActive,
+                JoinedAt = pm.JoinedAt
+            };
     }
 } 
