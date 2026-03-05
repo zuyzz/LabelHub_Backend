@@ -27,10 +27,14 @@ public class AnnotationTaskService : IAnnotationTaskService
             return (null, "Dataset not found");
         }
 
-        var project = await _annotationTaskRepository.GetProjectByIdAsync(dataset.ProjectId);
-        if (project?.Status?.ToLower() == "archived")
+        var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(request.DatasetItemId);
+        if (projectId != Guid.Empty)
         {
-            return (null, "Cannot create task for archived project");
+            var project = await _annotationTaskRepository.GetProjectByIdAsync(projectId);
+            if (project?.Status?.ToLower() == "archived")
+            {
+                return (null, "Cannot create task for archived project");
+            }
         }
 
         var deadlineAt = request.DeadlineAt;
@@ -55,30 +59,33 @@ public class AnnotationTaskService : IAnnotationTaskService
         _annotationTaskRepository.AddTask(task);
         await _annotationTaskRepository.SaveChangesAsync();
 
-        var activityLog = new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = dataset.ProjectId,
-            UserId = managerId,
-            EventType = "TASK_CREATED",
-            TargetEntity = "Task",
-            TargetId = task.TaskId,
-            Details = System.Text.Json.JsonSerializer.Serialize(new
+            var activityLog = new ActivityLog
             {
-                taskId = task.TaskId.ToString(),
-                datasetItemId = task.DatasetItemId.ToString(),
-                datasetId = dataset.DatasetId.ToString(),
-                datasetName = dataset.Name,
-                projectId = dataset.ProjectId.ToString(),
-                scopeUri = task.ScopeUri,
-                deadline = task.DeadlineAt?.ToString("yyyy-MM-dd HH:mm:ss"),
-                consensusType = task.Consensus ?? "none"
-            }),
-            CreatedAt = DateTime.UtcNow
-        };
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = managerId,
+                EventType = "TASK_CREATED",
+                TargetEntity = "Task",
+                TargetId = task.TaskId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    taskId = task.TaskId.ToString(),
+                    datasetItemId = task.DatasetItemId.ToString(),
+                    datasetId = dataset.DatasetId.ToString(),
+                    datasetName = dataset.Name,
+                    projectId = projectId.ToString(),
+                    scopeUri = task.ScopeUri,
+                    deadline = task.DeadlineAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                    consensusType = task.Consensus ?? "none"
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _annotationTaskRepository.AddActivityLog(activityLog);
-        await _annotationTaskRepository.SaveChangesAsync();
+            _annotationTaskRepository.AddActivityLog(activityLog);
+            await _annotationTaskRepository.SaveChangesAsync();
+        }
 
         return (new TaskResponse
         {
@@ -131,6 +138,14 @@ public class AnnotationTaskService : IAnnotationTaskService
             return (null, "User must have Annotator role");
         }
 
+        const int defaultConcurrentLimit = 3;
+        var annotatorTasks = await _annotationTaskRepository.GetTasksForAnnotatorAsync(annotatorId);
+        var activeAssignmentCount = annotatorTasks.Count(t => t.Status == "in_progress");
+        if (activeAssignmentCount >= defaultConcurrentLimit)
+        {
+            return (null, $"Annotator has reached concurrent assignment limit ({defaultConcurrentLimit})");
+        }
+
         var manager = await _annotationTaskRepository.GetUserByIdAsync(managerId);
 
         var assignment = new Assignment
@@ -156,27 +171,30 @@ public class AnnotationTaskService : IAnnotationTaskService
         await _annotationTaskRepository.SaveChangesAsync();
 
         var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(task.DatasetItemId);
-        var activityLog = new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = managerId,
-            EventType = "TASK_ASSIGNED",
-            TargetEntity = "Assignment",
-            TargetId = assignment.AssignmentId,
-            Details = System.Text.Json.JsonSerializer.Serialize(new
+            var activityLog = new ActivityLog
             {
-                taskId,
-                annotatorId,
-                annotatorUsername = annotator.Username,
-                assignedBy = managerId,
-                assignedByUsername = manager?.Username
-            }),
-            CreatedAt = DateTime.UtcNow
-        };
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = managerId,
+                EventType = "TASK_ASSIGNED",
+                TargetEntity = "Assignment",
+                TargetId = assignment.AssignmentId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    taskId,
+                    annotatorId,
+                    annotatorUsername = annotator.Username,
+                    assignedBy = managerId,
+                    assignedByUsername = manager?.Username
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _annotationTaskRepository.AddActivityLog(activityLog);
-        await _annotationTaskRepository.SaveChangesAsync();
+            _annotationTaskRepository.AddActivityLog(activityLog);
+            await _annotationTaskRepository.SaveChangesAsync();
+        }
 
         return (new AssignmentInfo
         {
@@ -253,26 +271,29 @@ public class AnnotationTaskService : IAnnotationTaskService
         await _annotationTaskRepository.SaveChangesAsync();
 
         var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(task.DatasetItemId);
-        var activityLog = new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = userId,
-            EventType = "TASK_STATUS_UPDATED",
-            TargetEntity = "Task",
-            TargetId = taskId,
-            Details = System.Text.Json.JsonSerializer.Serialize(new
+            var activityLog = new ActivityLog
             {
-                taskId,
-                oldStatus,
-                newStatus,
-                userRole
-            }),
-            CreatedAt = DateTime.UtcNow
-        };
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = userId,
+                EventType = "TASK_STATUS_UPDATED",
+                TargetEntity = "Task",
+                TargetId = taskId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    taskId,
+                    oldStatus,
+                    newStatus,
+                    userRole
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _annotationTaskRepository.AddActivityLog(activityLog);
-        await _annotationTaskRepository.SaveChangesAsync();
+            _annotationTaskRepository.AddActivityLog(activityLog);
+            await _annotationTaskRepository.SaveChangesAsync();
+        }
 
         return (MapToTaskResponse(task), null);
     }
@@ -299,78 +320,33 @@ public class AnnotationTaskService : IAnnotationTaskService
         await _annotationTaskRepository.SaveChangesAsync();
 
         var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(task.DatasetItemId);
-        var activityLog = new ActivityLog
+        if (projectId != Guid.Empty)
         {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = managerId,
-            EventType = "TASK_REOPENED",
-            TargetEntity = "Task",
-            TargetId = taskId,
-            Details = System.Text.Json.JsonSerializer.Serialize(new
+            var activityLog = new ActivityLog
             {
-                taskId,
-                oldStatus,
-                newStatus = "pending",
-                reason,
-                managerId,
-                removedAssignmentsCount = existingAssignments.Count
-            }),
-            CreatedAt = DateTime.UtcNow
-        };
+                ActivityLogId = Guid.NewGuid(),
+                ProjectId = projectId,
+                UserId = managerId,
+                EventType = "TASK_REOPENED",
+                TargetEntity = "Task",
+                TargetId = taskId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    taskId,
+                    oldStatus,
+                    newStatus = "pending",
+                    reason,
+                    managerId,
+                    removedAssignmentsCount = existingAssignments.Count
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _annotationTaskRepository.AddActivityLog(activityLog);
-        await _annotationTaskRepository.SaveChangesAsync();
+            _annotationTaskRepository.AddActivityLog(activityLog);
+            await _annotationTaskRepository.SaveChangesAsync();
+        }
 
         return (MapToTaskResponse(task), null);
-    }
-
-    public async Task<(bool success, string? errorMessage)> DeleteTask(Guid taskId, Guid managerId)
-    {
-        var task = await _annotationTaskRepository.GetTaskWithAssignmentsAsync(taskId);
-        if (task == null)
-        {
-            return (false, "Task not found or already deleted");
-        }
-
-        if (task.Status != "pending")
-        {
-            return (false, "Cannot delete task that is assigned, in progress, or completed. Use reopen instead.");
-        }
-
-        task.Deleted = true;
-
-        if (task.Assignments.Any())
-        {
-            _annotationTaskRepository.RemoveAssignments(task.Assignments);
-        }
-
-        await _annotationTaskRepository.SaveChangesAsync();
-
-        var projectId = await _annotationTaskRepository.GetProjectIdByDatasetItemIdAsync(task.DatasetItemId);
-        var activityLog = new ActivityLog
-        {
-            ActivityLogId = Guid.NewGuid(),
-            ProjectId = projectId,
-            UserId = managerId,
-            EventType = "TASK_DELETED",
-            TargetEntity = "Task",
-            TargetId = taskId,
-            Details = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                taskId = taskId.ToString(),
-                datasetItemId = task.DatasetItemId.ToString(),
-                status = task.Status,
-                deletedBy = managerId.ToString(),
-                deletedAt = DateTime.UtcNow
-            }),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _annotationTaskRepository.AddActivityLog(activityLog);
-        await _annotationTaskRepository.SaveChangesAsync();
-
-        return (true, null);
     }
 
     private static TaskResponse MapToTaskResponse(AnnotationTask task)
