@@ -193,26 +193,4 @@ public class AnnotationTasksController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Delete task (Manager only) - Soft delete for pending tasks only
-    /// </summary>
-    [HttpDelete("{taskId}")]
-    [Authorize(Roles = "admin,manager")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> DeleteTask(Guid taskId)
-    {
-        var managerId = GetCurrentUserId();
-        var (success, errorMessage) = await _taskService.DeleteTask(taskId, managerId);
-
-        if (!success)
-        {
-            if (errorMessage?.Contains("not found") == true)
-                return NotFound(new { message = errorMessage });
-
-            return BadRequest(new { message = errorMessage });
-        }
-
-        return Ok(new { message = "Task deleted successfully" });
-    }}
+}

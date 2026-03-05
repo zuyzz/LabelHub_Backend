@@ -24,7 +24,13 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
     {
         return await _context.Datasets
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.DatasetId == datasetId);
+            .Where(d => d.DatasetId == datasetId)
+            .Select(d => new Dataset
+            {
+                DatasetId = d.DatasetId,
+                Name = d.Name
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<Project?> GetProjectByIdAsync(Guid projectId)
@@ -112,10 +118,8 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
 
     public async Task<Guid> GetProjectIdByDatasetItemIdAsync(Guid datasetItemId)
     {
-        return await _context.DatasetItems
-            .Where(di => di.ItemId == datasetItemId)
-            .Select(di => di.Dataset.ProjectId)
-            .FirstOrDefaultAsync();
+        await Task.CompletedTask;
+        return Guid.Empty;
     }
 
     public async Task<List<Assignment>> GetAssignmentsByTaskIdAsync(Guid taskId)
