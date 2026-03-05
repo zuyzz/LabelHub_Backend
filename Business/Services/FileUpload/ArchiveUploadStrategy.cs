@@ -72,14 +72,44 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                 if (entries.Count > MaxFileCount)
                     throw new InvalidOperationException($"Archive contains {entries.Count} files, exceeds maximum {MaxFileCount}");
 
-                // Process entries with bounded concurrency (4 concurrent uploads)
-                using (var semaphore = new SemaphoreSlim(4, 4))
+                // CRITICAL FIX: Read archive entries sequentially, upload in parallel
+                // SharpCompress RAR streams are NOT thread-safe, especially MultiVolumeReadOnlyStream
+                // Multiple parallel reads corrupt the read pointer → ArgumentOutOfRangeException
+                var uploadTasks = new List<Task<FileItem>>();
+                var semaphore = new SemaphoreSlim(4, 4);
+
+                foreach (var entry in entries)
                 {
-                    var tasks = entries.Select(entry => 
-                        ProcessEntryAsync(entry, datasetId, baseFolder, semaphore));
-                    
-                    uploaded.AddRange(await Task.WhenAll(tasks));
+                    // Validate entry size using entry.Size (not entryStream.Length, which RAR doesn't support)
+                    if (entry.Size > MaxEntrySize)
+                        throw new InvalidOperationException($"File {entry.Key} exceeds maximum size {MaxEntrySize}");
+
+                    // Read entry sequentially into MemoryStream (now thread-safe)
+                    var ms = new MemoryStream();
+                    using (var entryStream = entry.OpenEntryStream())
+                    {
+                        await entryStream.CopyToAsync(ms);
+                    }
+                    ms.Position = 0;
+
+                    var filename = Path.GetFileName(entry.Key);
+
+                    // Queue parallel upload task
+                    uploadTasks.Add(Task.Run(async () =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            return await ProcessBufferedEntryAsync(ms, filename, datasetId, baseFolder);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }));
                 }
+
+                uploaded.AddRange(await Task.WhenAll(uploadTasks));
             }
 
             return new FileProcessResult(
@@ -97,52 +127,36 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         }
     }
 
-    private async Task<FileItem> ProcessEntryAsync(
-        IArchiveEntry entry,
+    private async Task<FileItem> ProcessBufferedEntryAsync(
+        MemoryStream stream,
+        string filename,
         Guid datasetId,
-        string baseFolder,
-        SemaphoreSlim semaphore)
+        string baseFolder)
     {
-        await semaphore.WaitAsync();
+        var path = $"{baseFolder}/{filename}";
+        var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
+
+        // Extract metadata from header bytes only (8KB)
+        string? metadata = null;
         try
         {
-            using var entryStream = entry.OpenEntryStream();
-
-            // Validate entry size
-            if (entryStream.Length > MaxEntrySize)
-                throw new InvalidOperationException($"File {entry.Key} exceeds maximum size {MaxEntrySize}");
-
-            var filename = Path.GetFileName(entry.Key);
-            var path = $"{baseFolder}/{filename}";
-            var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
-
-            // Extract metadata from header bytes only (8KB)
-            string? metadata = null;
-            try
-            {
-                metadata = await _metadataExtractorFactory.ExtractMetadataAsync(entryStream);
-            }
-            catch
-            {
-                // Swallow metadata extraction errors - item will be created without metadata
-            }
-
-            // Reset stream for upload
-            if (entryStream.CanSeek)
-                entryStream.Seek(0, SeekOrigin.Begin);
-
-            // Upload file
-            var uri = await _storage.CreateFileAsync(
-                entryStream,
-                path,
-                contentType);
-
-            return new FileItem(filename, contentType, uri, metadata);
+            metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream);
         }
-        finally
+        catch
         {
-            semaphore.Release();
+            // Swallow metadata extraction errors - item will be created without metadata
         }
+
+        // Reset stream for upload
+        stream.Position = 0;
+
+        // Upload file
+        var uri = await _storage.CreateFileAsync(
+            stream,
+            path,
+            contentType);
+
+        return new FileItem(filename, contentType, uri, metadata);
     }
 
     private static bool IsImageExt(string ext)
