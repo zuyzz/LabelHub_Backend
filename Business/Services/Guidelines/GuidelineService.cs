@@ -7,10 +7,12 @@ namespace DataLabelProject.Business.Services.Guidelines;
 public class GuidelineService : IGuidelineService
 {
     private readonly IGuidelineRepository _repository;
+    private readonly IProjectRepository _projectRepository;
 
-    public GuidelineService(IGuidelineRepository repository)
+    public GuidelineService(IGuidelineRepository repository, IProjectRepository projectRepository)
     {
         _repository = repository;
+        _projectRepository = projectRepository;
     }
 
     public async Task<List<GuidelineResponse>> GetAllGuidelines()
@@ -44,6 +46,10 @@ public class GuidelineService : IGuidelineService
 
     public async Task<GuidelineResponse> CreateGuideline(CreateGuidelineRequest request)
     {
+        // BR: Mỗi Guideline phải thuộc về một Project hợp lệ
+        if (!await _projectRepository.ExistsAsync(request.ProjectId))
+            throw new Exception("Project not found");
+
         var guideline = new Guideline
         {
             GuidelineId = Guid.NewGuid(),

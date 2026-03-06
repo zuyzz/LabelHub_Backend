@@ -10,7 +10,7 @@ namespace DataLabelProject.Application.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/guidelines")]
-[Authorize(Roles = "manager")]
+[Authorize(Roles = "admin,manager")]
 public class GuidelinesController : ControllerBase
 {
     private readonly IGuidelineService _guidelineService;
@@ -69,7 +69,6 @@ public class GuidelinesController : ControllerBase
     /// <response code="401">Unauthorized</response>
     /// <response code="403">Forbidden - Admin or Manager only</response>
     [HttpPost]
-    [Authorize(Roles = "admin,manager")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -79,12 +78,19 @@ public class GuidelinesController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
-        var guideline = await _guidelineService.CreateGuideline(request);
-        return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, new
+        try
         {
-            message = "Guideline created successfully",
-            data = guideline
-        });
+            var guideline = await _guidelineService.CreateGuideline(request);
+            return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, new
+            {
+                message = "Guideline created successfully",
+                data = guideline
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -98,7 +104,6 @@ public class GuidelinesController : ControllerBase
     /// <response code="403">Forbidden - Admin or Manager only</response>
     /// <response code="404">Guideline not found</response>
     [HttpPut("{id}")]
-    [Authorize(Roles = "admin,manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -130,7 +135,6 @@ public class GuidelinesController : ControllerBase
     /// <response code="403">Forbidden - Admin or Manager only</response>
     /// <response code="404">Guideline not found</response>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "admin,manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
