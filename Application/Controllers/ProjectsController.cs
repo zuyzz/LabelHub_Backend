@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using DataLabelProject.Business.Services.Projects;
+using DataLabelProject.Business.Services.Guidelines;
 using DataLabelProject.Application.DTOs;
 using DataLabelProject.Application.DTOs.Projects;
 using DataLabelProject.Application.DTOs.Common;
@@ -12,19 +13,26 @@ namespace DataLabelProject.Application.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _service;
+    private readonly IProjectDatasetService _projectDatasetService;
+    private readonly IGuidelineService _guidelineService;
 
-        public ProjectsController(IProjectService service)
-        {
-            _service = service;
-        }
+    public ProjectsController(
+        IProjectService service,
+        DataLabelProject.Business.Services.Projects.IProjectDatasetService projectDatasetService,
+        DataLabelProject.Business.Services.Guidelines.IGuidelineService guidelineService)
+    {
+        _service = service;
+        _projectDatasetService = projectDatasetService;
+        _guidelineService = guidelineService;
+    }
 
-        [HttpGet]
-        [Authorize]
-        public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters query)
-        {
-            var projects = await _service.GetProjectsAsync(query ?? new ProjectQueryParameters());
-            return Ok(projects);
-        }
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters query)
+    {
+        var projects = await _service.GetProjectsAsync(query ?? new ProjectQueryParameters());
+        return Ok(projects);
+    }
 
         /// <summary>
         /// Get all active members of a project
@@ -66,6 +74,33 @@ namespace DataLabelProject.Application.Controllers
             var project = await _service.GetByIdAsync(id);
             if (project == null) return NotFound();
             return Ok(project);
+        }
+
+        /// <summary>
+        /// Get all datasets attached to a project
+        /// </summary>
+        [HttpGet("{id}/datasets")]
+        public async Task<IActionResult> GetProjectDatasets(Guid id)
+        {
+            var project = await _service.GetByIdAsync(id);
+            if (project == null) return NotFound();
+
+            var datasets = await _projectDatasetService.GetDatasetsByProjectAsync(id);
+            return Ok(datasets);
+        }
+
+        /// <summary>
+        /// Get the guideline associated with a project
+        /// </summary>
+        [HttpGet("{id}/guideline")]
+        public async Task<IActionResult> GetProjectGuideline(Guid id)
+        {
+            var project = await _service.GetByIdAsync(id);
+            if (project == null) return NotFound();
+
+            var guideline = await _guidelineService.GetGuidelineByProjectAsync(id);
+            if (guideline == null) return NotFound();
+            return Ok(guideline);
         }
 
         [HttpPost]

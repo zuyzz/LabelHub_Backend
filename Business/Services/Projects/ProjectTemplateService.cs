@@ -1,5 +1,6 @@
 using DataLabelProject.Application.DTOs.Projects;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
 
 namespace DataLabelProject.Business.Services.Projects
@@ -31,7 +32,7 @@ namespace DataLabelProject.Business.Services.Projects
             {
                 TemplateId = Guid.NewGuid(),
                 Name = dto.Name,
-                MediaType = dto.MediaType
+                MediaType = Enum.TryParse<MediaType>(dto.MediaType, true, out var mt) ? mt : MediaType.image
             };
 
             var created = await _repository.CreateAsync(template);
@@ -45,7 +46,7 @@ namespace DataLabelProject.Business.Services.Projects
                 return null;
 
             template.Name = dto.Name;
-            template.MediaType = dto.MediaType;
+            template.MediaType = Enum.TryParse<MediaType>(dto.MediaType, true, out var mt) ? mt : template.MediaType;
 
             await _repository.UpdateAsync(template);
             return MapToResponse(template);
@@ -66,7 +67,7 @@ namespace DataLabelProject.Business.Services.Projects
             {
                 TemplateId = t.TemplateId,
                 Name = t.Name,
-                MediaType = t.MediaType
+                MediaType = t.MediaType.ToString()
             };
     }
 }
