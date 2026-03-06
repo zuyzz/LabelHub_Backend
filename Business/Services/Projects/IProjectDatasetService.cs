@@ -19,4 +19,9 @@ public interface IProjectDatasetService
     /// Check if a dataset is attached to a project
     /// </summary>
     Task<bool> IsDatasetAttachedAsync(Guid projectId, Guid datasetId);
+
+    /// <summary>
+    /// Retrieve all datasets attached to a project
+    /// </summary>
+    Task<IEnumerable<DatasetResponse>> GetDatasetsByProjectAsync(Guid projectId);
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -9,7 +10,7 @@ public partial class ProjectTemplate
 
     public string Name { get; set; } = null!;
 
-    public string MediaType { get; set; } = "image";
+    public MediaType MediaType { get; set; } = MediaType.image;
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 }

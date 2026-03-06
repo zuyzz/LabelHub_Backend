@@ -241,7 +241,7 @@ namespace DataLabelProject.Business.Services.Projects
             {
                 TemplateId = t.TemplateId,
                 Name = t.Name,
-                MediaType = t.MediaType
+                MediaType = t.MediaType.ToString()
             };
 
         private static ProjectMemberResponse MapMemberToResponse(ProjectMember pm) =>
