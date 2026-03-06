@@ -14,6 +14,13 @@ public class GuidelineRepository : IGuidelineRepository
         _context = context;
     }
 
+    public async Task<Guideline?> GetByProjectIdAsync(Guid projectId)
+    {
+        return await _context.Guidelines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.ProjectId == projectId);
+    }
+
     public async Task<List<Guideline>> GetAllAsync()
     {
         return await _context.Guidelines

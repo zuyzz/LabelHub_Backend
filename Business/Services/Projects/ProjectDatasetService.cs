@@ -92,4 +92,19 @@ public class ProjectDatasetService : IProjectDatasetService
     {
         return await _repo.IsDatasetAttachedAsync(projectId, datasetId);
     }
+
+    public async Task<IEnumerable<DatasetResponse>> GetDatasetsByProjectAsync(Guid projectId)
+    {
+        var datasets = await _repo.GetDatasetsByProjectAsync(projectId);
+        // map to response DTOs similar to DatasetService
+        return datasets.Select(dataset => new DatasetResponse(
+            dataset.DatasetId,
+            dataset.Name,
+            dataset.Description,
+            dataset.CreatedAt,
+            dataset.CreatedBy,
+            dataset.MediaType.ToString(),
+            dataset.DatasetItems?.Count ?? 0
+        ));
+    }
 }
