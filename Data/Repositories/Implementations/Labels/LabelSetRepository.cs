@@ -21,6 +21,11 @@ public class LabelSetRepository : ILabelSetRepository
             .ToListAsync();
     }
 
+    public async Task<LabelSet?> GetByIdAsync(Guid labelSetId)
+    {
+        return await _context.LabelSets.FindAsync(labelSetId);
+    }
+
     public async Task CreateAsync(LabelSet labelSet)
     {
         _context.LabelSets.Add(labelSet);

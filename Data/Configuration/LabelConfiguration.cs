@@ -21,5 +21,9 @@ public class LabelConfiguration : IEntityTypeConfiguration<Label>
             .HasForeignKey(d => d.LabelSetId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Label_labelSetId_fkey");
+
+        entity.HasIndex(e => new { e.LabelSetId, e.Name })
+            .IsUnique()
+            .HasDatabaseName("UQ_Label_LabelSetId_Name");
     }
 }

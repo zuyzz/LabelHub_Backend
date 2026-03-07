@@ -27,6 +27,12 @@ namespace DataLabelProject.Data.Repositories.Implementations.Labels
                 .FirstOrDefaultAsync(l => l.LabelId == labelId);
         }
 
+        public async Task<Label?> GetByNameAndLabelSetAsync(Guid labelSetId, string name)
+        {
+            return await _context.Labels
+                .FirstOrDefaultAsync(l => l.LabelSetId == labelSetId && l.Name == name);
+        }
+
         public async Task AddAsync(Label label)
         {
             _context.Labels.Add(label);

@@ -5,6 +5,7 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 public interface ILabelSetRepository
 {
     Task<List<LabelSet>> GetAllAsync();
+    Task<LabelSet?> GetByIdAsync(Guid labelSetId);
     Task CreateAsync(LabelSet labelSet);
     Task SaveChangesAsync();
 }
