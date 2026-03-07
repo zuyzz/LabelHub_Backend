@@ -5,6 +5,7 @@ using DataLabelProject.Business.Services.Guidelines;
 using DataLabelProject.Application.DTOs;
 using DataLabelProject.Application.DTOs.Projects;
 using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Business.Services.Export;
 
 namespace DataLabelProject.Application.Controllers
 {
@@ -15,15 +16,18 @@ namespace DataLabelProject.Application.Controllers
         private readonly IProjectService _service;
     private readonly IProjectDatasetService _projectDatasetService;
     private readonly IGuidelineService _guidelineService;
+    private readonly ExportService _exportService;
 
     public ProjectsController(
         IProjectService service,
         DataLabelProject.Business.Services.Projects.IProjectDatasetService projectDatasetService,
-        DataLabelProject.Business.Services.Guidelines.IGuidelineService guidelineService)
+        DataLabelProject.Business.Services.Guidelines.IGuidelineService guidelineService,
+        ExportService exportService)
     {
         _service = service;
         _projectDatasetService = projectDatasetService;
         _guidelineService = guidelineService;
+        _exportService = exportService;
     }
 
     [HttpGet]
@@ -126,6 +130,27 @@ namespace DataLabelProject.Application.Controllers
             var deleted = await _service.DeleteAsync(id);
             if (!deleted) return NotFound();
             return NoContent();
+        }
+
+        /// <summary>
+        /// Export project annotations to COCO format
+        /// </summary>
+        [HttpGet("{id}/export/coco")]
+        [Authorize]
+        public async Task<IActionResult> ExportToCoco(Guid id)
+        {
+            var project = await _service.GetByIdAsync(id);
+            if (project == null) return NotFound();
+
+            try
+            {
+                var cocoJson = await _exportService.ExportToCocoAsync(id);
+                return Content(cocoJson, "application/json");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
     }
 }
