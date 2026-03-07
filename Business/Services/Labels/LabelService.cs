@@ -6,10 +6,12 @@ namespace DataLabelProject.Business.Services.Labels
     public class LabelService : ILabelService
     {
         private readonly ILabelRepository _labelRepository;
+        private readonly ILabelSetRepository _labelSetRepository;
 
-        public LabelService(ILabelRepository labelRepository)
+        public LabelService(ILabelRepository labelRepository, ILabelSetRepository labelSetRepository)
         {
             _labelRepository = labelRepository;
+            _labelSetRepository = labelSetRepository;
         }
 
         public async Task<List<Label>> GetLabelsByLabelSetAsync(Guid labelSetId)
@@ -19,6 +21,13 @@ namespace DataLabelProject.Business.Services.Labels
 
         public async Task<Label> CreateLabelAsync(Guid labelSetId, string name)
         {
+            // Check if name already exists in the label set
+            var existingLabel = await _labelRepository.GetByNameAndLabelSetAsync(labelSetId, name);
+            if (existingLabel != null)
+            {
+                throw new Exception("Label name must be unique within the label set");
+            }
+
             var label = new Label
             {
                 LabelId = Guid.NewGuid(),
@@ -36,6 +45,16 @@ namespace DataLabelProject.Business.Services.Labels
             var label = await _labelRepository.GetByIdAsync(labelId)
                 ?? throw new Exception("Label not found");
 
+            // Check if name is changing and if the new name already exists in the label set
+            if (label.Name != name)
+            {
+                var existingLabel = await _labelRepository.GetByNameAndLabelSetAsync(label.LabelSetId, name);
+                if (existingLabel != null)
+                {
+                    throw new Exception("Label name must be unique within the label set");
+                }
+            }
+
             label.Name = name;
             label.IsActive = isActive;
 
@@ -49,6 +68,11 @@ namespace DataLabelProject.Business.Services.Labels
 
             label.IsActive = false;
             await _labelRepository.UpdateAsync(label);
+        }
+
+        public async Task<LabelSet?> GetLabelSetByIdAsync(Guid labelSetId)
+        {
+            return await _labelSetRepository.GetByIdAsync(labelSetId);
         }
     }
 }

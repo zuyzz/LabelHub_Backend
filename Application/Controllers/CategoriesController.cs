@@ -1,6 +1,7 @@
 using DataLabelProject.Application.DTOs.Categories;
 using DataLabelProject.Business.Services.Categories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DataLabelProject.Application.Controllers
 {
@@ -31,14 +32,23 @@ namespace DataLabelProject.Application.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Create([FromBody] CreateCategoryRequest request)
         {
-            // Tạm thời chưa dùng auth → createdBy = null
-            var result = await _categoryService.CreateAsync(request, null);
+            // Get current user ID from claims
+            var userIdClaim = User.FindFirst("userId")?.Value;
+            Guid? createdBy = null;
+            if (Guid.TryParse(userIdClaim, out var userId))
+            {
+                createdBy = userId;
+            }
+
+            var result = await _categoryService.CreateAsync(request, createdBy);
             return CreatedAtAction(nameof(GetById), new { id = result.CategoryId }, result);
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryRequest request)
         {
             var success = await _categoryService.UpdateAsync(id, request);
@@ -47,6 +57,7 @@ namespace DataLabelProject.Application.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var success = await _categoryService.DeleteAsync(id);

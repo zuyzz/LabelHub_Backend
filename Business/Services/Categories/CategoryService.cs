@@ -17,7 +17,7 @@ namespace DataLabelProject.Business.Services.Categories
         {
             var categories = await _categoryRepository.GetAllAsync();
 
-            return categories.Select(c => new CategoryResponse
+            return categories.Where(c => c.IsActive).Select(c => new CategoryResponse
             {
                 CategoryId = c.CategoryId,
                 Name = c.Name,
@@ -30,7 +30,7 @@ namespace DataLabelProject.Business.Services.Categories
         public async Task<CategoryResponse?> GetByIdAsync(Guid id)
         {
             var category = await _categoryRepository.GetByIdAsync(id);
-            if (category == null) return null;
+            if (category == null || !category.IsActive) return null;
 
             return new CategoryResponse
             {
