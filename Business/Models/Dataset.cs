@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -16,6 +17,8 @@ public partial class Dataset
     public DateTime CreatedAt { get; set; }
 
     public Guid? CreatedBy { get; set; }
+
+    public MediaType MediaType { get; set; } = MediaType.image;
 
     public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
 

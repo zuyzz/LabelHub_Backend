@@ -42,6 +42,7 @@ public class ProjectDatasetRepository : IProjectDatasetRepository
         return await _context.ProjectDatasets
             .Where(pd => pd.ProjectId == projectId)
             .Include(pd => pd.Dataset)
+                .ThenInclude(pd => pd.DatasetItems)
             .Select(pd => pd.Dataset)
             .ToListAsync();
     }

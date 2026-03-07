@@ -9,6 +9,7 @@ namespace DataLabelProject.Application.DTOs.Datasets
         string? Description,
         DateTime CreatedAt,
         Guid? CreatedBy,
+        string MediaType,
         int ItemCount
     );
 }

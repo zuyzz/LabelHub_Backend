@@ -40,6 +40,20 @@ public class GuidelineService : IGuidelineService
         };
     }
 
+    public async Task<GuidelineResponse?> GetGuidelineByProjectAsync(Guid projectId)
+    {
+        var guideline = await _repository.GetByProjectIdAsync(projectId);
+        if (guideline == null) return null;
+
+        return new GuidelineResponse
+        {
+            GuidelineId = guideline.GuidelineId,
+            Title = guideline.Title,
+            Content = guideline.Content,
+            CreatedAt = guideline.CreatedAt
+        };
+    }
+
     public async Task<GuidelineResponse> CreateGuideline(CreateGuidelineRequest request)
     {
         var guideline = new Guideline

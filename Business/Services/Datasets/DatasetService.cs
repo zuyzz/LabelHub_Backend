@@ -116,7 +116,9 @@ public class DatasetService : IDatasetService
             dataset.Description,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.DatasetItems?.Count ?? 0);
+            dataset.MediaType.ToString(),
+            dataset.DatasetItems?.Count ?? 0
+        );
     }
 
     public async Task<IEnumerable<DatasetResponse>> GetDatasetsAsync()
@@ -142,6 +144,8 @@ public class DatasetService : IDatasetService
             dataset.Description,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.DatasetItems?.Count ?? 0));
+            dataset.MediaType.ToString(),
+            dataset.DatasetItems?.Count ?? 0
+        ));
     }
 }

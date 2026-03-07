@@ -40,6 +40,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ProjectMember> ProjectMembers { get; set; }
 
+    public virtual DbSet<ProjectTemplate> ProjectTemplates { get; set; }
+
     public virtual DbSet<Review> Reviews { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
@@ -69,6 +71,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
+            // project/dataset media type enum
+            .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")
