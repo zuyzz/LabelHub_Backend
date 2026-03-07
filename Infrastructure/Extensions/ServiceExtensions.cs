@@ -57,8 +57,8 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
 
-        // Export services
-        services.AddScoped<IExportService, ExportService>();
+        // Export service
+        services.AddScoped<ExportService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
