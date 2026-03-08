@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -17,7 +18,7 @@ public partial class Assignment
 
     public DateTime DeadlineAt { get; set; }
 
-    public string Status { get; set; } = null!;
+    public AssignmentStatus Status { get; set; }
 
     public virtual User AssignedByUser { get; set; } = null!;
 
