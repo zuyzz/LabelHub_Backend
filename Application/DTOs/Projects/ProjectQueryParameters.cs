@@ -27,6 +27,6 @@ namespace DataLabelProject.Application.DTOs.Projects
         /// </summary>
         public List<Guid>? CategoryIds { get; set; }
 
-        public string? Status { get; set; }
+        public bool? IsActive { get; set; }
     }
 }

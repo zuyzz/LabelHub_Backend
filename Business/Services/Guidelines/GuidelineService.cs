@@ -20,7 +20,6 @@ public class GuidelineService : IGuidelineService
         return guidelines.Select(g => new GuidelineResponse
         {
             GuidelineId = g.GuidelineId,
-            Title = g.Title,
             Content = g.Content,
             CreatedAt = g.CreatedAt
         }).ToList();
@@ -34,7 +33,6 @@ public class GuidelineService : IGuidelineService
         return new GuidelineResponse
         {
             GuidelineId = guideline.GuidelineId,
-            Title = guideline.Title,
             Content = guideline.Content,
             CreatedAt = guideline.CreatedAt
         };
@@ -48,7 +46,6 @@ public class GuidelineService : IGuidelineService
         return new GuidelineResponse
         {
             GuidelineId = guideline.GuidelineId,
-            Title = guideline.Title,
             Content = guideline.Content,
             CreatedAt = guideline.CreatedAt
         };
@@ -59,7 +56,6 @@ public class GuidelineService : IGuidelineService
         var guideline = new Guideline
         {
             GuidelineId = Guid.NewGuid(),
-            Title = request.Title,
             Content = request.Content,
             CreatedAt = DateTime.UtcNow
         };
@@ -69,7 +65,6 @@ public class GuidelineService : IGuidelineService
         return new GuidelineResponse
         {
             GuidelineId = guideline.GuidelineId,
-            Title = guideline.Title,
             Content = guideline.Content,
             CreatedAt = guideline.CreatedAt
         };
@@ -80,7 +75,6 @@ public class GuidelineService : IGuidelineService
         var guideline = await _repository.GetByIdAsync(id);
         if (guideline == null) return null;
 
-        guideline.Title = request.Title;
         guideline.Content = request.Content;
 
         await _repository.UpdateAsync(guideline);
@@ -88,7 +82,6 @@ public class GuidelineService : IGuidelineService
         return new GuidelineResponse
         {
             GuidelineId = guideline.GuidelineId,
-            Title = guideline.Title,
             Content = guideline.Content,
             CreatedAt = guideline.CreatedAt
         };

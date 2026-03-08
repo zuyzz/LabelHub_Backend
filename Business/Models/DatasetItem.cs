@@ -13,9 +13,11 @@ public partial class DatasetItem
 
     public string StorageUri { get; set; } = null!;
 
-    public string? Metadata { get; set; }
+    public string Metadata { get; set; } = null!;
 
     public DateTime? CreatedAt { get; set; }
+
+    public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
 
     public virtual Dataset ItemDataset { get; set; } = null!;
 }

@@ -16,7 +16,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Annotation> Annotations { get; set; }
 
-    public virtual DbSet<AnnotationTask> AnnotationTasks { get; set; }
 
     public virtual DbSet<Assignment> Assignments { get; set; }
 
@@ -32,8 +31,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Label> Labels { get; set; }
 
-    public virtual DbSet<LabelSet> LabelSets { get; set; }
-
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectDataset> ProjectDatasets { get; set; }
@@ -46,7 +43,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<SystemConfig> SystemConfigs { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 

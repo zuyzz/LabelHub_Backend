@@ -49,9 +49,9 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
             }
 
             // Filter by status
-            if (!string.IsNullOrWhiteSpace(query.Status))
+            if (query.IsActive.HasValue)
             {
-                q = q.Where(p => p.Status == query.Status);
+                q = q.Where(p => p.IsActive == query.IsActive.Value);
             }
 
             // TODO: support additional filters (createdBy, date ranges...) if needed
@@ -73,7 +73,7 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
             // Join projects with project members to restrict to projects joined by user
             var q = from p in _context.Projects
                     join pm in _context.ProjectMembers on p.ProjectId equals pm.ProjectId
-                    where pm.UserId == userId
+                    where pm.MemberId == userId
                     select p;
 
             // Include related entities
@@ -100,9 +100,9 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
             }
 
             // Filter by status
-            if (!string.IsNullOrWhiteSpace(query.Status))
+            if (query.IsActive.HasValue)
             {
-                q = q.Where(p => p.Status == query.Status);
+                q = q.Where(p => p.IsActive == query.IsActive.Value);
             }
 
             // Count then page
@@ -116,7 +116,7 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
 
         public async Task<bool> ProjectMemberExistsAsync(Guid projectId, Guid userId)
         {
-            return await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == userId);
+            return await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.MemberId == userId);
         }
 
         public async Task<bool> AddProjectMemberAsync(Guid projectId, Guid userId)
@@ -125,9 +125,8 @@ namespace DataLabelProject.Data.Repositories.Implementations.Projects
 
             var pm = new ProjectMember
             {
-                ProjectMemberId = Guid.NewGuid(),
                 ProjectId = projectId,
-                UserId = userId,
+                MemberId = userId,
                 JoinedAt = DateTime.UtcNow
             };
 

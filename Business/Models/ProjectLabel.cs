@@ -1,13 +1,12 @@
 using System;
-using System.Collections.Generic;
 
 namespace DataLabelProject.Business.Models;
 
-public partial class ProjectDataset
+public partial class ProjectLabel
 {
     public Guid ProjectId { get; set; }
 
-    public Guid DatasetId { get; set; }
+    public Guid LabelId { get; set; }
 
     public DateTime AttachedAt { get; set; }
 
@@ -15,7 +14,7 @@ public partial class ProjectDataset
 
     public virtual Project Project { get; set; } = null!;
 
-    public virtual Dataset Dataset { get; set; } = null!;
+    public virtual Label Label { get; set; } = null!;
 
     public virtual User AttachedByUser { get; set; } = null!;
 }

@@ -7,6 +7,6 @@ public interface IDatasetItemService
 {
     Task<IEnumerable<DatasetItemResponse>> GetDatasetItemsAsync(Guid datasetId);
     Task<DatasetItemResponse> GetDatasetItemByIdAsync(Guid itemId);
-    Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string? metadata = null);
+    Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string metadata);
     Task DeleteDatasetItemAsync(Guid itemId);
 }

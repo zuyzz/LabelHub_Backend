@@ -14,9 +14,11 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
 
         entity.Property(e => e.AssignmentId).HasColumnName("assignmentId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.TaskId).HasColumnName("taskId");
-        entity.Property(e => e.UserId).HasColumnName("userId");
+        entity.Property(e => e.AssignedTo).HasColumnName("assignedTo");
         entity.Property(e => e.AssignedBy).HasColumnName("assignedBy");
         entity.Property(e => e.AssignedAt).HasColumnName("assignedAt").HasDefaultValueSql("now()");
+        entity.Property(e => e.DeadlineAt).HasColumnName("deadlineAt").IsRequired().HasDefaultValueSql("now()");
+        entity.Property(e => e.Status).HasColumnName("status").HasColumnType("character varying");
 
         entity.HasOne(d => d.AssignedByUser).WithMany(p => p.AssignmentAssignedByUsers)
             .HasForeignKey(d => d.AssignedBy)
@@ -29,8 +31,8 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
             .HasConstraintName("Assignment_taskId_fkey");
 
         entity.HasOne(d => d.AssignmentUser).WithMany(p => p.AssignmentUsers)
-            .HasForeignKey(d => d.UserId)
+            .HasForeignKey(d => d.AssignedTo)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Assignment_userId_fkey");
+            .HasConstraintName("Assignment_assignedTo_fkey");
     }
 }

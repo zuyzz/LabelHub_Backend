@@ -37,7 +37,6 @@ public static class ServiceExtensions
         services.AddScoped<IProjectTemplateRepository, ProjectTemplateRepository>();
         services.AddScoped<IProjectDatasetRepository, ProjectDatasetRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
-        services.AddScoped<ILabelSetRepository, LabelSetRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
@@ -51,7 +50,6 @@ public static class ServiceExtensions
         services.AddScoped<IProjectTemplateService, ProjectTemplateService>();
         services.AddScoped<IProjectDatasetService, ProjectDatasetService>();
         services.AddScoped<ILabelService, LabelService>();
-        services.AddScoped<ILabelSetService, LabelSetService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
@@ -62,8 +60,6 @@ public static class ServiceExtensions
 
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
-        services.AddScoped<IMetadataExtractor, VideoMetadataExtractor>();
-        services.AddScoped<IMetadataExtractor, AudioMetadataExtractor>();
 
         return services;
     }

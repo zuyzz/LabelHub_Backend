@@ -42,7 +42,7 @@ public class DatasetItemService : IDatasetItemService
             item.CreatedAt);
     }
 
-    public async Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string? metadata = null)
+    public async Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string metadata)
     {
         var item = new DatasetItem
         {

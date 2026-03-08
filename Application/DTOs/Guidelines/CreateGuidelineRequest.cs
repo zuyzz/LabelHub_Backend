@@ -5,13 +5,6 @@ namespace DataLabelProject.Application.DTOs.Guidelines;
 public class CreateGuidelineRequest
 {
     /// <summary>
-    /// Guideline title
-    /// </summary>
-    [Required(ErrorMessage = "Title is required")]
-    [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters")]
-    public string Title { get; set; } = null!;
-
-    /// <summary>
     /// Guideline content/instructions
     /// </summary>
     [Required(ErrorMessage = "Content is required")]

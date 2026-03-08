@@ -30,6 +30,7 @@ public class ProjectDatasetConfiguration : IEntityTypeConfiguration<ProjectDatas
         entity.HasOne(d => d.AttachedByUser)
             .WithMany()
             .HasForeignKey(d => d.AttachedBy)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("ProjectDataset_attachedBy_fkey");
     }
 }

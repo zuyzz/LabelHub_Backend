@@ -62,13 +62,6 @@ public class DatasetRepository : IDatasetRepository
 
         if (dataset != null)
         {
-            // Delete related annotation tasks
-            var tasks = await _context.AnnotationTasks
-                .Where(t => t.DatasetId == datasetId)
-                .ToListAsync();
-
-            _context.AnnotationTasks.RemoveRange(tasks);
-
             // Delete dataset items
             _context.DatasetItems.RemoveRange(dataset.DatasetItems);
 

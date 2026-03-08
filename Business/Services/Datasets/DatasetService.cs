@@ -116,7 +116,6 @@ public class DatasetService : IDatasetService
             dataset.Description,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.MediaType.ToString(),
             dataset.DatasetItems?.Count ?? 0
         );
     }
@@ -144,7 +143,6 @@ public class DatasetService : IDatasetService
             dataset.Description,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.MediaType.ToString(),
             dataset.DatasetItems?.Count ?? 0
         ));
     }

@@ -4,8 +4,9 @@ namespace DataLabelProject.Business.Services.Labels;
 
 public interface ILabelService
 {
-    Task<List<Label>> GetLabelsByLabelSetAsync(Guid labelSetId);
-    Task<Label> CreateLabelAsync(Guid labelSetId, string name);
+    Task<List<Label>> GetAllLabelsAsync();
+    Task<List<Label>> GetLabelsByCategoryAsync(Guid categoryId);
+    Task<Label> CreateLabelAsync(Guid categoryId, string name, Guid createdBy);
     Task UpdateLabelAsync(Guid labelId, string name, bool isActive);
     Task DeleteLabelAsync(Guid labelId);
 }
