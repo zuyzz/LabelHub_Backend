@@ -83,11 +83,9 @@ namespace DataLabelProject.Business.Services.Auth
             var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440");
             var expiresAt = DateTime.UtcNow.AddMinutes(expireMinutes);
 
-            // Check if first login
-            var requirePasswordChange = user.IsFirstLogin;
-            var message = requirePasswordChange 
-                ? "Login successful. You must change your password before accessing other features."
-                : "Login successful";
+            // first-login tracking removed; always allow access after successful auth
+            var requirePasswordChange = false;
+            var message = "Login successful";
 
             var response = new LoginResponse
             {
@@ -162,7 +160,6 @@ namespace DataLabelProject.Business.Services.Auth
 
             // Hash and update password
             user.PasswordHash = HashPassword(newPassword);
-            user.IsFirstLogin = false;
 
             await _userRepo.UpdateAsync(user);
             await _userRepo.SaveChangesAsync();

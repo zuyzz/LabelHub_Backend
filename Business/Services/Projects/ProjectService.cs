@@ -15,9 +15,6 @@ namespace DataLabelProject.Business.Services.Projects
         private readonly IProjectTemplateRepository _templateRepo;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        // Valid project status values
-        private static readonly HashSet<string> ValidStatuses = new HashSet<string> { "opened", "archived" };
-
         public ProjectService(
             IProjectRepository projectRepo,
             ICategoryRepository categoryRepo,
@@ -92,7 +89,7 @@ namespace DataLabelProject.Business.Services.Projects
                 ProjectId = Guid.NewGuid(),
                 Name = dto.Name,
                 Description = dto.Description,
-                Status = "opened",
+                IsActive = true,
                 CategoryId = dto.CategoryId,
                 TemplateId = dto.TemplateId,
                 CreatedAt = DateTime.UtcNow,
@@ -173,15 +170,9 @@ namespace DataLabelProject.Business.Services.Projects
             var project = await _projectRepo.GetByIdAsync(id);
             if (project == null) return null;
 
-            // Validate Status if provided
-            if (!string.IsNullOrWhiteSpace(dto.Status) && !ValidStatuses.Contains(dto.Status))
-                throw new InvalidOperationException($"Invalid project status: {dto.Status}. Valid values: {string.Join(", ", ValidStatuses)}");
-
-            project.Name = dto.Name;
-            project.Description = dto.Description;
-
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-                project.Status = dto.Status!;
+            project.Name = dto.Name ?? project.Name;
+            project.Description = dto.Description ?? project.Description;
+            project.IsActive = dto.IsActive ?? project.IsActive;
 
             await _projectRepo.UpdateAsync(project);
             await _projectRepo.SaveChangesAsync();
@@ -219,7 +210,7 @@ namespace DataLabelProject.Business.Services.Projects
                 ProjectId = p.ProjectId,
                 Name = p.Name,
                 Description = p.Description,
-                Status = p.Status,
+                IsActive = p.IsActive,
                 CreatedAt = p.CreatedAt,
                 CreatedBy = p.CreatedBy,
                 Category = MapCategoryToResponse(p.ProjectCategory),
@@ -247,7 +238,6 @@ namespace DataLabelProject.Business.Services.Projects
         private static ProjectMemberResponse MapMemberToResponse(ProjectMember pm) =>
             new ProjectMemberResponse
             {
-                ProjectMemberId = pm.ProjectMemberId,
                 UserId = pm.ProjectMemberUser.UserId,
                 Username = pm.ProjectMemberUser.Username,
                 DisplayName = pm.ProjectMemberUser.DisplayName,

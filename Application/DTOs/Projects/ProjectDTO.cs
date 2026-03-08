@@ -10,9 +10,9 @@ namespace DataLabelProject.Application.DTOs.Projects
     );
 
     public record ProjectUpdateRequest(
-        string Name,
+        string? Name,
         string? Description,
-        string? Status
+        bool? IsActive
     );
 
     public class ProjectResponse
@@ -20,7 +20,7 @@ namespace DataLabelProject.Application.DTOs.Projects
         public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public Guid? CreatedBy { get; set; }
         public CategoryResponse Category { get; set; } = null!;

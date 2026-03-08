@@ -12,19 +12,25 @@ namespace DataLabelProject.Business.Services.Labels
             _labelRepository = labelRepository;
         }
 
-        public async Task<List<Label>> GetLabelsByLabelSetAsync(Guid labelSetId)
+        public async Task<List<Label>> GetAllLabelsAsync()
         {
-            return await _labelRepository.GetByLabelSetIdAsync(labelSetId);
+            return await _labelRepository.GetAllAsync();
         }
 
-        public async Task<Label> CreateLabelAsync(Guid labelSetId, string name)
+        public async Task<List<Label>> GetLabelsByCategoryAsync(Guid categoryId)
+        {
+            return await _labelRepository.GetByCategoryIdAsync(categoryId);
+        }
+
+        public async Task<Label> CreateLabelAsync(Guid categoryId, string name, Guid createdBy)
         {
             var label = new Label
             {
                 LabelId = Guid.NewGuid(),
-                LabelSetId = labelSetId,
+                CategoryId = categoryId,
                 Name = name,
-                IsActive = true
+                IsActive = true,
+                CreatedBy = createdBy
             };
 
             await _labelRepository.AddAsync(label);

@@ -27,11 +27,6 @@ public partial class User
 
     public bool IsActive { get; set; }
 
-    /// <summary>
-    /// Indicates if user must change password on first login
-    /// </summary>
-    public bool IsFirstLogin { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
@@ -46,7 +41,6 @@ public partial class User
 
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
-    public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 

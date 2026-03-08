@@ -103,7 +103,6 @@ public class ProjectDatasetService : IProjectDatasetService
             dataset.Description,
             dataset.CreatedAt,
             dataset.CreatedBy,
-            dataset.MediaType.ToString(),
             dataset.DatasetItems?.Count ?? 0
         ));
     }

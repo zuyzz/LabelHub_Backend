@@ -14,10 +14,15 @@ namespace DataLabelProject.Data.Repositories.Implementations.Labels
             _context = context;
         }
 
-        public async Task<List<Label>> GetByLabelSetIdAsync(Guid labelSetId)
+        public async Task<List<Label>> GetAllAsync()
+        {
+            return await _context.Labels.ToListAsync();
+        }
+
+    public async Task<List<Label>> GetByCategoryIdAsync(Guid categoryId)
         {
             return await _context.Labels
-                .Where(l => l.LabelSetId == labelSetId)
+                .Where(l => l.CategoryId == categoryId)
                 .ToListAsync();
         }
 

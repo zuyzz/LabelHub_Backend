@@ -11,8 +11,6 @@ public partial class Project
 
     public string? Description { get; set; }
 
-    public string Status { get; set; } = null!;
-
     public Guid CategoryId { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -21,15 +19,21 @@ public partial class Project
 
     public Guid TemplateId { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
     public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
 
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
     public virtual ICollection<Guideline> Guidelines { get; set; } = new List<Guideline>();
 
-    public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
+    public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
 
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
+
+    public virtual ICollection<ProjectLabel> ProjectLabels { get; set; } = new List<ProjectLabel>();
+
+    public virtual ICollection<ProjectConfig> ProjectConfigs { get; set; } = new List<ProjectConfig>();
 
     public virtual Category ProjectCategory { get; set; } = null!;
 
