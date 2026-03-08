@@ -95,7 +95,7 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
                 .ThenInclude(a => a.AssignmentUser)
             .Include(t => t.Assignments)
                 .ThenInclude(a => a.AssignedByUser)
-            .Where(t => t.Assignments.Any(a => a.UserId == annotatorId))
+            .Where(t => t.Assignments.Any(a => a.AssignedTo == annotatorId))
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
     }

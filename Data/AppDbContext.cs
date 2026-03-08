@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Data;
@@ -34,6 +35,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<LabelSet> LabelSets { get; set; }
 
+    public virtual DbSet<LabelingTask> LabelingTasks { get; set; }
+
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectMember> ProjectMembers { get; set; }
@@ -51,10 +54,10 @@ public partial class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureSupabaseOptions(modelBuilder);
-        
+
         // Apply all configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-        
+
         // Explicitly apply AnnotationTaskConfiguration to ensure it's not overridden
         modelBuilder.ApplyConfiguration(new Configuration.AnnotationTaskConfiguration());
     }
@@ -74,6 +77,10 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
+            // project/dataset media type enum
+            .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
+            // assignment status enum
+            .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

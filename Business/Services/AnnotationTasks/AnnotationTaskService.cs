@@ -152,7 +152,7 @@ public class AnnotationTaskService : IAnnotationTaskService
         {
             AssignmentId = Guid.NewGuid(),
             TaskId = taskId,
-            UserId = annotatorId,
+            AssignedTo = annotatorId,
             AssignedBy = managerId,
             AssignedAt = DateTime.UtcNow
         };
@@ -259,7 +259,7 @@ public class AnnotationTaskService : IAnnotationTaskService
                 return (null, "Annotator can only mark tasks as completed");
             }
 
-            var isAssigned = task.Assignments.Any(a => a.UserId == userId);
+            var isAssigned = task.Assignments.Any(a => a.AssignedTo == userId);
             if (!isAssigned)
             {
                 return (null, "You are not assigned to this task");
@@ -365,7 +365,7 @@ public class AnnotationTaskService : IAnnotationTaskService
             Assignments = task.Assignments?.Select(a => new AssignmentInfo
             {
                 AssignmentId = a.AssignmentId,
-                UserId = a.UserId,
+                UserId = a.AssignedTo,
                 Username = a.AssignmentUser?.Username ?? "Unknown",
                 DisplayName = a.AssignmentUser?.DisplayName ?? a.AssignmentUser?.Username ?? "Unknown",
                 AssignedBy = a.AssignedBy,

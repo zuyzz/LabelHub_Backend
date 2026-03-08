@@ -1,5 +1,7 @@
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -13,16 +15,18 @@ public static class DatabaseExtensions
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("DefaultConnection not configured");
 
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.MapEnum<AssignmentStatus>("enum_assignment_status");
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<AppDbContext>(options =>
         {
-            // Enable retry on failure for transient errors
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            options.UseNpgsql(dataSource, npgsqlOptions =>
             {
                 npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
                 npgsqlOptions.CommandTimeout(30);
             });
 
-            // Enable sensitive data logging in Development only
             if (env.IsDevelopment())
             {
                 options.EnableSensitiveDataLogging();

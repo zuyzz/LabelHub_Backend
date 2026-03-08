@@ -1,0 +1,19 @@
+using DataLabelProject.Business.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace DataLabelProject.Data.Configuration;
+
+public class LabelingTaskConfiguration : IEntityTypeConfiguration<LabelingTask>
+{
+    public void Configure(EntityTypeBuilder<LabelingTask> entity)
+    {
+        entity.HasKey(e => e.TaskId).HasName("LabelingTask_pkey");
+
+        entity.ToTable("LabelingTask");
+
+        entity.Property(e => e.TaskId).HasColumnName("taskId").HasDefaultValueSql("uuid_generate_v4()");
+        entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
+        entity.Property(e => e.ProjectId).HasColumnName("projectId");
+    }
+}

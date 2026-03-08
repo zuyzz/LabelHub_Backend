@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -9,15 +10,19 @@ public partial class Assignment
 
     public Guid TaskId { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid AssignedTo { get; set; }
 
     public Guid AssignedBy { get; set; }
 
     public DateTime AssignedAt { get; set; }
 
+    public DateTime DeadlineAt { get; set; }
+
+    public AssignmentStatus Status { get; set; }
+
     public virtual User AssignedByUser { get; set; } = null!;
 
-    public virtual AnnotationTask AssignmentTask { get; set; } = null!;
+    public virtual LabelingTask AssignmentTask { get; set; } = null!;
 
     public virtual User AssignmentUser { get; set; } = null!;
 }

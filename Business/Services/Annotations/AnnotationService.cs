@@ -29,7 +29,7 @@ public class AnnotationService : IAnnotationService
             return (null, "Task not found");
         }
 
-        if (!task.Assignments.Any(a => a.UserId == annotatorId))
+        if (!task.Assignments.Any(a => a.AssignedTo == annotatorId))
         {
             return (null, "You are not assigned to this task");
         }
@@ -75,7 +75,7 @@ public class AnnotationService : IAnnotationService
             return (null, "Task not found");
         }
 
-        if (!task.Assignments.Any(a => a.UserId == annotatorId))
+        if (!task.Assignments.Any(a => a.AssignedTo == annotatorId))
         {
             return (null, "You are not assigned to this task");
         }
