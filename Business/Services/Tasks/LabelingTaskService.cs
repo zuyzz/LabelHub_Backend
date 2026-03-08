@@ -62,6 +62,13 @@ public class LabelingTaskService : ILabelingTaskService
 
     public async Task<Assignment> AssignTaskAsync(Guid taskId, Guid projectId, Guid assignedTo, Guid assignedBy)
     {
+        // Validate project exists and is active
+        var project = await _projectRepo.GetByIdAsync(projectId);
+        if (project == null)
+            throw new Exception("Project not found");
+        if (project.Status != "active")
+            throw new Exception("Project is not active");
+
         // Validate task exists and belongs to the given project
         var task = await _taskRepo.GetByIdAsync(taskId);
         if (task == null)

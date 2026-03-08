@@ -58,7 +58,6 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
     {
         return await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
-            .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
     }
 
@@ -66,10 +65,6 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
     {
         return await _context.AnnotationTasks
             .Include(t => t.TaskDatasetItem)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignmentUser)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignedByUser)
             .FirstOrDefaultAsync(t => t.TaskId == taskId && !t.Deleted);
     }
 
@@ -78,24 +73,20 @@ public class AnnotationTaskRepository : IAnnotationTaskRepository
         return await _context.AnnotationTasks
             .Where(t => !t.Deleted)
             .Include(t => t.TaskDatasetItem)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignmentUser)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignedByUser)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
     }
 
     public async Task<List<AnnotationTask>> GetTasksForAnnotatorAsync(Guid annotatorId)
     {
+        var assignedTaskIds = await _context.Assignments
+            .Where(a => a.AssignedTo == annotatorId)
+            .Select(a => a.TaskId)
+            .ToListAsync();
+
         return await _context.AnnotationTasks
-            .Where(t => !t.Deleted)
+            .Where(t => !t.Deleted && assignedTaskIds.Contains(t.TaskId))
             .Include(t => t.TaskDatasetItem)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignmentUser)
-            .Include(t => t.Assignments)
-                .ThenInclude(a => a.AssignedByUser)
-            .Where(t => t.Assignments.Any(a => a.AssignedTo == annotatorId))
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
     }

@@ -15,5 +15,10 @@ public class LabelingTaskConfiguration : IEntityTypeConfiguration<LabelingTask>
         entity.Property(e => e.TaskId).HasColumnName("taskId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
         entity.Property(e => e.ProjectId).HasColumnName("projectId");
+
+        entity.HasOne(d => d.LabelingTaskProject).WithMany()
+            .HasForeignKey(d => d.ProjectId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("LabelingTask_projectId_fkey");
     }
 }

@@ -26,5 +26,8 @@ public class AnnotationTaskConfiguration : IEntityTypeConfiguration<AnnotationTa
             .HasForeignKey(d => d.DatasetItemId)
             .OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("Task_datasetItemId_fkey");
+
+        // Ignore Assignments nav — Assignment.taskId FK now points to LabelingTask, not Task table
+        entity.Ignore(e => e.Assignments);
     }
 }
