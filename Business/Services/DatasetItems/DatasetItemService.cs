@@ -1,90 +1,97 @@
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Data.Repositories.Abstractions;
 
-namespace DataLabelProject.Business.Services.DatasetItems;
-
-public class DatasetItemService : IDatasetItemService
+namespace DataLabelProject.Business.Services.DatasetItems
 {
-    private readonly IDatasetItemRepository _repo;
-    private readonly Storage.IFileStorage _storage;
-
-    public DatasetItemService(IDatasetItemRepository repo, Storage.IFileStorage storage)
+    public class DatasetItemService : IDatasetItemService
     {
-        _repo = repo;
-        _storage = storage;
-    }
+        private readonly IDatasetItemRepository _datasetItemRepository;
+        private readonly IFileStorage _fileStorage;
 
-    public async Task<IEnumerable<DatasetItemResponse>> GetDatasetItemsAsync(Guid datasetId)
-    {
-        var items = await _repo.GetDatasetItemsAsync(datasetId);
-        return items.Select(item => new DatasetItemResponse(
-            item.ItemId,
-            item.DatasetId,
-            item.MediaType,
-            item.StorageUri,
-            item.Metadata,
-            item.CreatedAt));
-    }
-
-    public async Task<DatasetItemResponse> GetDatasetItemByIdAsync(Guid itemId)
-    {
-        var item = await _repo.GetDatasetItemByIdAsync(itemId);
-        if (item == null)
-            throw new KeyNotFoundException($"Dataset item with ID {itemId} not found");
-
-        return new DatasetItemResponse(
-            item.ItemId,
-            item.DatasetId,
-            item.MediaType,
-            item.StorageUri,
-            item.Metadata,
-            item.CreatedAt);
-    }
-
-    public async Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string? metadata = null)
-    {
-        var item = new DatasetItem
+        public DatasetItemService(IDatasetItemRepository datasetItemRepository, IFileStorage fileStorage)
         {
-            ItemId = Guid.NewGuid(),
-            DatasetId = datasetId,
-            MediaType = mediaType,
-            StorageUri = storageUri,
-            Metadata = metadata,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _repo.CreateDatasetItemAsync(item);
-        await _repo.SaveChangesAsync();
-
-        return new DatasetItemResponse(
-            item.ItemId,
-            item.DatasetId,
-            item.MediaType,
-            item.StorageUri,
-            item.Metadata,
-            item.CreatedAt);
-    }
-
-    public async Task DeleteDatasetItemAsync(Guid itemId)
-    {
-        var item = await _repo.GetDatasetItemByIdAsync(itemId);
-        if (item == null) return;
-
-        // delete storage object if exists
-        if (!string.IsNullOrWhiteSpace(item.StorageUri))
-        {
-            try
-            {
-                await _storage.DeleteFileAsync(item.StorageUri);
-            }
-            catch
-            {
-                // swallow storage delete errors but still remove DB record
-            }
+            _datasetItemRepository = datasetItemRepository;
+            _fileStorage = fileStorage;
         }
 
-        await _repo.DeleteDatasetItemAsync(itemId);
-        await _repo.SaveChangesAsync();
+        public async Task<PagedResponse<DatasetItemResponse>> GetDataItemsByDatasetId(Guid datasetId, DatasetItemQueryParameters @params)
+        {
+            var (items, totalCount) = await _datasetItemRepository.GetAllByDatasetIdAsync(datasetId, @params);
+
+            return new PagedResponse<DatasetItemResponse> 
+            {
+                Items = items.Select(MapToResponse).ToList(),
+                TotalItems = totalCount,
+                Page = @params.Page,
+                PageSize = @params.PageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+            };
+        }
+
+        public async Task<DatasetItemResponse?> GetDataItemById(Guid id)
+        {
+            var item = await _datasetItemRepository.GetByIdAsync(id);
+            if (item == null) return null;
+
+            return MapToResponse(item);
+        }
+
+        public async Task<DatasetItemResponse> CreateDataItem(Guid datasetId, string mediaType, string storageUri, string metadata)
+        {
+            var item = new DatasetItem
+            {
+                ItemId = Guid.NewGuid(),
+                DatasetId = datasetId,
+                MediaType = mediaType,
+                StorageUri = storageUri,
+                Metadata = metadata,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _datasetItemRepository.CreateAsync(item);
+            await _datasetItemRepository.SaveChangesAsync();
+
+            return MapToResponse(item);
+        }
+
+        public async Task<bool> DeleteDataItem(Guid id)
+        {
+            var item = await _datasetItemRepository.GetByIdAsync(id);
+            if (item == null) return false;
+
+            // delete storage object if exists
+            if (!string.IsNullOrWhiteSpace(item.StorageUri))
+            {
+                try
+                {
+                    await _fileStorage.DeleteFileAsync(item.StorageUri);
+                }
+                catch
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to delete storage file: {item.StorageUri}");
+                }
+            }
+
+            await _datasetItemRepository.DeleteAsync(item);
+            await _datasetItemRepository.SaveChangesAsync();
+            return true;
+        }
+
+        private DatasetItemResponse MapToResponse(DatasetItem item)
+        {
+            return new DatasetItemResponse 
+            {
+                ItemId = item.ItemId,
+                DatasetId = item.DatasetId,
+                MediaType = item.MediaType,
+                StorageUri = item.StorageUri,
+                Metadata = item.Metadata,
+                CreatedAt = item.CreatedAt
+            };
+        }
     }
 }

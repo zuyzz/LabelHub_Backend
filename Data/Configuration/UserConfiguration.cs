@@ -28,7 +28,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnType("character varying");
         entity.Property(e => e.RoleId).HasColumnName("roleId");
         entity.Property(e => e.IsActive).HasColumnName("isActive").HasDefaultValue(true);
-        entity.Property(e => e.IsFirstLogin).HasColumnName("isFirstLogin").HasDefaultValue(true);
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
 
         entity.HasOne(d => d.UserRole).WithMany(p => p.Users)

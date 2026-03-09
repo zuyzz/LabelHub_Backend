@@ -9,7 +9,7 @@ public partial class ExportJob
 
     public Guid InitiatorId { get; set; }
 
-    public Guid? TargetProjectId { get; set; }
+    public Guid ProjectId { get; set; }
 
     public string Format { get; set; } = null!;
 
@@ -21,5 +21,5 @@ public partial class ExportJob
 
     public virtual User ExportInitiator { get; set; } = null!;
 
-    public virtual Project? TargetProject { get; set; }
+    public virtual Project TargetProject { get; set; } = null!;
 }

@@ -14,7 +14,7 @@ public partial class User
     /// </summary>
     public string PasswordHash { get; set; } = null!;
 
-    public string? DisplayName { get; set; }
+    public string DisplayName { get; set; } = null!;
 
     public string? Email { get; set; }
 
@@ -26,11 +26,6 @@ public partial class User
     public Guid RoleId { get; set; }
 
     public bool IsActive { get; set; }
-
-    /// <summary>
-    /// Indicates if user must change password on first login
-    /// </summary>
-    public bool IsFirstLogin { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -46,7 +41,6 @@ public partial class User
 
     public virtual ICollection<ExportJob> ExportJobs { get; set; } = new List<ExportJob>();
 
-    public virtual ICollection<LabelSet> LabelSets { get; set; } = new List<LabelSet>();
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 

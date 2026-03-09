@@ -2,41 +2,69 @@ using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Application.DTOs.Labels;
 
-namespace DataLabelProject.Data.Repositories.Implementations.Labels
+namespace DataLabelProject.Data.Repositories.Implementations.Labels;
+
+public class LabelRepository : ILabelRepository
 {
-    public class LabelRepository : ILabelRepository
+    private readonly AppDbContext _context;
+
+    public LabelRepository(AppDbContext context)
     {
-        private readonly AppDbContext _context;
+        _context = context;
+    }
 
-        public LabelRepository(AppDbContext context)
-        {
-            _context = context;
-        }
+    public async Task<(IEnumerable<Label> Items, int TotalCount)> GetAllAsync(LabelQueryParameters @params)
+    {
+        var query = _context.Labels
+            .AsNoTracking()
+            .Include(l => l.LabelCategory)
+            .Include(l => l.ProjectLabels)
+            .AsQueryable();
+        
+        if (@params.CategoryId.HasValue) 
+            query = query.Where(l => l.CategoryId == @params.CategoryId.Value);
+        if (@params.ProjectId.HasValue)
+            query = query.Where(l =>l.ProjectLabels
+                .Any(pl => pl.ProjectId == @params.ProjectId.Value));
 
-        public async Task<List<Label>> GetByLabelSetIdAsync(Guid labelSetId)
-        {
-            return await _context.Labels
-                .Where(l => l.LabelSetId == labelSetId)
-                .ToListAsync();
-        }
+        var totalCount = await query.CountAsync();
 
-        public async Task<Label?> GetByIdAsync(Guid labelId)
-        {
-            return await _context.Labels
-                .FirstOrDefaultAsync(l => l.LabelId == labelId);
-        }
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
+            .ToListAsync();
 
-        public async Task AddAsync(Label label)
-        {
-            _context.Labels.Add(label);
-            await _context.SaveChangesAsync();
-        }
+        return (items, totalCount);
+    }
 
-        public async Task UpdateAsync(Label label)
-        {
-            _context.Labels.Update(label);
-            await _context.SaveChangesAsync();
-        }
+    public async Task<Label?> GetByIdAsync(Guid labelId)
+    {
+        return await _context.Labels
+            .Include(l => l.LabelCategory)
+            .Include(l => l.ProjectLabels)
+            .FirstOrDefaultAsync(l => l.LabelId == labelId);
+    }
+
+    public async Task CreateAsync(Label label)
+    {
+        await _context.Labels.AddAsync(label);
+    }
+
+    public async Task UpdateAsync(Label label)
+    {
+        _context.Labels.Update(label);
+    }
+
+    public async Task DeleteAsync(ProjectLabel projectLabel) 
+    {
+        _context.ProjectLabels.Remove(projectLabel);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 }
+

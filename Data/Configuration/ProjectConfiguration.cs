@@ -15,13 +15,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         entity.Property(e => e.ProjectId).HasColumnName("projectId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.Name).HasColumnName("name").HasColumnType("character varying");
         entity.Property(e => e.Description).HasColumnName("description");
-        entity.Property(e => e.Status).HasColumnName("status")
-            .HasDefaultValueSql("'active'::character varying")
-            .HasColumnType("character varying");
         entity.Property(e => e.CategoryId).HasColumnName("categoryId");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
         entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
         entity.Property(e => e.TemplateId).HasColumnName("templateId");
+        entity.Property(e => e.IsActive).HasColumnName("isActive").HasDefaultValue(true);
 
         entity.HasOne(d => d.ProjectCategory).WithMany(p => p.Projects)
             .HasForeignKey(d => d.CategoryId)

@@ -1,15 +1,12 @@
 namespace DataLabelProject.Application.DTOs.Datasets
 {
-    /// <summary>
-    /// Response model for getting a dataset by ID.
-    /// </summary>
-    public record DatasetResponse(
-        Guid DatasetId,
-        string Name,
-        string? Description,
-        DateTime CreatedAt,
-        Guid? CreatedBy,
-        string MediaType,
-        int ItemCount
-    );
+    public record DatasetResponse
+    {
+        public Guid DatasetId { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public Guid CreatedBy { get; set; }
+        public int SampleCount { get; set; }
+    };
 }

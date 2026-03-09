@@ -13,13 +13,19 @@ public class LabelConfiguration : IEntityTypeConfiguration<Label>
         entity.ToTable("Label");
 
         entity.Property(e => e.LabelId).HasColumnName("labelId").HasDefaultValueSql("uuid_generate_v4()");
-        entity.Property(e => e.LabelSetId).HasColumnName("labelSetId");
+        entity.Property(e => e.CategoryId).HasColumnName("categoryId");
         entity.Property(e => e.Name).HasColumnName("name").HasColumnType("character varying");
         entity.Property(e => e.IsActive).HasColumnName("isActive").HasDefaultValue(true);
+        entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
 
-        entity.HasOne(d => d.LabelLabelSet).WithMany(p => p.Labels)
-            .HasForeignKey(d => d.LabelSetId)
+        entity.HasOne(d => d.LabelCategory).WithMany()
+            .HasForeignKey(d => d.CategoryId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Label_labelSetId_fkey");
+            .HasConstraintName("Label_categoryId_fkey");
+
+        entity.HasOne(d => d.LabelCreatedByUser).WithMany()
+            .HasForeignKey(d => d.CreatedBy)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("Label_createdBy_fkey");
     }
 }

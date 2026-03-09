@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using DataLabelProject.Application.DTOs.Auth;
 using DataLabelProject.Business.Services.Auth;
 using System.Security.Claims;
+using DataLabelProject.Business.Services.Users;
 
 namespace DataLabelProject.Application.Controllers
 {
@@ -14,10 +15,12 @@ namespace DataLabelProject.Application.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ICurrentUserService currentUserService)
         {
             _authService = authService;
+            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -70,17 +73,11 @@ namespace DataLabelProject.Application.Controllers
                 return BadRequest(new { message = "Invalid input data", errors = ModelState });
             }
 
-            // Get current user ID from JWT token
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdClaim, out var userId))
-            {
-                return Unauthorized(new { message = "Invalid token" });
-            }
+            var currentUserId = _currentUserService.UserId!.Value;
 
             var (user, errorMessage) = await _authService.ChangePasswordAsync(
-                userId,
-                request.OldPassword,
-                request.NewPassword
+                currentUserId,
+                request
             );
 
             if (user == null)

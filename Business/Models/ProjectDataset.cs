@@ -11,11 +11,11 @@ public partial class ProjectDataset
 
     public DateTime AttachedAt { get; set; }
 
-    public Guid? AttachedBy { get; set; }
+    public Guid AttachedBy { get; set; }
 
     public virtual Project Project { get; set; } = null!;
 
     public virtual Dataset Dataset { get; set; } = null!;
 
-    public virtual User? AttachedByUser { get; set; }
+    public virtual User AttachedByUser { get; set; } = null!;
 }

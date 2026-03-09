@@ -58,7 +58,7 @@ public class ImageUploadStrategy : IFileUploadStrategy
             filename,
             file.ContentType ?? "application/octet-stream",
             uri,
-            metadata);
+            metadata ?? "");
 
         return new FileProcessResult(
             new[] { item },

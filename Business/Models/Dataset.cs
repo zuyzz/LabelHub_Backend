@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -12,18 +11,16 @@ public partial class Dataset
 
     public string? Description { get; set; }
 
-    public string? Metadata { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
-    public Guid? CreatedBy { get; set; }
+    public Guid CreatedBy { get; set; }
 
-    public MediaType MediaType { get; set; } = MediaType.image;
-
-    public virtual ICollection<AnnotationTask> AnnotationTasks { get; set; } = new List<AnnotationTask>();
+    public bool IsActive { get; set; } = true;
 
     public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
+    
+    public virtual ICollection<ProjectDataset> ProjectDatasets { get; set; } = new List<ProjectDataset>();
 
-    public virtual User? CreatedByUser { get; set; }
+    public virtual User CreatedByUser { get; set; } = null!;
 }
 

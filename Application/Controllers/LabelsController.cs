@@ -1,50 +1,67 @@
 using DataLabelProject.Business.Services.Labels;
 using DataLabelProject.Application.DTOs.Labels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
-namespace DataLabelProject.Application.Controllers
+namespace DataLabelProject.Application.Controllers;
+
+[ApiController]
+[Route("api/labels")]
+public class LabelsController : ControllerBase
 {
-    [ApiController]
-    [Route("api")]
-    public class LabelsController : ControllerBase
+    private readonly ILabelService _labelService;
+
+    public LabelsController(ILabelService labelService)
     {
-        private readonly ILabelService _labelService;
+        _labelService = labelService;
+    }
 
-        public LabelsController(ILabelService labelService)
-        {
-            _labelService = labelService;
-        }
+    [HttpGet]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> GetAll([FromQuery] LabelQueryParameters @params)
+    {
+        var result = await _labelService.GetLabels(@params);
+        return Ok(result);
+    }
 
-        [HttpGet("labelsets/{labelSetId}/labels")]
-        public async Task<IActionResult> GetLabels(Guid labelSetId)
-        {
-            var labels = await _labelService.GetLabelsByLabelSetAsync(labelSetId);
-            return Ok(labels);
-        }
+    [HttpPost]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> CreateLabel(
+        [FromBody] CreateLabelRequest request)
+    {
+        var result = await _labelService.CreateLabel(request);
+        return Ok(result);
+    }
 
-        [HttpPost("labelsets/{labelSetId}/labels")]
-        public async Task<IActionResult> CreateLabel(
-            Guid labelSetId,
-            [FromBody] CreateLabelRequest request)
-        {
-            var label = await _labelService.CreateLabelAsync(labelSetId, request.Name);
-            return Ok(label);
-        }
+    [HttpPut("{id}")]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> UpdateLabel(
+        Guid id,
+        [FromBody] UpdateLabelRequest request)
+    {
+        var result = await _labelService.UpdateLabel(id, request);
+        if (result == null) return NotFound();
+        return Ok(result);
+    }
 
-        [HttpPut("labels/{labelId}")]
-        public async Task<IActionResult> UpdateLabel(
-            Guid labelId,
-            [FromBody] UpdateLabelRequest request)
-        {
-            await _labelService.UpdateLabelAsync(labelId, request.Name, request.IsActive);
-            return NoContent();
-        }
+    [HttpPost("add/{projectId}")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> AddLabel(
+        [FromRoute] Guid projectId,
+        [FromBody] AddLabelRequest request)
+    {
+        await _labelService.AddLabelToProject(request.LabelId, projectId);
+        return NoContent();
+    }
 
-        [HttpDelete("labels/{labelId}")]
-        public async Task<IActionResult> DeleteLabel(Guid labelId)
-        {
-            await _labelService.DeleteLabelAsync(labelId);
-            return NoContent();
-        }
+    [HttpPost("remove/{projectId}")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> RemoveLabel(
+        [FromRoute] Guid projectId,
+        [FromBody] RemoveLabelRequest request)
+    {
+        await _labelService.RemoveLabelFromProject(request.LabelId, projectId);
+        return NoContent();
     }
 }
+

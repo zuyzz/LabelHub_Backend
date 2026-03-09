@@ -1,12 +1,13 @@
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Datasets;
-using DataLabelProject.Business.Models;
 
-namespace DataLabelProject.Business.Services.DatasetItems;
-
-public interface IDatasetItemService
+namespace DataLabelProject.Business.Services.DatasetItems
 {
-    Task<IEnumerable<DatasetItemResponse>> GetDatasetItemsAsync(Guid datasetId);
-    Task<DatasetItemResponse> GetDatasetItemByIdAsync(Guid itemId);
-    Task<DatasetItemResponse> CreateDatasetItemAsync(Guid datasetId, string mediaType, string storageUri, string? metadata = null);
-    Task DeleteDatasetItemAsync(Guid itemId);
+    public interface IDatasetItemService
+    {
+        Task<PagedResponse<DatasetItemResponse>> GetDataItemsByDatasetId(Guid datasetId, DatasetItemQueryParameters @params);
+        Task<DatasetItemResponse?> GetDataItemById(Guid id);
+        Task<DatasetItemResponse> CreateDataItem(Guid datasetId, string mediaType, string storageUri, string metadata);
+        Task<bool> DeleteDataItem(Guid id);
+    }
 }

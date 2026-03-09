@@ -2,47 +2,43 @@ using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Business.Services.FileUpload;
-using System.Security.Claims;
+using DataLabelProject.Business.Services.Storage;
+using DataLabelProject.Business.Services.Users;
+using DataLabelProject.Application.DTOs.Common;
 
 namespace DataLabelProject.Business.Services.Datasets;
 
 public class DatasetService : IDatasetService
 {
-    private readonly IDatasetRepository _repo;
-    private readonly IEnumerable<IFileUploadStrategy> _strategies;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly Storage.IFileStorage _storage;
+    private readonly IDatasetRepository _datasetRepository;
+    private readonly IProjectRepository _projectRepository;
+    private readonly IProjectDatasetRepository _projectDatasetRepository;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IFileStorage _fileStorage;
 
     public DatasetService(
-        IDatasetRepository repo,
-        IEnumerable<IFileUploadStrategy> strategies,
-        IHttpContextAccessor httpContextAccessor,
-        Storage.IFileStorage storage)
+        IDatasetRepository datasetRepository,
+        IProjectRepository projectRepository,
+        IProjectDatasetRepository projectDatasetRepository,
+        ICurrentUserService currentUserService,
+        IFileStorage fileStorage)
     {
-        _repo = repo;
-        _strategies = strategies;
-        _httpContextAccessor = httpContextAccessor;
-        _storage = storage;
+        _datasetRepository = datasetRepository;
+        _projectRepository = projectRepository;
+        _projectDatasetRepository = projectDatasetRepository;
+        _currentUserService = currentUserService;
+        _fileStorage = fileStorage;
     }
 
-    public async Task<CreateDatasetResponse> CreateDatasetAsync(CreateDatasetRequest request)
+    public async Task<DatasetResponse> CreateDataset(CreateDatasetRequest request)
     {
-        // Get current user ID
-        var user = _httpContextAccessor.HttpContext?.User;
-        var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
-            throw new UnauthorizedAccessException("User not authenticated");
-        // Generate dataset ID
+        var currentUserId = _currentUserService.UserId!.Value;
         var datasetId = Guid.NewGuid();
-        var datasetName = request.Name?.Trim() ?? throw new InvalidOperationException("Name is required");
+        var datasetName = request.Name.Trim();
 
-        // If user is manager, enforce uniqueness per creator
-        if (user?.IsInRole("manager") == true)
-        {
-            var exists = await _repo.GetByNameAndCreatorAsync(datasetName, userId);
-            if (exists != null)
-                throw new InvalidOperationException("You already have a dataset with the same name");
-        }
+        var exists = await _datasetRepository.GetByNameAndCreatorAsync(datasetName, currentUserId);
+        if (exists != null)
+            throw new InvalidOperationException("You already have a dataset with the same name");
 
         var dataset = new Dataset
         {
@@ -50,102 +46,157 @@ public class DatasetService : IDatasetService
             Name = datasetName,
             Description = request.Description,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId
+            CreatedBy = currentUserId
         };
 
-        await _repo.CreateDatasetAsync(dataset);
-        await _repo.SaveChangesAsync();
+        await _datasetRepository.CreateAsync(dataset);
+        await _datasetRepository.SaveChangesAsync();
 
-        return new CreateDatasetResponse(datasetId, datasetName, dataset.Description, 0);
+        return MapToResponse(dataset);
     }
 
-    public async Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request)
+    public async Task<DatasetResponse> UpdateDataset(Guid id, UpdateDatasetRequest request)
     {
-        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        var dataset = await _datasetRepository.GetByIdAsync(id);
         if (dataset == null)
-            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
-        var user = _httpContextAccessor.HttpContext?.User;
-        var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Guid.TryParse(userIdClaim, out var userId);
+            throw new KeyNotFoundException($"Dataset with ID {id} not found");
+
+        var currentUserId = _currentUserService.UserId!.Value;
 
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
             var newName = request.Name!.Trim();
-            if (user?.IsInRole("manager") == true)
-            {
-                var existing = await _repo.GetByNameAndCreatorAsync(newName, userId);
-                if (existing != null && existing.DatasetId != datasetId)
-                    throw new InvalidOperationException("You already have a dataset with the same name");
-            }
+            var existing = await _datasetRepository.GetByNameAndCreatorAsync(newName, currentUserId);
+            if (existing != null && existing.DatasetId != id)
+                throw new InvalidOperationException("You already have a dataset with the same name");
 
             dataset.Name = newName;
         }
 
-        if (request.Description != null)
+        if (!string.IsNullOrWhiteSpace(request.Description))
             dataset.Description = request.Description;
 
-        await _repo.UpdateDatasetAsync(dataset);
-        await _repo.SaveChangesAsync();
+        await _datasetRepository.UpdateAsync(dataset);
+        await _datasetRepository.SaveChangesAsync();
 
-        return new UpdateDatasetResponse(datasetId, dataset.Name, dataset.Description);
+        return MapToResponse(dataset);
     }
 
-    public async Task DeleteDatasetAsync(Guid datasetId)
+    public async Task<bool> DeleteDataset(Guid id)
     {
-        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        var currentUserId = _currentUserService.UserId!.Value;
+        var currentUserRole = _currentUserService.Roles;
+
+        var dataset = await _datasetRepository.GetByIdAsync(id);
         if (dataset == null)
-            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+            throw new KeyNotFoundException($"Dataset with ID {id} not found");
+        if (dataset.CreatedBy != currentUserId && currentUserRole.Contains("manager"))
+            throw new UnauthorizedAccessException("Managers can only delete their own datasets");
+        if (dataset.ProjectDatasets.Count > 0)
+            throw new InvalidOperationException("Cannot delete dataset that is associated with projects. Please remove the dataset from those projects first.");
 
-        // delete objects in storage using predictable prefix
-        var storagePrefix = $"datasets/{datasetId}/";
-        await _storage.DeleteFolderAsync(storagePrefix);
+        var storagePrefix = $"datasets/{id}/";
+        await _fileStorage.DeleteFolderAsync(storagePrefix);
 
-        await _repo.DeleteDatasetAsync(datasetId);
-        await _repo.SaveChangesAsync();
+        await _datasetRepository.DeleteAsync(dataset);
+        await _datasetRepository.SaveChangesAsync();
+
+        return true;
     }
 
-    public async Task<DatasetResponse> GetDatasetByIdAsync(Guid datasetId)
+    public async Task<DatasetResponse?> GetDatasetById(Guid id)
     {
-        var dataset = await _repo.GetDatasetByIdAsync(datasetId);
+        var dataset = await _datasetRepository.GetByIdAsync(id);
+        if (dataset == null) return null;
+
+        return MapToResponse(dataset);
+    }
+
+    public async Task<PagedResponse<DatasetResponse>> GetDatasets(DatasetQueryParameters @params)
+    {
+        var currentUserId = _currentUserService.UserId!.Value;
+        var currentUserRole = _currentUserService.Roles;
+
+        var (items, totalCount) = currentUserRole.Contains("admin") 
+            ? await _datasetRepository.GetAllAsync(@params) 
+            : await _datasetRepository.GetAllByCreatorAsync(currentUserId, @params);
+
+        return new PagedResponse<DatasetResponse>
+        {
+            Items = items.Select(MapToResponse).ToList(),
+            TotalItems = totalCount,
+            Page = @params.Page,
+            PageSize = @params.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+        };
+    }
+
+    public async Task AddDatasetToProject(Guid datasetId, Guid projectId)
+    {
+        var currentUserId = _currentUserService.UserId!.Value;
+        var currentUserRole = _currentUserService.Roles;
+
+        var existing = await _projectDatasetRepository.GetByIdAsync(projectId, datasetId);
+        if (existing != null)
+            throw new InvalidOperationException("Dataset already exists in this project");
+
+        var dataset = await _datasetRepository.GetByIdAsync(datasetId);
         if (dataset == null)
-            throw new KeyNotFoundException($"Dataset with ID {datasetId} not found");
+            throw new KeyNotFoundException("Dataset not found");
 
-        return new DatasetResponse(
-            dataset.DatasetId,
-            dataset.Name,
-            dataset.Description,
-            dataset.CreatedAt,
-            dataset.CreatedBy,
-            dataset.MediaType.ToString(),
-            dataset.DatasetItems?.Count ?? 0
-        );
+        var project = await _projectRepository.GetByIdAsync(projectId);
+        if (project == null)
+            throw new KeyNotFoundException("Project not found");
+
+        if (currentUserRole.Contains("manager") &&
+            (project.CreatedBy != currentUserId || dataset.CreatedBy != currentUserId))
+        {
+            throw new UnauthorizedAccessException(
+                "Managers can only add their datasets to their own projects");
+        }
+
+        var projectDataset = new ProjectDataset
+        {
+            ProjectId = projectId,
+            DatasetId = datasetId,
+            AttachedBy = currentUserId
+        };
+
+        await _projectDatasetRepository.CreateAsync(projectDataset);
+        await _projectDatasetRepository.SaveChangesAsync();
     }
 
-    public async Task<IEnumerable<DatasetResponse>> GetDatasetsAsync()
+    public async Task RemoveDatasetFromProject(Guid datasetId, Guid projectId)
     {
-        var user = _httpContextAccessor.HttpContext?.User;
-        var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
-            throw new UnauthorizedAccessException("User not authenticated");
+        var currentUserId = _currentUserService.UserId!.Value;
+        var currentUserRoles = _currentUserService.Roles;
 
-        IEnumerable<Business.Models.Dataset> list;
-        if (user?.IsInRole("admin") == true)
+        var projectDataset = await _projectDatasetRepository.GetByIdAsync(projectId, datasetId);
+        if (projectDataset == null)
+            throw new KeyNotFoundException("Dataset does not exist in this project");
+
+        if (currentUserRoles.Contains("manager") &&
+            (projectDataset.Project.CreatedBy != currentUserId ||
+            projectDataset.Dataset.CreatedBy != currentUserId))
         {
-            list = await _repo.GetAllDatasetsAsync();
-        }
-        else
-        {
-            list = await _repo.GetDatasetsByCreatorAsync(userId);
+            throw new UnauthorizedAccessException(
+                "Managers can only remove their datasets from their own projects");
         }
 
-        return list.Select(dataset => new DatasetResponse(
-            dataset.DatasetId,
-            dataset.Name,
-            dataset.Description,
-            dataset.CreatedAt,
-            dataset.CreatedBy,
-            dataset.MediaType.ToString(),
-            dataset.DatasetItems?.Count ?? 0
-        ));
+        await _projectDatasetRepository.DeleteAsync(projectDataset);
+        await _projectDatasetRepository.SaveChangesAsync();
+    }
+
+    private DatasetResponse MapToResponse(Dataset dataset)
+    {
+        return new DatasetResponse
+        {
+            DatasetId = dataset.DatasetId,
+            Name = dataset.Name,
+            Description = dataset.Description,
+            CreatedAt = dataset.CreatedAt,
+            CreatedBy = dataset.CreatedBy,
+            SampleCount = dataset.DatasetItems?.Count ?? 0
+        };
     }
 }

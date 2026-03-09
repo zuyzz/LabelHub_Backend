@@ -2,52 +2,87 @@ using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Application.DTOs.Users;
 
 namespace DataLabelProject.Data.Repositories.Implementations.Users;
 
 public class UserRepository : IUserRepository
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext _context;
 
-    public UserRepository(AppDbContext db)
+    public UserRepository(AppDbContext context)
     {
-        _db = db;
+        _context = context;
     }
 
-    public async Task<List<User>> GetAllAsync()
+    public async Task<(IEnumerable<User> Items, int TotalCount)> GetAllAsync(UserQueryParameters @params)
     {
-        return await _db.Users.AsNoTracking().ToListAsync();
+        var query = _context.Users
+            .AsNoTracking()
+            .Include(u => u.UserRole)
+            .OrderByDescending(u => u.CreatedAt)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(@params.Username))
+            query = query.Where(u => EF.Functions.ILike(u.Username, $"%{@params.Username.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.DisplayName))
+            query = query.Where(u => EF.Functions.ILike(u.DisplayName, $"%{@params.DisplayName.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.Email))
+            query = query.Where(u => EF.Functions.ILike(u.Email ?? "", $"%{@params.Email.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.PhoneNumber))
+            query = query.Where(u => EF.Functions.ILike(u.PhoneNumber ?? "", $"%{@params.PhoneNumber.Trim()}%"));
+
+        if (@params.IsActive.HasValue)
+            query = query.Where(u => u.IsActive == @params.IsActive.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
     }
 
     public async Task<User?> GetByIdAsync(Guid id)
     {
-        return await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
+        return await _context.Users
+            .Include(u => u.UserRole)
+            .FirstOrDefaultAsync(u => u.UserId == id);
     }
 
     public async Task<User?> GetByUsernameOrEmailAsync(string usernameOrEmail)
     {
-        return await _db.Users.FirstOrDefaultAsync(u => 
-            u.Username.ToLower() == usernameOrEmail.ToLower() || (u.Email != null && u.Email.ToLower() == usernameOrEmail.ToLower()));
+        return await _context.Users
+            .Include(u => u.UserRole)
+            .FirstOrDefaultAsync(u => 
+                EF.Functions.ILike(u.Username, $"%{usernameOrEmail.Trim()}%") ||
+                EF.Functions.ILike(u.Email ?? "", $"%{usernameOrEmail.Trim()}%"));
     }
 
     public async Task<User?> GetByUsernameAsync(string username)
     {
-        return await _db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+        return await _context.Users
+            .Include(u => u.UserRole)
+            .FirstOrDefaultAsync(u => EF.Functions.ILike(u.Username, $"%{username.Trim()}%"));
     }
 
-    public async Task AddAsync(User user)
+    public async Task CreateAsync(User user)
     {
-        await _db.Users.AddAsync(user);
+        await _context.Users.AddAsync(user);
     }
 
-    public Task UpdateAsync(User user)
+    public async Task UpdateAsync(User user)
     {
-        _db.Users.Update(user);
-        return Task.CompletedTask;
+        _context.Users.Update(user);
     }
 
     public async Task SaveChangesAsync()
     {
-        await _db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
     }
 }

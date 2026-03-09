@@ -93,7 +93,9 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                     }
                     ms.Position = 0;
 
-                    var filename = Path.GetFileName(entry.Key);
+                    var fileId = Guid.NewGuid().ToString();
+                    var extension = Path.GetExtension(file.FileName);
+                    var filename = $"{fileId}{extension}";
 
                     // Queue parallel upload task
                     uploadTasks.Add(Task.Run(async () =>
@@ -101,7 +103,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                         await semaphore.WaitAsync();
                         try
                         {
-                            return await ProcessBufferedEntryAsync(ms, filename, datasetId, baseFolder);
+                            return await ProcessBufferedEntryAsync(ms, filename, baseFolder);
                         }
                         finally
                         {
@@ -131,7 +133,6 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
     private async Task<FileItem> ProcessBufferedEntryAsync(
         MemoryStream stream,
         string filename,
-        Guid datasetId,
         string baseFolder)
     {
         var path = $"{baseFolder}/{filename}";
@@ -157,7 +158,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
             path,
             contentType);
 
-        return new FileItem(filename, contentType, uri, metadata);
+        return new FileItem(filename, contentType, uri, metadata ?? "");
     }
 
     private static bool IsValidExtForMediaType(string ext, string mediaType)
@@ -166,8 +167,8 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         return mediaType.ToLowerInvariant() switch
         {
             "image" => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }.Contains(ext),
-            "audio" => new[] { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a" }.Contains(ext),
-            "video" => new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv" }.Contains(ext),
+            // "audio" => new[] { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a" }.Contains(ext),
+            // "video" => new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv" }.Contains(ext),
             _ => false
         };
     }
@@ -184,20 +185,20 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
             ".gif" => "image/gif",
             ".webp" => "image/webp",
             // Audio types
-            ".mp3" => "audio/mpeg",
-            ".wav" => "audio/wav",
-            ".flac" => "audio/flac",
-            ".aac" => "audio/aac",
-            ".ogg" => "audio/ogg",
-            ".m4a" => "audio/mp4",
+            // ".mp3" => "audio/mpeg",
+            // ".wav" => "audio/wav",
+            // ".flac" => "audio/flac",
+            // ".aac" => "audio/aac",
+            // ".ogg" => "audio/ogg",
+            // ".m4a" => "audio/mp4",
             // Video types
-            ".mp4" => "video/mp4",
-            ".avi" => "video/x-msvideo",
-            ".mov" => "video/quicktime",
-            ".mkv" => "video/x-matroska",
-            ".webm" => "video/webm",
-            ".flv" => "video/x-flv",
-            ".wmv" => "video/x-ms-wmv",
+            // ".mp4" => "video/mp4",
+            // ".avi" => "video/x-msvideo",
+            // ".mov" => "video/quicktime",
+            // ".mkv" => "video/x-matroska",
+            // ".webm" => "video/webm",
+            // ".flv" => "video/x-flv",
+            // ".wmv" => "video/x-ms-wmv",
             _ => "application/octet-stream"
         };
     }

@@ -23,13 +23,14 @@ public class ProjectDatasetConfiguration : IEntityTypeConfiguration<ProjectDatas
             .HasConstraintName("ProjectDataset_projectId_fkey");
 
         entity.HasOne(d => d.Dataset)
-            .WithMany()
+            .WithMany(d => d.ProjectDatasets)
             .HasForeignKey(d => d.DatasetId)
             .HasConstraintName("ProjectDataset_datasetId_fkey");
 
         entity.HasOne(d => d.AttachedByUser)
             .WithMany()
             .HasForeignKey(d => d.AttachedBy)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("ProjectDataset_attachedBy_fkey");
     }
 }

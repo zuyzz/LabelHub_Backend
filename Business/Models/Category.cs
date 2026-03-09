@@ -14,7 +14,7 @@ public partial class Category
     public bool IsActive { get; set; }
 
     public DateTime CreatedAt { get; set; }
-    public Guid? CreatedBy { get; set; }
+    public Guid CreatedBy { get; set; }
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 

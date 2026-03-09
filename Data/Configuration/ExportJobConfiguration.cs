@@ -14,7 +14,7 @@ public class ExportJobConfiguration : IEntityTypeConfiguration<ExportJob>
 
         entity.Property(e => e.ExportId).HasColumnName("exportId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.InitiatorId).HasColumnName("initiatorId");
-        entity.Property(e => e.TargetProjectId).HasColumnName("targetProjectId");
+        entity.Property(e => e.ProjectId).HasColumnName("projectId");
         entity.Property(e => e.Format).HasColumnName("format").HasColumnType("character varying");
         entity.Property(e => e.Status).HasColumnName("status").HasColumnType("character varying");
         entity.Property(e => e.FileUri).HasColumnName("fileUri");
@@ -26,7 +26,7 @@ public class ExportJobConfiguration : IEntityTypeConfiguration<ExportJob>
             .HasConstraintName("ExportJob_initiatorId_fkey");
 
         entity.HasOne(d => d.TargetProject).WithMany(p => p.ExportJobs)
-            .HasForeignKey(d => d.TargetProjectId)
-            .HasConstraintName("ExportJob_targetProjectId_fkey");
+            .HasForeignKey(d => d.ProjectId)
+            .HasConstraintName("ExportJob_projectId_fkey");
     }
 }

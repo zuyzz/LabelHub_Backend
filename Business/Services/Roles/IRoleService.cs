@@ -1,12 +1,13 @@
+using DataLabelProject.Application.DTOs.Roles;
 using DataLabelProject.Business.Models;
 
 namespace DataLabelProject.Business.Services.Roles;
 
 public interface IRoleService
 {
-    Task<List<Role>> GetAllAsync();
-    Task<Role?> GetByIdAsync(Guid id);
-    Task<Role> CreateRoleAsync(string roleName);
-    Task<Role?> UpdateRoleAsync(Guid roleId, string roleName);
-    Task<bool> DeleteRoleAsync(Guid roleId);
+    Task<IEnumerable<RoleResponse>> GetAllRoles();
+    Task<RoleResponse?> GetRoleById(Guid id);
+    Task<RoleResponse> CreateRole(CreateRoleRequest request);
+    Task<RoleResponse?> UpdateRole(Guid id, UpdateRoleRequest request);
+    Task<bool> DeleteRole(Guid id);
 }
