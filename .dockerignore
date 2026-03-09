@@ -2,3 +2,6 @@ bin/
 obj/
 .git/
 .vs/
+.vscode/
+Dockerfile
+README.md
