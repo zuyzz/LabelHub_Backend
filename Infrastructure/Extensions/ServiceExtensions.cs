@@ -38,6 +38,7 @@ public static class ServiceExtensions
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IProjectTemplateRepository, ProjectTemplateRepository>();
         services.AddScoped<IProjectDatasetRepository, ProjectDatasetRepository>();
+        services.AddScoped<IProjectLabelRepository, ProjectLabelRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();

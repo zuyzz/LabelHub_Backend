@@ -132,6 +132,20 @@ public class ProjectService : IProjectService
             Description = p.Description,
             IsActive = p.IsActive,
             CreatedAt = p.CreatedAt,
-            CreatedBy = p.CreatedBy
+            CreatedBy = p.CreatedBy,
+            Category = new()
+            {
+                CategoryId = p.CategoryId,
+                Name = p.ProjectCategory.Name,
+                Description = p.ProjectCategory.Description,
+                CreatedAt = p.ProjectCategory.CreatedAt,
+                IsActive = p.ProjectCategory.IsActive
+            },
+            Template = new()
+            {
+                TemplateId = p.TemplateId,
+                Name = p.ProjectTemplate.Name,
+                MediaType = p.ProjectTemplate.MediaType.ToString()
+            }
         };
 }
