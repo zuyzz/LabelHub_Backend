@@ -2,9 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DataLabelProject.Application.DTOs.Auth
 {
-    /// <summary>
-    /// Request to change password on first login
-    /// </summary>
     public class ChangePasswordRequest
     {
         [Required(ErrorMessage = "Old password is required")]

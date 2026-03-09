@@ -1,7 +1,7 @@
-using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Application.DTOs.Datasets;
 
 namespace DataLabelProject.Data.Repositories.Implementations.DatasetItems;
 
@@ -14,31 +14,37 @@ public class DatasetItemRepository : IDatasetItemRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<DatasetItem>> GetDatasetItemsAsync(Guid datasetId)
+    public async Task<(IEnumerable<DatasetItem> Items, int TotalCount)> GetAllByDatasetIdAsync(Guid datasetId, DatasetItemQueryParameters @params)
     {
-        return await _context.DatasetItems
+        var query = _context.DatasetItems
+            .AsNoTracking()
             .Where(i => i.DatasetId == datasetId)
+            .OrderByDescending(i => i.CreatedAt);
+        
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
             .ToListAsync();
+
+        return (items, totalCount);
     }
 
-    public async Task<DatasetItem?> GetDatasetItemByIdAsync(Guid itemId)
+    public async Task<DatasetItem?> GetByIdAsync(Guid id)
     {
         return await _context.DatasetItems
-            .FirstOrDefaultAsync(i => i.ItemId == itemId);
+            .FirstOrDefaultAsync(i => i.ItemId == id);
     }
 
-    public async Task CreateDatasetItemAsync(DatasetItem item)
+    public async Task CreateAsync(DatasetItem item)
     {
         await _context.DatasetItems.AddAsync(item);
     }
 
-    public async Task DeleteDatasetItemAsync(Guid itemId)
+    public async Task DeleteAsync(DatasetItem item)
     {
-        var item = await GetDatasetItemByIdAsync(itemId);
-        if (item != null)
-        {
-            _context.DatasetItems.Remove(item);
-        }
+        _context.DatasetItems.Remove(item);
     }
 
     public async Task SaveChangesAsync()
@@ -46,4 +52,3 @@ public class DatasetItemRepository : IDatasetItemRepository
         await _context.SaveChangesAsync();
     }
 }
-

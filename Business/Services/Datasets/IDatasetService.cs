@@ -1,12 +1,15 @@
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Datasets;
 
 namespace DataLabelProject.Business.Services.Datasets;
 
 public interface IDatasetService
 {
-    Task<CreateDatasetResponse> CreateDatasetAsync(CreateDatasetRequest request);
-    Task<IEnumerable<DatasetResponse>> GetDatasetsAsync();
-    Task<DatasetResponse> GetDatasetByIdAsync(Guid datasetId);
-    Task<UpdateDatasetResponse> UpdateDatasetAsync(Guid datasetId, UpdateDatasetRequest request);
-    Task DeleteDatasetAsync(Guid datasetId);
+    Task<PagedResponse<DatasetResponse>> GetDatasets(DatasetQueryParameters @params);
+    Task<DatasetResponse?> GetDatasetById(Guid id);
+    Task<DatasetResponse> CreateDataset(CreateDatasetRequest request);
+    Task<DatasetResponse> UpdateDataset(Guid id, UpdateDatasetRequest request);
+    Task<bool> DeleteDataset(Guid id);
+    Task AddDatasetToProject(Guid datasetId, Guid projectId);
+    Task RemoveDatasetFromProject(Guid datasetId, Guid projectId);
 }

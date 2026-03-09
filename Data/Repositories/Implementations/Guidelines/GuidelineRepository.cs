@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
+using DataLabelProject.Application.DTOs.Guidelines;
 
 namespace DataLabelProject.Data.Repositories.Implementations.Guidelines;
 
@@ -14,39 +15,50 @@ public class GuidelineRepository : IGuidelineRepository
         _context = context;
     }
 
-    public async Task<Guideline?> GetByProjectIdAsync(Guid projectId)
+    public async Task<(IEnumerable<Guideline> Items, int TotalCount)> GetAllAsync(GuidelineQueryParameters @params)
     {
-        return await _context.Guidelines
+        var query = _context.Guidelines
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.ProjectId == projectId);
-    }
+            .OrderByDescending(g => g.CreatedAt)
+            .AsQueryable();
 
-    public async Task<List<Guideline>> GetAllAsync()
-    {
-        return await _context.Guidelines
-            .AsNoTracking()
+        if (!string.IsNullOrEmpty(@params.Content))
+            query = query.Where(g => EF.Functions.ILike(g.Content, $"%{@params.Content}%"));
+        if (@params.ProjectId.HasValue)
+            query = query.Where(g => g.ProjectId == @params.ProjectId.Value);
+        
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
             .ToListAsync();
+        
+        return (items, totalCount);
     }
 
     public async Task<Guideline?> GetByIdAsync(Guid id)
     {
-        return await _context.Guidelines.FindAsync(id);
+        return await _context.Guidelines
+            .FirstOrDefaultAsync(g => g.GuidelineId == id);
     }
 
-    public async Task AddAsync(Guideline guideline)
+    public async Task CreateAsync(Guideline guideline)
     {
-        _context.Guidelines.Add(guideline);
-        await _context.SaveChangesAsync();
+        await _context.Guidelines.AddAsync(guideline);
     }
 
     public async Task UpdateAsync(Guideline guideline)
     {
-        await _context.SaveChangesAsync();
+        _context.Update(guideline);
     }
 
     public async Task DeleteAsync(Guideline guideline)
     {
         _context.Guidelines.Remove(guideline);
+    }
+
+    public async Task SaveChangesAsync() {
         await _context.SaveChangesAsync();
     }
 }

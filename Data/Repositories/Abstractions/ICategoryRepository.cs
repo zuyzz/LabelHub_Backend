@@ -1,12 +1,13 @@
+using DataLabelProject.Application.DTOs.Categories;
 using DataLabelProject.Business.Models;
 
-namespace DataLabelProject.Data.Repositories.Abstractions
+namespace DataLabelProject.Data.Repositories.Abstractions;
+
+public interface ICategoryRepository
 {
-    public interface ICategoryRepository
-    {
-        Task<List<Category>> GetAllAsync();
-        Task<Category?> GetByIdAsync(Guid id);
-        Task<Category> CreateAsync(Category category);
-        Task UpdateAsync(Category category);
-    }
+    Task<(IEnumerable<Category> Items, int TotalCount)> GetAllAsync(CategoryQueryParameters @params);
+    Task<Category?> GetByIdAsync(Guid id);
+    Task CreateAsync(Category category);
+    Task UpdateAsync(Category category);
+    Task SaveChangesAsync();
 }

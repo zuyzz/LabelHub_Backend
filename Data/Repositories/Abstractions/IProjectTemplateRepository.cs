@@ -4,10 +4,11 @@ namespace DataLabelProject.Data.Repositories.Abstractions
 {
     public interface IProjectTemplateRepository
     {
-        Task<List<ProjectTemplate>> GetAllAsync();
+        Task<IEnumerable<ProjectTemplate>> GetAllAsync();
         Task<ProjectTemplate?> GetByIdAsync(Guid id);
-        Task<ProjectTemplate> CreateAsync(ProjectTemplate template);
+        Task CreateAsync(ProjectTemplate template);
         Task UpdateAsync(ProjectTemplate template);
-        Task DeleteAsync(Guid id);
+        Task DeleteAsync(ProjectTemplate template);
+        Task SaveChangesAsync();
     }
 }

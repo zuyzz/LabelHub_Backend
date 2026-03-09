@@ -1,3 +1,4 @@
+using DataLabelProject.Application.DTOs.Roles;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 
@@ -5,58 +6,88 @@ namespace DataLabelProject.Business.Services.Roles;
 
 public class RoleService : IRoleService
 {
-    private readonly IRoleRepository _roleRepo;
+    private readonly IRoleRepository _roleRepository;
 
-    public RoleService(IRoleRepository roleRepo)
+    public RoleService(IRoleRepository roleRepository)
     {
-        _roleRepo = roleRepo;
+        _roleRepository = roleRepository;
     }
 
-    public async Task<List<Role>> GetAllAsync()
+    public async Task<IEnumerable<RoleResponse>> GetAllRoles()
     {
-        return await _roleRepo.GetAllAsync();
+        var roles = await _roleRepository.GetAllAsync();
+        return roles.Select(MapToResponse).ToList();
     }
 
-    public async Task<Role?> GetByIdAsync(Guid id)
+    public async Task<RoleResponse?> GetRoleById(Guid id)
     {
-        return await _roleRepo.GetByIdAsync(id);
+        var role = await _roleRepository.GetByIdAsync(id);
+        if (role == null) return null;
+        
+        return MapToResponse(role);
     }
 
-    public async Task<Role> CreateRoleAsync(string roleName)
+    public async Task<RoleResponse> CreateRole(CreateRoleRequest request)
     {
-        var exists = await _roleRepo.GetByNameAsync(roleName);
-        if (exists != null) throw new Exception("Role name already exists");
+        var existedRole = await _roleRepository.GetByNameAsync(request.RoleName);
+        if (existedRole != null) throw new Exception("Role name already exists");
 
-        var role = new Role { RoleId = Guid.NewGuid(), RoleName = roleName };
-        await _roleRepo.AddAsync(role);
-        await _roleRepo.SaveChangesAsync();
-        return role;
+        var role = new Role 
+        { 
+            RoleId = Guid.NewGuid(), 
+            RoleName = request.RoleName 
+        };
+
+        await _roleRepository.CreateAsync(role);
+        await _roleRepository.SaveChangesAsync();
+
+        return MapToResponse(role);
     }
 
-    public async Task<Role?> UpdateRoleAsync(Guid roleId, string roleName)
+    public async Task<RoleResponse?> UpdateRole(Guid id, UpdateRoleRequest request)
     {
-        var role = await _roleRepo.GetByIdAsync(roleId);
+        var role = await _roleRepository.GetByIdAsync(id);
         if (role == null) return null;
 
-        var conflict = await _roleRepo.GetByNameAsync(roleName);
-        if (conflict != null && conflict.RoleId != roleId) throw new Exception("Role name already exists");
+        if (!string.IsNullOrWhiteSpace(request.RoleName))
+        {
+            var existedRole = await _roleRepository.GetByNameAsync(request.RoleName);
+            if (existedRole != null && existedRole.RoleId != id) 
+                throw new Exception("Role name already exists");
+        }
 
-        role.RoleName = roleName;
-        await _roleRepo.UpdateAsync(role);
-        await _roleRepo.SaveChangesAsync();
-        return role;
+        if (!string.IsNullOrWhiteSpace(request.RoleName))
+        {
+            role.RoleName = request.RoleName;
+        }
+
+        await _roleRepository.UpdateAsync(role);
+        await _roleRepository.SaveChangesAsync();
+
+        return MapToResponse(role);
     }
 
-    public async Task<bool> DeleteRoleAsync(Guid roleId)
+    public async Task<bool> DeleteRole(Guid roleId)
     {
-        var role = await _roleRepo.GetByIdAsync(roleId);
+        var role = await _roleRepository.GetByIdAsync(roleId);
         if (role == null) return false;
 
-        var inUse = await _roleRepo.IsRoleUsedAsync(roleId);
-        if (inUse) throw new Exception("Cannot delete role because users are assigned to it");
+        var isInUse = await _roleRepository.IsRoleUsedAsync(roleId);
+        if (isInUse) 
+            throw new Exception("Cannot delete role because users are assigned to it");
 
-        await _roleRepo.DeleteAsync(role);
-        await _roleRepo.SaveChangesAsync();
+        await _roleRepository.DeleteAsync(role);
+        await _roleRepository.SaveChangesAsync();
+        
         return true;
+    }
+
+    private RoleResponse MapToResponse(Role role)
+    {
+        return new RoleResponse
+        {
+            RoleId = role.RoleId,
+            RoleName = role.RoleName
+        };
     }
 }

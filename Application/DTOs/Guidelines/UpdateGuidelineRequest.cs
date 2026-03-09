@@ -1,12 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DataLabelProject.Application.DTOs.Guidelines;
-
-public class UpdateGuidelineRequest
+namespace DataLabelProject.Application.DTOs.Guidelines
 {
-    /// <summary>
-    /// Guideline content/instructions
-    /// </summary>
-    [Required(ErrorMessage = "Content is required")]
-    public string Content { get; set; } = null!;
+    public class UpdateGuidelineRequest
+    {
+        public string? Content { get; set; } = null!;
+    }
 }

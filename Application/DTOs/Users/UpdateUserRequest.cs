@@ -2,9 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DataLabelProject.Application.DTOs.Users
 {
-    /// <summary>
-    /// DTO for updating user information (Admin only)
-    /// </summary>
     public class UpdateUserRequest
     {
         [StringLength(100)]

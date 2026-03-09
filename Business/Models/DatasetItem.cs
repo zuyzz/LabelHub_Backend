@@ -15,7 +15,7 @@ public partial class DatasetItem
 
     public string Metadata { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
 

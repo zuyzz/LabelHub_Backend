@@ -5,14 +5,10 @@ namespace DataLabelProject.Business.Services.Projects
 {
     public interface IProjectService
     {
-        Task<PagedResponse<ProjectResponse>> GetProjectsAsync(ProjectQueryParameters query);
-        Task<PagedResponse<ProjectResponse>> GetUserProjectsAsync(ProjectQueryParameters query);
-        Task<IEnumerable<ProjectMemberResponse>> GetProjectMembersAsync(Guid projectId);
-        Task<JoinProjectResult> JoinProjectAsync(Guid projectId);
-        Task<IEnumerable<ProjectResponse>> GetAllAsync();
-        Task<ProjectResponse?> GetByIdAsync(Guid id);
-        Task<ProjectResponse> CreateAsync(ProjectCreateRequest dto);
-        Task<ProjectResponse?> UpdateAsync(Guid id, ProjectUpdateRequest dto);
-        Task<bool> DeleteAsync(Guid id);
+        Task<PagedResponse<ProjectResponse>> GetProjects(ProjectQueryParameters @params);
+        Task<ProjectResponse?> GetProjectById(Guid id);
+        Task<ProjectResponse> CreateProject(CreateProjectRequest request);
+        Task<ProjectResponse?> UpdateProject(Guid id, UpdateProjectRequest request);
+        Task<bool> DeleteProject(Guid id);
     }
 }

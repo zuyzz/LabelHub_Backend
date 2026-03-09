@@ -12,8 +12,7 @@ public class ImageMetadataExtractor : IMetadataExtractor
     { 
         "image/png", 
         "image/jpeg", 
-        "image/jpg", 
-        "image/gif", 
+        "image/jpg",  
         "image/webp" 
     };
 
@@ -70,10 +69,6 @@ public class ImageMetadataExtractor : IMetadataExtractor
         if (data[0] == 0xFF && data[1] == 0xD8)
             return ExtractJpegDimensions(data);
 
-        // Check GIF
-        if (data[0] == 0x47 && data[1] == 0x49 && data[2] == 0x46)
-            return ExtractGifDimensions(data);
-
         // Check WEBP
         if (data.Length >= 12 && data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && 
             data[3] == 0x46 && data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50)
@@ -117,38 +112,51 @@ public class ImageMetadataExtractor : IMetadataExtractor
         return (0, 0);
     }
 
-    private static (int width, int height) ExtractGifDimensions(byte[] data)
-    {
-        if (data.Length < 10)
-            return (0, 0);
-
-        // GIF dimensions are at bytes 6-10 (little-endian)
-        int width = data[6] | (data[7] << 8);
-        int height = data[8] | (data[9] << 8);
-
-        return (width, height);
-    }
-
     private static (int width, int height) ExtractWebpDimensions(byte[] data)
     {
         if (data.Length < 30)
             return (0, 0);
 
-        // WEBP dimensions are encoded in VP8 bitstream
-        // For lossy WEBP, look for VP8 chunk and extract dimensions
         int pos = 12;
+
         while (pos < data.Length - 10)
         {
-            if (data[pos] == 0x56 && data[pos + 1] == 0x50 && data[pos + 2] == 0x38)
+            string chunk = System.Text.Encoding.ASCII.GetString(data, pos, 4);
+
+            // -------- VP8 (lossy) --------
+            if (chunk == "VP8 ")
             {
-                // Found VP8/VP8L chunk, dimensions at offset 6-10
-                if (pos + 10 < data.Length)
-                {
-                    int width = ((data[pos + 9] << 8) | data[pos + 8]) & 0x3FFF;
-                    int height = ((data[pos + 7] << 8) | data[pos + 6]) & 0x3FFF;
-                    return (width + 1, height + 1); // VP8 stores width-1, height-1
-                }
+                if (pos + 30 > data.Length) return (0, 0);
+
+                int width = data[pos + 26] | (data[pos + 27] << 8);
+                int height = data[pos + 28] | (data[pos + 29] << 8);
+
+                return (width & 0x3FFF, height & 0x3FFF);
             }
+
+            // -------- VP8L (lossless) --------
+            if (chunk == "VP8L")
+            {
+                int b0 = data[pos + 9];
+                int b1 = data[pos + 10];
+                int b2 = data[pos + 11];
+                int b3 = data[pos + 12];
+
+                int width = 1 + (((b1 & 0x3F) << 8) | b0);
+                int height = 1 + (((b3 & 0x0F) << 10) | (b2 << 2) | ((b1 & 0xC0) >> 6));
+
+                return (width, height);
+            }
+
+            // -------- VP8X (extended) --------
+            if (chunk == "VP8X")
+            {
+                int width = 1 + (data[pos + 12] | (data[pos + 13] << 8) | (data[pos + 14] << 16));
+                int height = 1 + (data[pos + 15] | (data[pos + 16] << 8) | (data[pos + 17] << 16));
+
+                return (width, height);
+            }
+
             pos++;
         }
 

@@ -1,8 +1,9 @@
-namespace DataLabelProject.Application.DTOs.Guidelines;
-
-public class GuidelineResponse
+namespace DataLabelProject.Application.DTOs.Guidelines
 {
-    public Guid GuidelineId { get; set; }
-    public string Content { get; set; } = null!;
-    public DateTime CreatedAt { get; set; }
+    public record GuidelineResponse
+    {
+        public Guid GuidelineId { get; set; }
+        public string Content { get; set; } = null!;
+        public DateTime CreatedAt { get; set; }
+    }
 }
