@@ -1,13 +1,11 @@
-using System.Collections.Generic;
-
 namespace DataLabelProject.Application.DTOs.Common
 {
-    public class PagedResponse<T>
+    public record PagedResponse<T>
     {
-        public IEnumerable<T> Items { get; set; } = new List<T>();
-        public int TotalItems { get; set; }
-        public int Page { get; set; }
-        public int PageSize { get; set; }
-        public int TotalPages { get; set; }
+        public IEnumerable<T> Items { get; init; } = [];
+        public int TotalItems { get; init; }
+        public int Page { get; init; }
+        public int PageSize { get; init; }
+        public int TotalPages { get; init; }
     }
 }

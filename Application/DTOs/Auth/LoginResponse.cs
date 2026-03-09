@@ -1,6 +1,6 @@
 namespace DataLabelProject.Application.DTOs.Auth
 {
-    public class LoginResponse
+    public record LoginResponse
     {
         public Guid UserId { get; set; }
         public string Username { get; set; } = string.Empty;
@@ -8,10 +8,5 @@ namespace DataLabelProject.Application.DTOs.Auth
         public string Token { get; set; } = string.Empty;
         public DateTime ExpiresAt { get; set; }
         public string Message { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Indicates if user must change password before accessing other APIs
-        /// </summary>
-        public bool RequirePasswordChange { get; set; }
     }
 }

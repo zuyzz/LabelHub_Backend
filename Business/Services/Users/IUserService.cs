@@ -1,13 +1,12 @@
-using DataLabelProject.Business.Models;
+using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Users;
 
 namespace DataLabelProject.Business.Services.Users;
 
 public interface IUserService
 {
-    Task<List<User>> GetAllAsync();
-    Task<User?> GetByIdAsync(Guid id);
-    Task<User> CreateUserAsync(string username, string password, string? displayName, string? email, string? phoneNumber, Guid roleId);
-    Task<User?> UpdateUserAsync(Guid userId, Guid currentUserId, string? displayName, string? email, string? phoneNumber, bool? isActive);
-    Task<bool> DisableUserAsync(Guid userId, Guid currentUserId);
-    Task<User?> AssignRoleAsync(Guid userId, Guid roleId, Guid currentUserId);
+    Task<PagedResponse<UserResponse>> GetUsers(UserQueryParameters @params);
+    Task<UserResponse?> GetUserById(Guid id);
+    Task<UserResponse> CreateUser(CreateUserRequest request);
+    Task<UserResponse?> UpdateUser(Guid id, UpdateUserRequest request);
 }

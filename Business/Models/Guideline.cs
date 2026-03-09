@@ -11,7 +11,7 @@ public partial class Guideline
 
     public DateTime CreatedAt { get; set; }
 
-    public Guid? ProjectId { get; set; }
+    public Guid ProjectId { get; set; }
 
-    public virtual Project? GuidelineProject { get; set; }
+    public virtual Project GuidelineProject { get; set; } = null!;
 }

@@ -5,12 +5,8 @@ using DataLabelProject.Business.Services.Guidelines;
 
 namespace DataLabelProject.Application.Controllers;
 
-/// <summary>
-/// Guideline Management
-/// </summary>
 [ApiController]
 [Route("api/guidelines")]
-[Authorize(Roles = "manager")]
 public class GuidelinesController : ControllerBase
 {
     private readonly GuidelineService _guidelineService;
@@ -26,18 +22,13 @@ public class GuidelinesController : ControllerBase
     /// <response code="200">List of guidelines</response>
     /// <response code="401">Unauthorized</response>
     [HttpGet]
+    [Authorize(Roles = "manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<GuidelineResponse>>> GetAllGuidelines()
+    public async Task<IActionResult> GetAllGuidelines([FromQuery] GuidelineQueryParameters @params)
     {
-        var guidelines = await _guidelineService.GetAllGuidelines();
-        
-        if (guidelines.Count == 0)
-        {
-            return Ok(new { message = "No guidelines found", data = guidelines });
-        }
-        
-        return Ok(new { message = "Guidelines retrieved successfully", count = guidelines.Count, data = guidelines });
+        var result = await _guidelineService.GetGuidelines(@params);
+        return Ok(result);
     }
 
     /// <summary>
@@ -48,16 +39,15 @@ public class GuidelinesController : ControllerBase
     /// <response code="401">Unauthorized</response>
     /// <response code="404">Guideline not found</response>
     [HttpGet("{id}")]
+    [Authorize(Roles = "manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GuidelineResponse>> GetGuidelineById(Guid id)
     {
-        var guideline = await _guidelineService.GetGuidelineById(id);
-        if (guideline == null)
-            return NotFound(new { message = "Guideline not found" });
-
-        return Ok(new { message = "Guideline retrieved successfully", data = guideline });
+        var result = await _guidelineService.GetGuidelineById(id);
+        if (result == null) return NotFound();
+        return Ok(result);
     }
 
     /// <summary>
@@ -76,15 +66,8 @@ public class GuidelinesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<GuidelineResponse>> CreateGuideline([FromBody] CreateGuidelineRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new { message = "Invalid input data", errors = ModelState });
-
-        var guideline = await _guidelineService.CreateGuideline(request);
-        return CreatedAtAction(nameof(GetGuidelineById), new { id = guideline.GuidelineId }, new
-        {
-            message = "Guideline created successfully",
-            data = guideline
-        });
+        var result = await _guidelineService.CreateGuideline(request);
+        return CreatedAtAction(nameof(GetGuidelineById), new { id = result.GuidelineId }, result);
     }
 
     /// <summary>
@@ -106,18 +89,9 @@ public class GuidelinesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GuidelineResponse>> UpdateGuideline(Guid id, [FromBody] UpdateGuidelineRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new { message = "Invalid input data", errors = ModelState });
-
-        var guideline = await _guidelineService.UpdateGuideline(id, request);
-        if (guideline == null)
-            return NotFound(new { message = "Guideline not found" });
-
-        return Ok(new
-        {
-            message = "Guideline updated successfully",
-            data = guideline
-        });
+        var result = await _guidelineService.UpdateGuideline(id, request);
+        if (result == null) return NotFound();
+        return Ok(result);
     }
 
     /// <summary>
@@ -138,11 +112,8 @@ public class GuidelinesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteGuideline(Guid id)
     {
-        var (success, message) = await _guidelineService.DeleteGuideline(id);
-        
-        if (!success)
-            return BadRequest(new { message });
-
-        return Ok(new { message });
+        var result = await _guidelineService.DeleteGuideline(id);
+        if (!result) return NotFound();
+        return NoContent();
     }
 }

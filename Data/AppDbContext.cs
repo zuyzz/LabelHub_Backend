@@ -33,7 +33,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Project> Projects { get; set; }
 
+    public virtual DbSet<ProjectConfig> ProjectConfigs { get; set; }
+
     public virtual DbSet<ProjectDataset> ProjectDatasets { get; set; }
+
+    public virtual DbSet<ProjectLabel> ProjectLabels { get; set; }
 
     public virtual DbSet<ProjectMember> ProjectMembers { get; set; }
 

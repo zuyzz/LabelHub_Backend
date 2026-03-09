@@ -18,4 +18,5 @@ public partial class Label
     public virtual Category LabelCategory { get; set; } = null!;
 
     public virtual User LabelCreatedByUser { get; set; } = null!;
+    public virtual ICollection<ProjectLabel> ProjectLabels { get; set; } = new List<ProjectLabel>();
 }

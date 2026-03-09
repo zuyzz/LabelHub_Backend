@@ -1,10 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace DataLabelProject.Application.DTOs.Datasets
 {
-    /// <summary>
-    /// Request model for creating a new dataset item.
-    /// </summary>
     public class CreateDatasetItemRequest
     {
+        [Required(ErrorMessage = "File is required")]
         public IFormFile File { get; set; } = null!;
     }
 }

@@ -5,7 +5,6 @@ namespace DataLabelProject.Application.DTOs.Projects
     /// </summary>
     public class ProjectMemberResponse
     {
-        public Guid ProjectMemberId { get; set; }
         public Guid UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string? DisplayName { get; set; }

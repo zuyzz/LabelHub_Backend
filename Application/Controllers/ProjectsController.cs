@@ -2,130 +2,100 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using DataLabelProject.Business.Services.Projects;
 using DataLabelProject.Business.Services.Guidelines;
-using DataLabelProject.Application.DTOs;
 using DataLabelProject.Application.DTOs.Projects;
-using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Users;
+using DataLabelProject.Business.Models;
 
-namespace DataLabelProject.Application.Controllers
+namespace DataLabelProject.Application.Controllers;
+
+[ApiController]
+[Route("api/projects")]
+public class ProjectsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/projects")]
-    public class ProjectsController : ControllerBase
-    {
-        private readonly IProjectService _service;
-    private readonly IProjectDatasetService _projectDatasetService;
-    private readonly IGuidelineService _guidelineService;
+    private readonly IProjectService _projectService;
+    private readonly IProjectMemberService _projectMemberService;
 
     public ProjectsController(
-        IProjectService service,
-        DataLabelProject.Business.Services.Projects.IProjectDatasetService projectDatasetService,
-        DataLabelProject.Business.Services.Guidelines.IGuidelineService guidelineService)
+        IProjectService projectService,
+        IProjectMemberService projectMemberService)
     {
-        _service = service;
-        _projectDatasetService = projectDatasetService;
-        _guidelineService = guidelineService;
+        _projectService = projectService;
+        _projectMemberService = projectMemberService;
     }
 
     [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters query)
+    public async Task<IActionResult> GetProjects([FromQuery] ProjectQueryParameters @params)
     {
-        var projects = await _service.GetProjectsAsync(query ?? new ProjectQueryParameters());
+        var projects = await _projectService.GetProjects(@params);
         return Ok(projects);
     }
 
-        /// <summary>
-        /// Get all active members of a project
-        /// </summary>
-        [HttpGet("{id}/members")]
-        [Authorize]
-        public async Task<IActionResult> GetProjectMembers(Guid id)
-        {
-            // Verify that the project exists
-            var project = await _service.GetByIdAsync(id);
-            if (project == null) return NotFound();
+    /// <summary>
+    /// Get all active members of a project
+    /// </summary>
+    [HttpGet("{id}/members")]
+    [Authorize]
+    public async Task<IActionResult> GetMembers([FromRoute] Guid id, [FromQuery] UserQueryParameters @params)
+    {
+        var result = _projectMemberService.GetUserFromProject(id, @params);
+        if (result == null) return NotFound();
+        return Ok(result);
+    }
 
-            var members = await _service.GetProjectMembersAsync(id);
-            return Ok(members);
-        }
+    /// <summary>
+    /// Add member to project
+    /// </summary>
+    [HttpPost("{id}/members/{memberId}")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> AddMember([FromRoute] Guid id, [FromRoute] Guid memberId)
+    {
+        await _projectMemberService.AddUserToProject(memberId, id);
+        return NoContent();
+    }
 
-        /// <summary>
-        /// Join the project by id for the current authenticated user
-        /// </summary>
-        [HttpPost("{id}/join")]
-        [Authorize]
-        public async Task<IActionResult> JoinProject(Guid id)
-        {
-            var result = await _service.JoinProjectAsync(id);
-            return result switch
-            {
-                JoinProjectResult.ProjectNotFound => NotFound(),
-                JoinProjectResult.Unauthorized => Unauthorized(),
-                JoinProjectResult.Forbidden => Forbid(),
-                JoinProjectResult.AlreadyMember => Conflict(new { message = "Already a member" }),
-                JoinProjectResult.Success => NoContent(),
-                _ => StatusCode(500)
-            };
-        }
+    /// <summary>
+    /// Remove member from project
+    /// </summary>
+    [HttpDelete("{id}/members/{memberId}")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> RemoveMember([FromRoute] Guid id, [FromRoute] Guid memberId)
+    {
+        await _projectMemberService.RemoveUserFromProject(memberId, id);
+        return NoContent();
+    }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetProject(Guid id)
-        {
-            var project = await _service.GetByIdAsync(id);
-            if (project == null) return NotFound();
-            return Ok(project);
-        }
+    [HttpGet("{id}")]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> GetProject(Guid id)
+    {
+        var project = await _projectService.GetProjectById(id);
+        if (project == null) return NotFound();
+        return Ok(project);
+    }
 
-        /// <summary>
-        /// Get all datasets attached to a project
-        /// </summary>
-        [HttpGet("{id}/datasets")]
-        public async Task<IActionResult> GetProjectDatasets(Guid id)
-        {
-            var project = await _service.GetByIdAsync(id);
-            if (project == null) return NotFound();
+    [HttpPost]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request)
+    {
+        var created = await _projectService.CreateProject(request);
+        return CreatedAtAction(nameof(GetProject), new { id = created.ProjectId }, created);
+    }
 
-            var datasets = await _projectDatasetService.GetDatasetsByProjectAsync(id);
-            return Ok(datasets);
-        }
+    [HttpPut("{id}")]
+    [Authorize(Roles = "admin,manager")]
+    public async Task<IActionResult> UpdateProject(Guid id, [FromBody] UpdateProjectRequest request)
+    {
+        var updated = await _projectService.UpdateProject(id, request);
+        if (updated == null) return NotFound();
+        return Ok(updated);
+    }
 
-        /// <summary>
-        /// Get the guideline associated with a project
-        /// </summary>
-        [HttpGet("{id}/guideline")]
-        public async Task<IActionResult> GetProjectGuideline(Guid id)
-        {
-            var project = await _service.GetByIdAsync(id);
-            if (project == null) return NotFound();
-
-            var guideline = await _guidelineService.GetGuidelineByProjectAsync(id);
-            if (guideline == null) return NotFound();
-            return Ok(guideline);
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "admin,manager")]
-        public async Task<IActionResult> CreateProject([FromBody] ProjectCreateRequest dto)
-        {
-            var created = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetProject), new { id = created.ProjectId }, created);
-        }
-
-        [HttpPut("{id}")]
-        [Authorize(Roles = "admin,manager")]
-        public async Task<IActionResult> UpdateProject(Guid id, [FromBody] ProjectUpdateRequest dto)
-        {
-            var updated = await _service.UpdateAsync(id, dto);
-            if (updated == null) return NotFound();
-            return Ok(updated);
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProject(Guid id)
-        {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return NoContent();
-        }
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteProject(Guid id)
+    {
+        var deleted = await _projectService.DeleteProject(id);
+        if (!deleted) return NotFound();
+        return NoContent();
     }
 }

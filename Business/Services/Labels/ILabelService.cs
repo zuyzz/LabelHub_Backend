@@ -1,12 +1,14 @@
-using DataLabelProject.Business.Models;
+using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Labels;
 
 namespace DataLabelProject.Business.Services.Labels;
 
 public interface ILabelService
 {
-    Task<List<Label>> GetAllLabelsAsync();
-    Task<List<Label>> GetLabelsByCategoryAsync(Guid categoryId);
-    Task<Label> CreateLabelAsync(Guid categoryId, string name, Guid createdBy);
-    Task UpdateLabelAsync(Guid labelId, string name, bool isActive);
-    Task DeleteLabelAsync(Guid labelId);
+    Task<PagedResponse<LabelResponse>> GetLabels(LabelQueryParameters @params);
+    Task<LabelResponse?> GetLabelById(Guid id);
+    Task<LabelResponse> CreateLabel(CreateLabelRequest request);
+    Task<LabelResponse?> UpdateLabel(Guid id, UpdateLabelRequest request);
+    Task AddLabelToProject(Guid labelId, Guid projectId);
+    Task RemoveLabelFromProject(Guid labelId, Guid projectId);
 }
