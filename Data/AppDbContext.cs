@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Data;
@@ -30,6 +31,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Guideline> Guidelines { get; set; }
 
     public virtual DbSet<Label> Labels { get; set; }
+
+    public virtual DbSet<LabelingTask> LabelingTasks { get; set; }
 
     public virtual DbSet<Project> Projects { get; set; }
 
@@ -73,6 +76,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
             // project/dataset media type enum
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
+            // assignment status enum
+            .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

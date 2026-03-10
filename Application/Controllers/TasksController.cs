@@ -1,0 +1,137 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using DataLabelProject.Application.DTOs.Tasks;
+using DataLabelProject.Business.Services.Tasks;
+
+namespace DataLabelProject.Application.Controllers;
+
+[ApiController]
+[Route("api/tasks")]
+[Authorize]
+public class TasksController : ControllerBase
+{
+    private readonly ILabelingTaskService _taskService;
+
+    public TasksController(ILabelingTaskService taskService)
+    {
+        _taskService = taskService;
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+    }
+
+    private string GetCurrentUserRole()
+    {
+        return User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetTasks()
+    {
+        var tasks = await _taskService.GetTasksForUserAsync(GetCurrentUserId(), GetCurrentUserRole());
+
+        var response = tasks.Select(t => new TaskResponse
+        {
+            TaskId = t.TaskId,
+            DatasetItemId = t.DatasetItemId,
+            ProjectId = t.ProjectId,
+            Assignments = t.Assignments.Select(a => new AssignmentResponse
+            {
+                AssignmentId = a.AssignmentId,
+                TaskId = a.TaskId,
+                AssignedTo = a.AssignedTo,
+                AssignedBy = a.AssignedBy,
+                AssignedAt = a.AssignedAt,
+                DeadlineAt = a.DeadlineAt,
+                Status = a.Status.ToString()
+            }).ToList()
+        }).ToList();
+
+        return Ok(response);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateTask([FromBody] CreateTaskRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var task = await _taskService.CreateTaskAsync(request.DatasetItemId, request.ProjectId);
+            var response = new TaskResponse
+            {
+                TaskId = task.TaskId,
+                DatasetItemId = task.DatasetItemId,
+                ProjectId = task.ProjectId
+            };
+            return CreatedAtAction(nameof(GetTasks), new { }, response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("assign")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> AssignTask([FromBody] AssignTaskRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var assignment = await _taskService.AssignTaskAsync(
+                request.TaskId, request.ProjectId, request.AssignedTo, GetCurrentUserId());
+
+            var response = new AssignmentResponse
+            {
+                AssignmentId = assignment.AssignmentId,
+                TaskId = assignment.TaskId,
+                AssignedTo = assignment.AssignedTo,
+                AssignedBy = assignment.AssignedBy,
+                AssignedAt = assignment.AssignedAt,
+                DeadlineAt = assignment.DeadlineAt,
+                Status = assignment.Status.ToString()
+            };
+            return StatusCode(201, response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("assign")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> UpdateDeadline([FromBody] UpdateAssignmentDeadlineRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var assignment = await _taskService.UpdateDeadlineAsync(request.TaskId, request.DeadlineAt);
+            var response = new AssignmentResponse
+            {
+                AssignmentId = assignment.AssignmentId,
+                TaskId = assignment.TaskId,
+                AssignedTo = assignment.AssignedTo,
+                AssignedBy = assignment.AssignedBy,
+                AssignedAt = assignment.AssignedAt,
+                DeadlineAt = assignment.DeadlineAt,
+                Status = assignment.Status.ToString()
+            };
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+}
