@@ -74,7 +74,9 @@ public class LabelService : ILabelService
         await _labelRepository.CreateAsync(label);
         await _labelRepository.SaveChangesAsync();
 
-        return MapToResponse(label);
+        label = await _labelRepository.GetByIdAsync(label.LabelId);
+
+        return MapToResponse(label!);
     }
 
     public async Task<LabelResponse?> UpdateLabel(Guid id, UpdateLabelRequest request)

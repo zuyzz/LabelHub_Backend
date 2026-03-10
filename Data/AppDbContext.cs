@@ -22,6 +22,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Category> Categories { get; set; }
 
+    public virtual DbSet<Consensus> Consensuses { get; set; }
+
     public virtual DbSet<Dataset> Datasets { get; set; }
 
     public virtual DbSet<DatasetItem> DatasetItems { get; set; }
@@ -78,6 +80,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
             // assignment status enum
             .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
+            // export job status enum
+            .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

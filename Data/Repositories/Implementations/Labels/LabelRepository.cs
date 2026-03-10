@@ -23,6 +23,8 @@ public class LabelRepository : ILabelRepository
             .Include(l => l.ProjectLabels)
             .AsQueryable();
         
+        if (!string.IsNullOrWhiteSpace(@params.Name))
+            query = query.Where(l => EF.Functions.ILike(l.Name, $"%{@params.Name.Trim()}%"));
         if (@params.CategoryId.HasValue) 
             query = query.Where(l => l.CategoryId == @params.CategoryId.Value);
         if (@params.ProjectId.HasValue)
