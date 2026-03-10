@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using DataLabelProject.Business.Services.Projects;
-using DataLabelProject.Application.DTOs.Projects;
+using DataLabelProject.Business.Services.ProjectTemplates;
+using DataLabelProject.Application.DTOs.ProjectTemplate;
 
 namespace DataLabelProject.Application.Controllers
 {
@@ -9,11 +9,11 @@ namespace DataLabelProject.Application.Controllers
     [Route("api/project-templates")]
     public class ProjectTemplateController : ControllerBase
     {
-        private readonly IProjectTemplateService _service;
+        private readonly IProjectTemplateService _projectTemplateservice;
 
-        public ProjectTemplateController(IProjectTemplateService service)
+        public ProjectTemplateController(IProjectTemplateService projectTemplateService)
         {
-            _service = service;
+            _projectTemplateservice = projectTemplateService;
         }
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace DataLabelProject.Application.Controllers
         [Authorize]
         public async Task<IActionResult> GetAllTemplates()
         {
-            var templates = await _service.GetAllAsync();
+            var templates = await _projectTemplateservice.GetAllAsync();
             return Ok(templates);
         }
 
@@ -34,7 +34,7 @@ namespace DataLabelProject.Application.Controllers
         [Authorize]
         public async Task<IActionResult> GetTemplate(Guid id)
         {
-            var template = await _service.GetByIdAsync(id);
+            var template = await _projectTemplateservice.GetByIdAsync(id);
             if (template == null)
                 return NotFound();
             return Ok(template);
@@ -45,9 +45,9 @@ namespace DataLabelProject.Application.Controllers
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> CreateTemplate([FromBody] ProjectTemplateCreateRequest dto)
+        public async Task<IActionResult> CreateTemplate([FromBody] CreateProjectTemplateRequest request)
         {
-            var created = await _service.CreateAsync(dto);
+            var created = await _projectTemplateservice.CreateAsync(request);
             return CreatedAtAction(nameof(GetTemplate), new { id = created.TemplateId }, created);
         }
 
@@ -56,11 +56,10 @@ namespace DataLabelProject.Application.Controllers
         /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateTemplate(Guid id, [FromBody] ProjectTemplateUpdateRequest dto)
+        public async Task<IActionResult> UpdateTemplate(Guid id, [FromBody] UpdateProjectTemplateRequest request)
         {
-            var updated = await _service.UpdateAsync(id, dto);
-            if (updated == null)
-                return NotFound();
+            var updated = await _projectTemplateservice.UpdateAsync(id, request);
+            if (updated == null) return NotFound();
             return Ok(updated);
         }
 
@@ -71,9 +70,8 @@ namespace DataLabelProject.Application.Controllers
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTemplate(Guid id)
         {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted)
-                return NotFound();
+            var deleted = await _projectTemplateservice.DeleteAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
         }
     }

@@ -18,6 +18,8 @@ public partial class Dataset
     public bool IsActive { get; set; } = true;
 
     public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
+    
+    public virtual ICollection<ProjectDataset> ProjectDatasets { get; set; } = new List<ProjectDataset>();
 
     public virtual User CreatedByUser { get; set; } = null!;
 }

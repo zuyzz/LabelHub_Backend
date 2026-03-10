@@ -1,3 +1,4 @@
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Guidelines;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -13,16 +14,18 @@ public class GuidelineService : IGuidelineService
         _repository = repository;
     }
 
-    public async Task<List<GuidelineResponse>> GetAllGuidelines()
+    public async Task<PagedResponse<GuidelineResponse>> GetGuidelines(GuidelineQueryParameters @params)
     {
-        var guidelines = await _repository.GetAllAsync();
+        var (items, totalCount) = await _repository.GetAllAsync(@params);
 
-        return guidelines.Select(g => new GuidelineResponse
+        return new PagedResponse<GuidelineResponse>
         {
-            GuidelineId = g.GuidelineId,
-            Content = g.Content,
-            CreatedAt = g.CreatedAt
-        }).ToList();
+            Items = items.Select(MapToResponse).ToList(),
+            TotalItems = totalCount,
+            Page = @params.Page,
+            PageSize = @params.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+        };
     }
 
     public async Task<GuidelineResponse?> GetGuidelineById(Guid id)
@@ -30,25 +33,7 @@ public class GuidelineService : IGuidelineService
         var guideline = await _repository.GetByIdAsync(id);
         if (guideline == null) return null;
 
-        return new GuidelineResponse
-        {
-            GuidelineId = guideline.GuidelineId,
-            Content = guideline.Content,
-            CreatedAt = guideline.CreatedAt
-        };
-    }
-
-    public async Task<GuidelineResponse?> GetGuidelineByProjectAsync(Guid projectId)
-    {
-        var guideline = await _repository.GetByProjectIdAsync(projectId);
-        if (guideline == null) return null;
-
-        return new GuidelineResponse
-        {
-            GuidelineId = guideline.GuidelineId,
-            Content = guideline.Content,
-            CreatedAt = guideline.CreatedAt
-        };
+        return MapToResponse(guideline);
     }
 
     public async Task<GuidelineResponse> CreateGuideline(CreateGuidelineRequest request)
@@ -57,17 +42,14 @@ public class GuidelineService : IGuidelineService
         {
             GuidelineId = Guid.NewGuid(),
             Content = request.Content,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ProjectId = request.ProjectId
         };
 
-        await _repository.AddAsync(guideline);
+        await _repository.CreateAsync(guideline);
+        await _repository.SaveChangesAsync();
 
-        return new GuidelineResponse
-        {
-            GuidelineId = guideline.GuidelineId,
-            Content = guideline.Content,
-            CreatedAt = guideline.CreatedAt
-        };
+        return MapToResponse(guideline);
     }
 
     public async Task<GuidelineResponse?> UpdateGuideline(Guid id, UpdateGuidelineRequest request)
@@ -75,25 +57,33 @@ public class GuidelineService : IGuidelineService
         var guideline = await _repository.GetByIdAsync(id);
         if (guideline == null) return null;
 
-        guideline.Content = request.Content;
+        if (!string.IsNullOrWhiteSpace(request.Content))
+            guideline.Content = request.Content;
 
         await _repository.UpdateAsync(guideline);
+        await _repository.SaveChangesAsync();
 
+        return MapToResponse(guideline);
+    }
+
+    public async Task<bool> DeleteGuideline(Guid id)
+    {
+        var guideline = await _repository.GetByIdAsync(id);
+        if (guideline == null) return false;
+
+        await _repository.DeleteAsync(guideline);
+        await _repository.SaveChangesAsync();
+
+        return true;
+    }
+
+    private GuidelineResponse MapToResponse(Guideline guideline)
+    {
         return new GuidelineResponse
         {
             GuidelineId = guideline.GuidelineId,
             Content = guideline.Content,
             CreatedAt = guideline.CreatedAt
         };
-    }
-
-    public async Task<(bool Success, string Message)> DeleteGuideline(Guid id)
-    {
-        var guideline = await _repository.GetByIdAsync(id);
-        if (guideline == null)
-            return (false, "Guideline not found");
-
-        await _repository.DeleteAsync(guideline);
-        return (true, "Guideline deleted successfully");
     }
 }

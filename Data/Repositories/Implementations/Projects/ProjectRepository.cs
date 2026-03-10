@@ -1,181 +1,117 @@
-using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Application.DTOs.Projects;
 using Microsoft.EntityFrameworkCore;
 
-namespace DataLabelProject.Data.Repositories.Implementations.Projects
+namespace DataLabelProject.Data.Repositories.Implementations.Projects;
+public class ProjectRepository : IProjectRepository
 {
-    public class ProjectRepository : IProjectRepository
+    private readonly AppDbContext _context;
+
+    public ProjectRepository(AppDbContext context)
     {
-        private readonly AppDbContext _context;
+        _context = context;
+    }
 
-        public ProjectRepository(AppDbContext context)
-        {
-            _context = context;
-        }
+    public async Task<(IEnumerable<Project> Items, int TotalCount)> GetAllAsync(ProjectQueryParameters @params)
+    {
+        var query = _context.Projects
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate)
+            .AsQueryable();
+        
+        if (!string.IsNullOrWhiteSpace(@params.Name))
+            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{@params.Name.Trim()}%"));
 
-        public async Task<IEnumerable<Project>> GetAllAsync()
-        {
-            return await _context.Projects
-                .Include(p => p.ProjectCategory)
-                .Include(p => p.ProjectTemplate)
-                .ToListAsync();
-        }
+        if (@params.CategoryId.HasValue)
+            query = query.Where(p => p.CategoryId == @params.CategoryId.Value);
 
-        public async Task<(IEnumerable<Project> Items, int TotalCount)> GetFilteredAsync(ProjectQueryParameters query)
-        {
-            var q = _context.Projects
-                .Include(p => p.ProjectCategory)
-                .Include(p => p.ProjectTemplate)
-                .AsQueryable();
+        if (@params.IsActive.HasValue)
+            query = query.Where(p => p.IsActive == @params.IsActive.Value);
 
-            // Search by name (case-insensitive)
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var s = query.Search.Trim();
-                q = q.Where(p => EF.Functions.ILike(p.Name, $"%{s}%"));
-            }
+        var totalCount = await query.CountAsync();
 
-            // Filter by single category id or multiple
-            if (query.CategoryId.HasValue)
-            {
-                q = q.Where(p => p.CategoryId == query.CategoryId.Value);
-            }
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
+            .ToListAsync();
 
-            if (query.CategoryIds != null && query.CategoryIds.Any())
-            {
-                q = q.Where(p => query.CategoryIds.Contains(p.CategoryId));
-            }
+        return (items, totalCount);
+    }
 
-            // Filter by status
-            if (query.IsActive.HasValue)
-            {
-                q = q.Where(p => p.IsActive == query.IsActive.Value);
-            }
+    public async Task<(IEnumerable<Project> Items, int TotalCount)> GetAllByUserAsync(Guid userId, ProjectQueryParameters @params)
+    {
+        var query = _context.Projects
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate)
+            .AsQueryable();
 
-            // TODO: support additional filters (createdBy, date ranges...) if needed
+        query = query.Where(p => 
+            _context.ProjectMembers.Any(pm => 
+                pm.MemberId == userId && pm.ProjectId == p.ProjectId));
+        
+        if (!string.IsNullOrWhiteSpace(@params.Name))
+            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{@params.Name.Trim()}%"));
 
-            // Get total count before paging
-            var total = await q.CountAsync();
+        if (@params.CategoryId.HasValue)
+            query = query.Where(p => p.CategoryId == @params.CategoryId.Value);
 
-            // Default sort: newest first (createdAt desc)
-            q = q.OrderByDescending(p => p.CreatedAt);
+        if (@params.IsActive.HasValue)
+            query = query.Where(p => p.IsActive == @params.IsActive.Value);
 
-            var skip = (Math.Max(query.Page, 1) - 1) * query.PageSize;
-            var items = await q.Skip(skip).Take(query.PageSize).ToListAsync();
+        var totalCount = await query.CountAsync();
 
-            return (items, total);
-        }
+        var items = await query
+            .Skip(@params.Offset)
+            .Take(@params.PageSize)
+            .ToListAsync();
 
-        public async Task<(IEnumerable<Project> Items, int TotalCount)> GetUserProjectsAsync(ProjectQueryParameters query, Guid userId)
-        {
-            // Join projects with project members to restrict to projects joined by user
-            var q = from p in _context.Projects
-                    join pm in _context.ProjectMembers on p.ProjectId equals pm.ProjectId
-                    where pm.MemberId == userId
-                    select p;
+        return (items, totalCount);
+    }
 
-            // Include related entities
-            q = q.Include(p => p.ProjectCategory)
-                 .Include(p => p.ProjectTemplate)
-                 .AsQueryable();
+    public async Task<Project?> GetByIdAsync(Guid id)
+    {
+        return await _context.Projects
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate)
+            .FirstOrDefaultAsync(p => p.ProjectId == id);
+    }
 
-            // Search by name (case-insensitive)
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var s = query.Search.Trim();
-                q = q.Where(p => EF.Functions.ILike(p.Name, $"%{s}%"));
-            }
+    public async Task CreateAsync(Project project)
+    {
+        await _context.Projects.AddAsync(project);
+    }
 
-            // Filter by single category id or multiple
-            if (query.CategoryId.HasValue)
-            {
-                q = q.Where(p => p.CategoryId == query.CategoryId.Value);
-            }
+    public async Task UpdateAsync(Project project)
+    {
+        _context.Projects.Update(project);
+    }
 
-            if (query.CategoryIds != null && query.CategoryIds.Any())
-            {
-                q = q.Where(p => query.CategoryIds.Contains(p.CategoryId));
-            }
+    public async Task DeleteAsync(Project project)
+    {
+        _context.Projects.Remove(project);
+    }
 
-            // Filter by status
-            if (query.IsActive.HasValue)
-            {
-                q = q.Where(p => p.IsActive == query.IsActive.Value);
-            }
+    public async Task<bool> ExistsAsync(Guid id)
+    {
+        return await _context.Projects.AnyAsync(p => p.ProjectId == id);
+    }
 
-            // Count then page
-            var total = await q.CountAsync();
-            q = q.OrderByDescending(p => p.CreatedAt);
-            var skip = (Math.Max(query.Page, 1) - 1) * query.PageSize;
-            var items = await q.Skip(skip).Take(query.PageSize).ToListAsync();
+    public async Task<IEnumerable<ProjectMember>> GetActiveProjectMembersAsync(Guid projectId)
+    {
+        return await _context.ProjectMembers
+            .Where(pm => pm.ProjectId == projectId && pm.ProjectMemberUser.IsActive)
+            .Include(pm => pm.ProjectMemberUser)
+            .ThenInclude(u => u.UserRole)
+            .ToListAsync();
+    }
 
-            return (items, total);
-        }
-
-        public async Task<bool> ProjectMemberExistsAsync(Guid projectId, Guid userId)
-        {
-            return await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.MemberId == userId);
-        }
-
-        public async Task<bool> AddProjectMemberAsync(Guid projectId, Guid userId)
-        {
-            if (await ProjectMemberExistsAsync(projectId, userId)) return false;
-
-            var pm = new ProjectMember
-            {
-                ProjectId = projectId,
-                MemberId = userId,
-                JoinedAt = DateTime.UtcNow
-            };
-
-            await _context.ProjectMembers.AddAsync(pm);
-            return true;
-        }
-
-        public async Task<Project?> GetByIdAsync(Guid id)
-        {
-            return await _context.Projects
-                .Include(p => p.ProjectCategory)
-                .Include(p => p.ProjectTemplate)
-                .FirstOrDefaultAsync(p => p.ProjectId == id);
-        }
-
-        public async Task AddAsync(Project project)
-        {
-            await _context.Projects.AddAsync(project);
-        }
-
-        public Task UpdateAsync(Project project)
-        {
-            _context.Projects.Update(project);
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteAsync(Project project)
-        {
-            _context.Projects.Remove(project);
-            return Task.CompletedTask;
-        }
-
-        public async Task<bool> ExistsAsync(Guid id)
-        {
-            return await _context.Projects.AnyAsync(p => p.ProjectId == id);
-        }
-
-        public async Task<IEnumerable<ProjectMember>> GetActiveProjectMembersAsync(Guid projectId)
-        {
-            return await _context.ProjectMembers
-                .Where(pm => pm.ProjectId == projectId && pm.ProjectMemberUser.IsActive)
-                .Include(pm => pm.ProjectMemberUser)
-                .ThenInclude(u => u.UserRole)
-                .ToListAsync();
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 }

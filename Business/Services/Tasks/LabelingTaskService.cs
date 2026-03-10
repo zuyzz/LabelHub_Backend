@@ -11,19 +11,22 @@ public class LabelingTaskService : ILabelingTaskService
     private readonly IUserRepository _userRepo;
     private readonly IRoleRepository _roleRepo;
     private readonly IProjectRepository _projectRepo;
+    private readonly IProjectMemberRepository _projectMemberRepo;
 
     public LabelingTaskService(
         ILabelingTaskRepository taskRepo,
         IAssignmentRepository assignmentRepo,
         IUserRepository userRepo,
         IRoleRepository roleRepo,
-        IProjectRepository projectRepo)
+        IProjectRepository projectRepo,
+        IProjectMemberRepository projectMemberRepo)
     {
         _taskRepo = taskRepo;
         _assignmentRepo = assignmentRepo;
         _userRepo = userRepo;
         _roleRepo = roleRepo;
         _projectRepo = projectRepo;
+        _projectMemberRepo = projectMemberRepo;
     }
 
     public async Task<List<LabelingTask>> GetTasksForUserAsync(Guid currentUserId, string currentUserRole)
@@ -87,8 +90,8 @@ public class LabelingTaskService : ILabelingTaskService
             throw new Exception("User not found");
 
         // Validate assignee is a member of the project
-        var isMember = await _projectRepo.ProjectMemberExistsAsync(projectId, assignedTo);
-        if (!isMember)
+        var existedMember = await _projectMemberRepo.GetByIdAsync(projectId, assignedTo);
+        if (existedMember == null)
             throw new Exception("User is not a member of this project");
 
         // Validate assignee role is reviewer or annotator

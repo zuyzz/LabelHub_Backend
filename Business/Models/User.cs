@@ -14,7 +14,7 @@ public partial class User
     /// </summary>
     public string PasswordHash { get; set; } = null!;
 
-    public string? DisplayName { get; set; }
+    public string DisplayName { get; set; } = null!;
 
     public string? Email { get; set; }
 

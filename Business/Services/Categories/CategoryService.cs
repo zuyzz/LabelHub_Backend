@@ -1,5 +1,7 @@
 using DataLabelProject.Application.DTOs.Categories;
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data.Repositories.Abstractions;
 
 namespace DataLabelProject.Business.Services.Categories
@@ -7,42 +9,37 @@ namespace DataLabelProject.Business.Services.Categories
     public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ICurrentUserService _currentUserService;
 
-        public CategoryService(ICategoryRepository categoryRepository)
+        public CategoryService(ICategoryRepository categoryRepository, ICurrentUserService currentUserService)
         {
             _categoryRepository = categoryRepository;
+            _currentUserService = currentUserService;
         }
 
-        public async Task<List<CategoryResponse>> GetAllAsync()
+        public async Task<PagedResponse<CategoryResponse>> GetCategories(CategoryQueryParameters @params)
         {
-            var categories = await _categoryRepository.GetAllAsync();
+            var (categories, totalCount) = await _categoryRepository.GetAllAsync(@params);
 
-            return categories.Select(c => new CategoryResponse
+            return new PagedResponse<CategoryResponse>
             {
-                CategoryId = c.CategoryId,
-                Name = c.Name,
-                Description = c.Description,
-                IsActive = c.IsActive,
-                CreatedAt = c.CreatedAt
-            }).ToList();
+                Items = categories.Select(MapToResponse).ToList(),
+                TotalItems = totalCount,
+                Page = @params.Page,
+                PageSize = @params.PageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+            };
         }
 
-        public async Task<CategoryResponse?> GetByIdAsync(Guid id)
+        public async Task<CategoryResponse?> GetCategoryById(Guid id)
         {
             var category = await _categoryRepository.GetByIdAsync(id);
             if (category == null) return null;
 
-            return new CategoryResponse
-            {
-                CategoryId = category.CategoryId,
-                Name = category.Name,
-                Description = category.Description,
-                IsActive = category.IsActive,
-                CreatedAt = category.CreatedAt
-            };
+            return MapToResponse(category);
         }
 
-        public async Task<CategoryResponse> CreateAsync(CreateCategoryRequest request, Guid? createdBy)
+        public async Task<CategoryResponse> CreateCategory(CreateCategoryRequest request)
         {
             var category = new Category
             {
@@ -51,11 +48,37 @@ namespace DataLabelProject.Business.Services.Categories
                 Description = request.Description,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = createdBy
+                CreatedBy = _currentUserService.UserId!.Value
             };
 
             await _categoryRepository.CreateAsync(category);
+            await _categoryRepository.SaveChangesAsync();
 
+            return MapToResponse(category);
+        }
+
+        public async Task<CategoryResponse?> UpdateCategory(Guid id, UpdateCategoryRequest request)
+        {
+            var category = await _categoryRepository.GetByIdAsync(id);
+            if (category == null) return null;
+
+            if (!string.IsNullOrWhiteSpace(request.Name))
+                category.Name = request.Name;
+
+            if (!string.IsNullOrWhiteSpace(request.Description))
+                category.Description = request.Description;
+
+            if (request.IsActive.HasValue)
+                category.IsActive = request.IsActive.Value;
+
+            await _categoryRepository.UpdateAsync(category);
+            await _categoryRepository.SaveChangesAsync();
+
+            return MapToResponse(category);
+        }
+
+        private CategoryResponse MapToResponse(Category category)
+        {
             return new CategoryResponse
             {
                 CategoryId = category.CategoryId,
@@ -64,30 +87,6 @@ namespace DataLabelProject.Business.Services.Categories
                 IsActive = category.IsActive,
                 CreatedAt = category.CreatedAt
             };
-        }
-
-        public async Task<bool> UpdateAsync(Guid id, UpdateCategoryRequest request)
-        {
-            var category = await _categoryRepository.GetByIdAsync(id);
-            if (category == null) return false;
-
-            category.Name = request.Name;
-            category.Description = request.Description;
-            category.IsActive = request.IsActive;
-
-            await _categoryRepository.UpdateAsync(category);
-            return true;
-        }
-
-        public async Task<bool> DeleteAsync(Guid id)
-        {
-            var category = await _categoryRepository.GetByIdAsync(id);
-            if (category == null) return false;
-
-            // SOFT DELETE
-            category.IsActive = false;
-            await _categoryRepository.UpdateAsync(category);
-            return true;
         }
     }
 }

@@ -1,9 +1,6 @@
-using DataLabelProject.Data;
 using DataLabelProject.Application.DTOs.Auth;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -83,8 +80,6 @@ namespace DataLabelProject.Business.Services.Auth
             var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440");
             var expiresAt = DateTime.UtcNow.AddMinutes(expireMinutes);
 
-            // first-login tracking removed; always allow access after successful auth
-            var requirePasswordChange = false;
             var message = "Login successful";
 
             var response = new LoginResponse
@@ -95,7 +90,6 @@ namespace DataLabelProject.Business.Services.Auth
                 Token = token,
                 ExpiresAt = expiresAt,
                 Message = message,
-                RequirePasswordChange = requirePasswordChange
             };
             
             return (response, null);
@@ -138,7 +132,7 @@ namespace DataLabelProject.Business.Services.Auth
         /// Sets IsFirstLogin = false
         /// Returns error message if validation fails
         /// </summary>
-        public async Task<(User? User, string? ErrorMessage)> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword)
+        public async Task<(User? User, string? ErrorMessage)> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
         {
             var user = await _userRepo.GetByIdAsync(userId);
             if (user == null)
@@ -147,19 +141,19 @@ namespace DataLabelProject.Business.Services.Auth
             }
 
             // Verify old password
-            if (!VerifyPassword(oldPassword, user.PasswordHash))
+            if (!VerifyPassword(request.OldPassword, user.PasswordHash))
             {
                 return (null, "Incorrect old password");
             }
 
             // Check if new password is same as old
-            if (VerifyPassword(newPassword, user.PasswordHash))
+            if (VerifyPassword(request.NewPassword, user.PasswordHash))
             {
                 return (null, "New password cannot be the same as old password");
             }
 
             // Hash and update password
-            user.PasswordHash = HashPassword(newPassword);
+            user.PasswordHash = HashPassword(request.NewPassword);
 
             await _userRepo.UpdateAsync(user);
             await _userRepo.SaveChangesAsync();

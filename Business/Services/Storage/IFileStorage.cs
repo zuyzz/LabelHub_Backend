@@ -8,9 +8,9 @@ public interface IFileStorage
     Task<string> CreateFileAsync(Stream content, string path, string contentType);
 
     /// <summary>
-    /// Delete a single file by its storage URI or object path.
+    /// Delete a single file by its storage URI.
     /// </summary>
-    Task DeleteFileAsync(string storageUriOrPath);
+    Task DeleteFileAsync(string storageUri);
 
     /// <summary>
     /// Delete all objects under a folder/prefix.

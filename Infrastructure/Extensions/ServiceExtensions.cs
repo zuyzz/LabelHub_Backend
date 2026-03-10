@@ -19,9 +19,10 @@ using DataLabelProject.Business.Services.Labels;
 using DataLabelProject.Business.Services.Guidelines;
 using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.DatasetItems;
-using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.FileUpload.Metadata;
+using DataLabelProject.Business.Services.ProjectTemplates;
+using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
 using DataLabelProject.Business.Services.Tasks;
 
 namespace DataLabelProject.Infrastructure.Extensions;
@@ -31,14 +32,17 @@ public static class ServiceExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IProjectTemplateRepository, ProjectTemplateRepository>();
         services.AddScoped<IProjectDatasetRepository, ProjectDatasetRepository>();
+        services.AddScoped<IProjectLabelRepository, ProjectLabelRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();
@@ -52,8 +56,8 @@ public static class ServiceExtensions
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IProjectMemberService, ProjectMemberService>();
         services.AddScoped<IProjectTemplateService, ProjectTemplateService>();
-        services.AddScoped<IProjectDatasetService, ProjectDatasetService>();
         services.AddScoped<ILabelService, LabelService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();

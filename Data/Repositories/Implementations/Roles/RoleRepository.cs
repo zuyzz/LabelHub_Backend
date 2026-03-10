@@ -1,4 +1,3 @@
-using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -7,52 +6,55 @@ namespace DataLabelProject.Data.Repositories.Implementations.Roles;
 
 public class RoleRepository : IRoleRepository
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext _context;
 
-    public RoleRepository(AppDbContext db)
+    public RoleRepository(AppDbContext context)
     {
-        _db = db;
+        _context = context;
     }
 
-    public async Task<List<Role>> GetAllAsync()
+    public async Task<IEnumerable<Role>> GetAllAsync()
     {
-        return await _db.Roles.AsNoTracking().ToListAsync();
+        return await _context.Roles
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     public async Task<Role?> GetByIdAsync(Guid id)
     {
-        return await _db.Roles.FirstOrDefaultAsync(r => r.RoleId == id);
+        return await _context.Roles
+            .FirstOrDefaultAsync(r => r.RoleId == id);
     }
 
     public async Task<Role?> GetByNameAsync(string name)
     {
-        return await _db.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == name.ToLower());
+        return await _context.Roles
+            .FirstOrDefaultAsync(r => string.Equals(r.RoleName.ToLower(), name.ToLower()));
     }
 
-    public async Task AddAsync(Role role)
+    public async Task CreateAsync(Role role)
     {
-        await _db.Roles.AddAsync(role);
+        await _context.Roles.AddAsync(role);
     }
 
-    public Task UpdateAsync(Role role)
+    public async Task UpdateAsync(Role role)
     {
-        _db.Roles.Update(role);
-        return Task.CompletedTask;
+        _context.Roles.Update(role);
     }
 
-    public Task DeleteAsync(Role role)
+    public async Task DeleteAsync(Role role)
     {
-        _db.Roles.Remove(role);
-        return Task.CompletedTask;
+        _context.Roles.Remove(role);
     }
 
-    public async Task<bool> IsRoleUsedAsync(Guid roleId)
+    public async Task<bool> IsRoleUsedAsync(Guid id)
     {
-        return await _db.Users.AnyAsync(u => u.RoleId == roleId);
+        return await _context.Users
+            .AnyAsync(u => u.RoleId == id);
     }
 
     public async Task SaveChangesAsync()
     {
-        await _db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
     }
 }

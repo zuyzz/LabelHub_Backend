@@ -22,7 +22,8 @@ public class ProjectLabelConfiguration : IEntityTypeConfiguration<ProjectLabel>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("ProjectLabel_projectId_fkey");
 
-        entity.HasOne(d => d.Label).WithMany()
+        entity.HasOne(d => d.Label)
+            .WithMany(l => l.ProjectLabels)
             .HasForeignKey(d => d.LabelId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("ProjectLabel_labelId_fkey");

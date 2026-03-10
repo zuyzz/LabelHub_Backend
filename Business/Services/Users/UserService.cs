@@ -1,129 +1,114 @@
+using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Users;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace DataLabelProject.Business.Services.Users;
 
 public class UserService : IUserService
 {
-    private readonly IUserRepository _userRepo;
-    private readonly IRoleRepository _roleRepo;
+    private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
+    private readonly ICurrentUserService _currentUserService;
 
-    public UserService(IUserRepository userRepo, IRoleRepository roleRepo)
+    public UserService(IUserRepository userRepository, IRoleRepository roleRepository, ICurrentUserService currentUserService)
     {
-        _userRepo = userRepo;
-        _roleRepo = roleRepo;
+        _userRepository = userRepository;
+        _roleRepository = roleRepository;
+        _currentUserService = currentUserService;
     }
 
-    public async Task<List<User>> GetAllAsync()
+    public async Task<PagedResponse<UserResponse>> GetUsers(UserQueryParameters @params)
     {
-        return await _userRepo.GetAllAsync();
-    }
+        var (items, totalCount) = await _userRepository.GetAllAsync(@params);
 
-    public async Task<User?> GetByIdAsync(Guid id)
-    {
-        return await _userRepo.GetByIdAsync(id);
-    }
-
-    public async Task<User> CreateUserAsync(string username, string password, string? displayName, string? email, string? phoneNumber, Guid roleId)
-    {
-        // Check username
-        var existing = await _userRepo.GetByUsernameAsync(username);
-        if (existing != null)
+        return new PagedResponse<UserResponse>
         {
-            throw new Exception("Username already exists");
-        }
+            Items = items.Select(MapToResponse).ToList(),
+            TotalItems = totalCount,
+            Page = @params.Page,
+            PageSize = @params.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+        };
+    }
 
-        // Verify role exists
-        var role = await _roleRepo.GetByIdAsync(roleId);
+    public async Task<UserResponse?> GetUserById(Guid id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null) return null;
+
+        return MapToResponse(user);
+    }
+
+    public async Task<UserResponse> CreateUser(CreateUserRequest request)
+    {
+        var existedUser = await _userRepository.GetByUsernameAsync(request.Username);
+        if (existedUser != null)
+            throw new Exception("Username already exists");
+
+        var role = await _roleRepository.GetByIdAsync(request.RoleId);
         if (role == null) {
             throw new Exception("Role not found");
         } else if (role.RoleName == "admin")
-        {
             throw new Exception("Cannot create user with [admin] role");
-        }
 
-        // Hash password
-        var passwordHash = Auth.AuthService.HashPassword(password);
+        var passwordHash = Auth.AuthService.HashPassword(request.Password);
 
         var user = new User
         {
             UserId = Guid.NewGuid(),
-            Username = username,
+            Username = request.Username,
             PasswordHash = passwordHash,
-            DisplayName = displayName,
-            Email = email,
-            PhoneNumber = phoneNumber,
-            RoleId = roleId,
+            DisplayName = request.Username,
+            Email = request.Email,
+            PhoneNumber = request.PhoneNumber,
+            RoleId = request.RoleId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
-        await _userRepo.AddAsync(user);
-        await _userRepo.SaveChangesAsync();
+        await _userRepository.CreateAsync(user);
+        await _userRepository.SaveChangesAsync();
 
-        return user;
+        return MapToResponse(user);
     }
 
-    public async Task<User?> UpdateUserAsync(Guid userId, Guid currentUserId, string? displayName, string? email, string? phoneNumber, bool? isActive)
+    public async Task<UserResponse?> UpdateUser(Guid id, UpdateUserRequest request)
     {
-        var user = await _userRepo.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(id);
         if (user == null) return null;
 
-        if (userId == currentUserId && isActive.HasValue && !isActive.Value)
-        {
-            throw new Exception("You cannot disable your own account");
-        }
+        var currentUserId = _currentUserService.UserId!.Value;
 
-        if (displayName != null) user.DisplayName = displayName;
-        if (email != null) user.Email = email;
-        if (phoneNumber != null) user.PhoneNumber = phoneNumber;
-        if (isActive.HasValue) user.IsActive = isActive.Value;
+        if (id == currentUserId && request.IsActive.HasValue)
+            throw new Exception("You cannot activate/deactivate your own account");
+        if (user.UserRole?.RoleName == "admin" && request.IsActive.HasValue)
+            throw new Exception("You cannot activate/deactivate user with [admin] role");
 
-        await _userRepo.UpdateAsync(user);
-        await _userRepo.SaveChangesAsync();
+        if (request.DisplayName != null) user.DisplayName = request.DisplayName;
+        if (request.Email != null) user.Email = request.Email;
+        if (request.PhoneNumber != null) user.PhoneNumber = request.PhoneNumber;
+        if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
 
-        return user;
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+
+        return MapToResponse(user);
     }
 
-    public async Task<bool> DisableUserAsync(Guid userId, Guid currentUserId)
+    private UserResponse MapToResponse(User user)
     {
-        var user = await _userRepo.GetByIdAsync(userId);
-        if (user == null) return false;
-
-        if (userId == currentUserId)
+        return new UserResponse
         {
-            throw new Exception("You cannot disable your own account");
-        }
-
-        user.IsActive = false;
-        await _userRepo.UpdateAsync(user);
-        await _userRepo.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<User?> AssignRoleAsync(Guid userId, Guid roleId, Guid currentUserId)
-    {
-        var user = await _userRepo.GetByIdAsync(userId);
-        if (user == null) return null;
-
-        var role = await _roleRepo.GetByIdAsync(roleId);
-        if (role == null) return null;
-
-        if (userId == currentUserId)
-        {
-            var currentRole = await _roleRepo.GetByIdAsync(user.RoleId);
-            if (currentRole?.RoleName == "admin" && role.RoleName != "admin")
-            {
-                throw new Exception("You cannot remove your own [admin] role");
-            }
-        }
-
-        user.RoleId = roleId;
-        await _userRepo.UpdateAsync(user);
-        await _userRepo.SaveChangesAsync();
-
-        return user;
+            UserId = user.UserId,
+            Username = user.Username,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            RoleId = user.UserRole.RoleId,
+            RoleName = user.UserRole.RoleName,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt
+        };
     }
 }
