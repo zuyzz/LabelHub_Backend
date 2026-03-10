@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using DataLabelProject.Application.DTOs.Annotations;
 using DataLabelProject.Business.Models;
@@ -55,29 +56,39 @@ public class AnnotationService : IAnnotationService
 
         var payload = request.Payload;
 
+        if (payload.Bboxes == null || !payload.Bboxes.Any())
+            throw new ArgumentException("Payload bboxes is required and must contain at least one bbox");
+
         if (payload.ExtensionData != null && payload.ExtensionData.Count > 0)
             throw new ArgumentException($"Payload contains unexpected field(s): {string.Join(", ", payload.ExtensionData.Keys)}");
 
-        if (string.IsNullOrWhiteSpace(payload.Type) || !payload.Type.Equals("bbox", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Payload type must be 'bbox'");
+        for (var i = 0; i < payload.Bboxes.Count; i++)
+        {
+            var box = payload.Bboxes[i];
+            if (box == null)
+                throw new ArgumentException($"Payload bboxes[{i}] is null");
 
-        if (string.IsNullOrWhiteSpace(payload.Label))
-            throw new ArgumentException("Payload label is required");
+            if (string.IsNullOrWhiteSpace(box.Label))
+                throw new ArgumentException($"Payload bboxes[{i}].label is required");
 
-        if (!payload.X.HasValue)
-            throw new ArgumentException("Payload x is required");
+            if (!box.X.HasValue)
+                throw new ArgumentException($"Payload bboxes[{i}].x is required");
 
-        if (!payload.Y.HasValue)
-            throw new ArgumentException("Payload y is required");
+            if (!box.Y.HasValue)
+                throw new ArgumentException($"Payload bboxes[{i}].y is required");
 
-        if (!payload.Width.HasValue)
-            throw new ArgumentException("Payload width is required");
+            if (!box.Width.HasValue)
+                throw new ArgumentException($"Payload bboxes[{i}].width is required");
 
-        if (!payload.Height.HasValue)
-            throw new ArgumentException("Payload height is required");
+            if (!box.Height.HasValue)
+                throw new ArgumentException($"Payload bboxes[{i}].height is required");
 
-        if (payload.Width <= 0 || payload.Height <= 0)
-            throw new ArgumentException("Payload width and height must be greater than zero");
+            if (box.Width <= 0 || box.Height <= 0)
+                throw new ArgumentException($"Payload bboxes[{i}].width and height must be greater than zero");
+
+            if (box.ExtensionData != null && box.ExtensionData.Count > 0)
+                throw new ArgumentException($"Payload bboxes[{i}] contains unexpected field(s): {string.Join(", ", box.ExtensionData.Keys)}");
+        }
 
         var task = await _taskRepository.GetByIdAsync(request.TaskId);
         if (task == null)
