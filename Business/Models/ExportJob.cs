@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -13,7 +14,7 @@ public partial class ExportJob
 
     public string Format { get; set; } = null!;
 
-    public string Status { get; set; } = null!;
+    public ExportJobStatus Status { get; set; }
 
     public string? FileUri { get; set; }
 
