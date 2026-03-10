@@ -16,7 +16,7 @@ public class ExportJobConfiguration : IEntityTypeConfiguration<ExportJob>
         entity.Property(e => e.InitiatorId).HasColumnName("initiatorId");
         entity.Property(e => e.ProjectId).HasColumnName("projectId");
         entity.Property(e => e.Format).HasColumnName("format").HasColumnType("character varying");
-        entity.Property(e => e.Status).HasColumnName("status").HasColumnType("character varying");
+        entity.Property(e => e.Status).HasColumnName("status");
         entity.Property(e => e.FileUri).HasColumnName("fileUri");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
 

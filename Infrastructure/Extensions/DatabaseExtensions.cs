@@ -18,6 +18,7 @@ public static class DatabaseExtensions
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
         dataSourceBuilder.MapEnum<AssignmentStatus>("enum_assignment_status");
+        dataSourceBuilder.MapEnum<ExportJobStatus>("enum_export_job_status");
         var dataSource = dataSourceBuilder.Build();
 
         services.AddDbContext<AppDbContext>(options =>
