@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -11,7 +12,7 @@ public partial class Review
 
     public Guid ReviewerId { get; set; }
 
-    public string Result { get; set; } = null!;
+    public ReviewResult Result { get; set; }
 
     public string? Feedback { get; set; }
 

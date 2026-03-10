@@ -15,7 +15,10 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
         entity.Property(e => e.ReviewId).HasColumnName("reviewId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.AnnotationId).HasColumnName("annotationId");
         entity.Property(e => e.ReviewerId).HasColumnName("reviewerId");
-        entity.Property(e => e.Result).HasColumnName("result").HasColumnType("character varying");
+        entity.Property(e => e.Result)
+            .HasColumnName("result")
+            .HasColumnType("character varying")
+            .HasConversion<string>();
         entity.Property(e => e.Feedback).HasColumnName("feedback");
         entity.Property(e => e.ReviewedAt).HasColumnName("reviewedAt");
         entity.Property(e => e.TaskId).HasColumnName("taskId");
