@@ -7,6 +7,9 @@ using DataLabelProject.Data.Repositories.Implementations.Roles;
 using DataLabelProject.Data.Repositories.Implementations.Users;
 using DataLabelProject.Data.Repositories.Implementations.Datasets;
 using DataLabelProject.Data.Repositories.Implementations.DatasetItems;
+using DataLabelProject.Data.Repositories.Implementations.LabelingTasks;
+using DataLabelProject.Data.Repositories.Implementations.Assignments;
+using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Business.Services.Roles;
@@ -20,6 +23,7 @@ using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.FileUpload.Metadata;
 using DataLabelProject.Business.Services.ProjectTemplates;
 using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
+using DataLabelProject.Business.Services.Tasks;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -43,6 +47,8 @@ public static class ServiceExtensions
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
+        services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
+        services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -56,6 +62,7 @@ public static class ServiceExtensions
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
+        services.AddScoped<ILabelingTaskService, LabelingTaskService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();

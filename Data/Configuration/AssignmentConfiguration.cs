@@ -1,4 +1,5 @@
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,9 +17,9 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         entity.Property(e => e.TaskId).HasColumnName("taskId");
         entity.Property(e => e.AssignedTo).HasColumnName("assignedTo");
         entity.Property(e => e.AssignedBy).HasColumnName("assignedBy");
-        entity.Property(e => e.AssignedAt).HasColumnName("assignedAt").HasDefaultValueSql("now()");
-        entity.Property(e => e.DeadlineAt).HasColumnName("deadlineAt").IsRequired().HasDefaultValueSql("now()");
-        entity.Property(e => e.Status).HasColumnName("status").HasColumnType("character varying");
+        entity.Property(e => e.AssignedAt).HasColumnName("assignedAt").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
+        entity.Property(e => e.DeadlineAt).HasColumnName("deadlineAt").HasColumnType("timestamp with time zone").IsRequired().HasDefaultValueSql("now()");
+        entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(AssignmentStatus.incompleted);
 
         entity.HasOne(d => d.AssignedByUser).WithMany(p => p.AssignmentAssignedByUsers)
             .HasForeignKey(d => d.AssignedBy)
