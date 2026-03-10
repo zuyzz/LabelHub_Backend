@@ -26,6 +26,8 @@ using DataLabelProject.Business.Services.ProjectTemplates;
 using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
 using DataLabelProject.Business.Services.Annotations;
 using DataLabelProject.Business.Services.Tasks;
+using DataLabelProject.Business.Services.Consensus;
+using DataLabelProject.Data.Repositories.Implementations.Consensus;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -52,6 +54,7 @@ public static class ServiceExtensions
         services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
         services.AddScoped<IAnnotationRepository, AnnotationRepository>();
+        services.AddScoped<IConsensusRepository, ConsensusRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -67,6 +70,10 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetItemService, DatasetItemService>();
         services.AddScoped<ILabelingTaskService, LabelingTaskService>();
         services.AddScoped<IAnnotationService, AnnotationService>();
+        services.AddScoped<IIoUService, IoUService>();
+        services.AddScoped<IClusteringService, ClusteringService>();
+        services.AddScoped<IAgreementService, AgreementService>();
+        services.AddScoped<IConsensusService, ConsensusService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();

@@ -22,6 +22,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Category> Categories { get; set; }
 
+    public virtual DbSet<Consensus> Consensuses { get; set; }
+
     public virtual DbSet<Dataset> Datasets { get; set; }
 
     public virtual DbSet<DatasetItem> DatasetItems { get; set; }

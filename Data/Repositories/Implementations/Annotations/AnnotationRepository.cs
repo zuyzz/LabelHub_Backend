@@ -1,5 +1,6 @@
 using DataLabelProject.Data;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +30,20 @@ public class AnnotationRepository : IAnnotationRepository
             .Include(a => a.Reviews)
             .Where(a => a.AnnotatorId == annotatorId)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Annotation>> GetApprovedByTaskIdAsync(Guid taskId)
+    {
+        var annotations = await _context.Annotations
+            .AsNoTracking()
+            .Include(a => a.Reviews)
+            .Where(a => a.TaskId == taskId && a.Reviews.Any())
+            .ToListAsync();
+
+        return annotations.Where(a =>
+            a.Reviews
+                .OrderByDescending(r => r.ReviewedAt ?? DateTime.MinValue)
+                .First().Result == ReviewResult.approved);
     }
 
     public async Task<Annotation?> GetByIdAsync(Guid annotationId)
