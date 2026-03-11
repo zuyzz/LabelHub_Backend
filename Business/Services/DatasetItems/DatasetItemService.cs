@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
@@ -52,9 +53,11 @@ namespace DataLabelProject.Business.Services.DatasetItems
 
         public async Task<DatasetItemResponse> CreateDataItem(Guid datasetId, string mediaType, string storageUri, string metadata)
         {
-            var dataset = _datasetRepository.GetByIdAsync(datasetId);
+            var dataset = await _datasetRepository.GetByIdAsync(datasetId);
             if (dataset == null) 
                 throw new InvalidOperationException("Dataset not found");
+                
+            var jsonMetadata = JsonSerializer.Serialize(metadata);
 
             var item = new DatasetItem
             {
@@ -62,7 +65,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
                 DatasetId = datasetId,
                 MediaType = mediaType,
                 StorageUri = storageUri,
-                Metadata = metadata,
+                Metadata = jsonMetadata,
                 CreatedAt = DateTime.UtcNow
             };
 
