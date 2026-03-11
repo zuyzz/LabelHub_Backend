@@ -14,6 +14,16 @@ public class ProjectDatasetRepository : IProjectDatasetRepository
         _context = context;
     }
 
+    public async Task<IEnumerable<ProjectDataset>> GetProjectByDatasetAsync(Guid datasetId)
+    {
+        return await _context.ProjectDatasets
+            .OrderByDescending(pd => pd.AttachedAt)
+            .Include(pd => pd.Project)
+            .Include(pd => pd.Dataset)
+            .Where(pd => pd.DatasetId == datasetId)
+            .ToListAsync();
+    }
+
     public async Task<ProjectDataset?> GetByIdAsync(Guid projectId, Guid datasetId)
     {
         return await _context.ProjectDatasets

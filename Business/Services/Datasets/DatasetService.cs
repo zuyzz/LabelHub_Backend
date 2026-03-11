@@ -11,21 +11,27 @@ namespace DataLabelProject.Business.Services.Datasets;
 public class DatasetService : IDatasetService
 {
     private readonly IDatasetRepository _datasetRepository;
+    private readonly IDatasetItemRepository _datasetItemRepository;
     private readonly IProjectRepository _projectRepository;
     private readonly IProjectDatasetRepository _projectDatasetRepository;
+    private readonly ILabelingTaskRepository _taskRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorage _fileStorage;
 
     public DatasetService(
         IDatasetRepository datasetRepository,
+        IDatasetItemRepository datasetItemRepository,
         IProjectRepository projectRepository,
         IProjectDatasetRepository projectDatasetRepository,
+        ILabelingTaskRepository taskRepository,
         ICurrentUserService currentUserService,
         IFileStorage fileStorage)
     {
         _datasetRepository = datasetRepository;
+        _datasetItemRepository = datasetItemRepository;
         _projectRepository = projectRepository;
         _projectDatasetRepository = projectDatasetRepository;
+        _taskRepository = taskRepository;
         _currentUserService = currentUserService;
         _fileStorage = fileStorage;
     }
@@ -164,6 +170,17 @@ public class DatasetService : IDatasetService
 
         await _projectDatasetRepository.CreateAsync(projectDataset);
         await _projectDatasetRepository.SaveChangesAsync();
+
+        var items = await _datasetItemRepository.GetAllByDatasetIdAsync(datasetId);
+        var tasks = items.Select(i => new LabelingTask
+        {
+            TaskId = Guid.NewGuid(),
+            ProjectId = projectId,
+            DatasetItemId = i.ItemId
+        });
+
+        await _taskRepository.AddRangeAsync(tasks);
+        await _taskRepository.SaveChangesAsync();
     }
 
     public async Task RemoveDatasetFromProject(Guid datasetId, Guid projectId)
@@ -182,6 +199,11 @@ public class DatasetService : IDatasetService
             throw new UnauthorizedAccessException(
                 "Managers can only remove their datasets from their own projects");
         }
+
+        var tasks = await _taskRepository.GetAllByDatasetIdAsync(datasetId);
+
+        await _taskRepository.DeleteRangeAsync(tasks);
+        await _taskRepository.SaveChangesAsync();
 
         await _projectDatasetRepository.DeleteAsync(projectDataset);
         await _projectDatasetRepository.SaveChangesAsync();

@@ -31,6 +31,14 @@ public class DatasetItemRepository : IDatasetItemRepository
         return (items, totalCount);
     }
 
+    public async Task<IEnumerable<DatasetItem>> GetAllByDatasetIdAsync(Guid datasetId)
+    {
+        return await _context.DatasetItems
+            .Where(i => i.DatasetId == datasetId)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<DatasetItem?> GetByIdAsync(Guid id)
     {
         return await _context.DatasetItems
