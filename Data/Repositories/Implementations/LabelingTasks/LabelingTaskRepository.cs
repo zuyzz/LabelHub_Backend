@@ -28,6 +28,14 @@ public class LabelingTaskRepository : ILabelingTaskRepository
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
     }
 
+    public async Task<IEnumerable<LabelingTask>> GetAllByDatasetIdAsync(Guid datasetId)
+    {
+        return await _db.LabelingTasks
+            .Include(t => t.LabelingTaskDatasetItem)
+            .Where(t => t.LabelingTaskDatasetItem.DatasetId == datasetId)
+            .ToListAsync();
+    }
+
     public async Task<List<LabelingTask>> GetByIdsAsync(IEnumerable<Guid> taskIds)
     {
         return await _db.LabelingTasks
@@ -49,6 +57,16 @@ public class LabelingTaskRepository : ILabelingTaskRepository
     public async Task AddAsync(LabelingTask task)
     {
         await _db.LabelingTasks.AddAsync(task);
+    }
+
+    public async Task AddRangeAsync(IEnumerable<LabelingTask> tasks)
+    {
+        await _db.LabelingTasks.AddRangeAsync(tasks);
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<LabelingTask> tasks)
+    {
+        _db.LabelingTasks.RemoveRange(tasks);
     }
 
     public async Task SaveChangesAsync()
