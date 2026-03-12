@@ -7,7 +7,7 @@ namespace DataLabelProject.Business.Services.FileUpload;
 /// <summary>
 /// Processes archive uploads with production-grade optimizations.
 /// - Streams archive to temp file (not RAM)
-/// - Extracts metadata from header bytes only (8KB)
+/// - Extracts image metadata using MetadataExtractor library
 /// - Enforces resource limits
 /// - Uses bounded parallelism
 /// </summary>
@@ -21,16 +21,16 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
     private const long MaxEntrySize = 100 * 1024 * 1024;   // 100 MB per file
     private const int MaxFileCount = 1000;
 
-    public ArchiveUploadStrategy(Storage.IFileStorage storage, IEnumerable<IMetadataExtractor> metadataExtractors)
+    public ArchiveUploadStrategy(Storage.IFileStorage storage, MetadataExtractorFactory metadataExtractorFactory)
     {
         _storage = storage;
-        _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
+        _metadataExtractorFactory = metadataExtractorFactory;
     }
 
     public bool CanHandle(IFormFile file)
     {
         var ext = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
-        return ext == ".zip" || ext == ".rar";
+        return MediaTypeConstants.Archive.SupportedExtensions.Contains(ext);
     }
 
     public async Task<FileProcessResult> ProcessAsync(
@@ -94,7 +94,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                     ms.Position = 0;
 
                     var fileId = Guid.NewGuid().ToString();
-                    var extension = Path.GetExtension(file.FileName);
+                    var extension = Path.GetExtension(entry.Key); // Extract from actual file in archive, not archive file
                     var filename = $"{fileId}{extension}";
 
                     // Queue parallel upload task
@@ -136,27 +136,10 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         string baseFolder)
     {
         var path = $"{baseFolder}/{filename}";
-        var contentType = GetContentTypeByExtension(Path.GetExtension(filename));
+        var contentType = MediaTypeConstants.GetContentTypeByExtension(Path.GetExtension(filename));
 
-        // Extract metadata from header bytes only (8KB)
-        string? metadata = null;
-        try
-        {
-            metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream);
-        }
-        catch
-        {
-            // Swallow metadata extraction errors - item will be created without metadata
-        }
-
-        // Reset stream for upload
-        stream.Position = 0;
-
-        // Upload file
-        var uri = await _storage.CreateFileAsync(
-            stream,
-            path,
-            contentType);
+        var metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream, contentType);
+        var uri = await _storage.CreateFileAsync(stream, path, contentType);
 
         return new FileItem(filename, contentType, uri, metadata ?? "");
     }
@@ -166,40 +149,10 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
         ext = ext.ToLowerInvariant();
         return mediaType.ToLowerInvariant() switch
         {
-            "image" => new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" }.Contains(ext),
-            // "audio" => new[] { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a" }.Contains(ext),
-            // "video" => new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv" }.Contains(ext),
+            "image" => MediaTypeConstants.Image.SupportedExtensions.Contains(ext),
+            // "audio" => MediaTypeConstants.Audio.SupportedExtensions.Contains(ext),
+            // "video" => MediaTypeConstants.Video.SupportedExtensions.Contains(ext),
             _ => false
-        };
-    }
-
-    private static string GetContentTypeByExtension(string ext)
-    {
-        ext = ext.ToLowerInvariant();
-        // Image types
-        return ext switch
-        {
-            ".png" => "image/png",
-            ".jpg" => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            // Audio types
-            // ".mp3" => "audio/mpeg",
-            // ".wav" => "audio/wav",
-            // ".flac" => "audio/flac",
-            // ".aac" => "audio/aac",
-            // ".ogg" => "audio/ogg",
-            // ".m4a" => "audio/mp4",
-            // Video types
-            // ".mp4" => "video/mp4",
-            // ".avi" => "video/x-msvideo",
-            // ".mov" => "video/quicktime",
-            // ".mkv" => "video/x-matroska",
-            // ".webm" => "video/webm",
-            // ".flv" => "video/x-flv",
-            // ".wmv" => "video/x-ms-wmv",
-            _ => "application/octet-stream"
         };
     }
 }

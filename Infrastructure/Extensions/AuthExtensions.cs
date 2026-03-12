@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using DataLabelProject.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -49,12 +51,33 @@ public static class AuthExtensions
                             context.Token = token;
                         }
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        // Check if user is still active after JWT validation
+                        var userId = context.Principal?.FindFirst("sub")?.Value;
+
+                        if (userId == null)
+                        {
+                            context.Fail("User ID not found in token");
+                            return;
+                        }
+
+                        var db = context.HttpContext.RequestServices
+                            .GetRequiredService<AppDbContext>();
+
+                        var user = await db.Users.FindAsync(Guid.Parse(userId));
+
+                        if (user == null || !user.IsActive)
+                        {
+                            context.Fail("User account is disabled or not found");
+                        }
                     }
                 };
             });
 
         services.AddAuthorization();
-        
+
         return services;
     }
 }

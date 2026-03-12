@@ -51,7 +51,7 @@ public class ConsensusService : IConsensusService
 			.FirstOrDefaultAsync();
 
 		var threshold = projectConfig?.AgreementThreshold ?? 0.8;
-		var minimumAnnotations = projectConfig?.MinimumAnnotationsPerTask ?? 3;
+		var minimumAnnotations = projectConfig?.AnnotationsPerSample ?? 3;
 
 		if (distinctAnnotatorCount < minimumAnnotations)
 			throw new InvalidOperationException(

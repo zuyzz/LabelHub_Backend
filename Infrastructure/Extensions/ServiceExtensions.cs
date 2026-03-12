@@ -10,6 +10,7 @@ using DataLabelProject.Data.Repositories.Implementations.DatasetItems;
 using DataLabelProject.Data.Repositories.Implementations.LabelingTasks;
 using DataLabelProject.Data.Repositories.Implementations.Assignments;
 using DataLabelProject.Data.Repositories.Implementations.Annotations;
+using DataLabelProject.Data.Repositories.Implementations.RefreshTokens;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -43,6 +44,7 @@ public static class ServiceExtensions
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
@@ -59,6 +61,7 @@ public static class ServiceExtensions
         services.AddScoped<IExportJobRepository, ExportJobRepository>();
 
         // Services
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
@@ -80,6 +83,7 @@ public static class ServiceExtensions
 
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
+        services.AddScoped<MetadataExtractorFactory>();
 
         return services;
     }

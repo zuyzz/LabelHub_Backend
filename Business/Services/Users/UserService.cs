@@ -10,12 +10,18 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
 
-    public UserService(IUserRepository userRepository, IRoleRepository roleRepository, ICurrentUserService currentUserService)
+    public UserService(
+        IUserRepository userRepository,
+        IRoleRepository roleRepository,
+        ICurrentUserService currentUserService,
+        IRefreshTokenRepository refreshTokenRepository)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _currentUserService = currentUserService;
+        _refreshTokenRepository = refreshTokenRepository;
     }
 
     public async Task<PagedResponse<UserResponse>> GetUsers(UserQueryParameters @params)
@@ -88,7 +94,17 @@ public class UserService : IUserService
         if (request.DisplayName != null) user.DisplayName = request.DisplayName;
         if (request.Email != null) user.Email = request.Email;
         if (request.PhoneNumber != null) user.PhoneNumber = request.PhoneNumber;
-        if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
+
+        // When admin disables user, revoke all refresh tokens
+        if (request.IsActive.HasValue && request.IsActive.Value == false && user.IsActive == true)
+        {
+            user.IsActive = false;
+            await _refreshTokenRepository.RevokeAllUserTokensAsync(id);
+        }
+        else if (request.IsActive.HasValue)
+        {
+            user.IsActive = request.IsActive.Value;
+        }
 
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();

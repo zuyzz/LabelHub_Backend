@@ -1,9 +1,11 @@
 using DataLabelProject.Application.DTOs.Reviews;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using ConsensusModel = DataLabelProject.Business.Models.Consensus;
 
 namespace DataLabelProject.Business.Services.Reviews
 {
@@ -34,7 +36,7 @@ namespace DataLabelProject.Business.Services.Reviews
                 ReviewId = Guid.NewGuid(),
                 AnnotationId = request.AnnotationId,
                 ReviewerId = _currentUserService.UserId ?? throw new InvalidOperationException("User not authenticated"),
-                Result = request.Result,
+                Result = Enum.Parse<ReviewResult>(request.Result),
                 Feedback = request.Feedback,
                 ReviewedAt = DateTime.UtcNow,
                 TaskId = annotation.TaskId
@@ -62,7 +64,7 @@ namespace DataLabelProject.Business.Services.Reviews
                 ReviewId = review.ReviewId,
                 AnnotationId = review.AnnotationId,
                 ReviewerId = review.ReviewerId,
-                Result = review.Result,
+                Result = review.Result.ToString(),
                 Feedback = review.Feedback,
                 ReviewedAt = review.ReviewedAt,
                 TaskId = review.TaskId
@@ -117,7 +119,7 @@ namespace DataLabelProject.Business.Services.Reviews
 
             if (existing == null)
             {
-                existing = new Consensus
+                existing = new ConsensusModel
                 {
                     ConsensusId = Guid.NewGuid(),
                     TaskId = taskId,

@@ -1,9 +1,6 @@
 using DataLabelProject.Application.DTOs.Auth;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -11,15 +8,21 @@ namespace DataLabelProject.Business.Services.Auth
 {
     public class AuthService : IAuthService
     {
-        private readonly IConfiguration _configuration;
         private readonly IUserRepository _userRepo;
         private readonly IRoleRepository _roleRepo;
+        private readonly IRefreshTokenRepository _refreshTokenRepo;
+        private readonly IJwtTokenService _jwtTokenService;
 
-        public AuthService(IConfiguration configuration, IUserRepository userRepo, IRoleRepository roleRepo)
+        public AuthService(
+            IUserRepository userRepo,
+            IRoleRepository roleRepo,
+            IRefreshTokenRepository refreshTokenRepo,
+            IJwtTokenService jwtTokenService)
         {
-            _configuration = configuration;
             _userRepo = userRepo;
             _roleRepo = roleRepo;
+            _refreshTokenRepo = refreshTokenRepo;
+            _jwtTokenService = jwtTokenService;
         }
 
         /// <summary>
@@ -44,22 +47,20 @@ namespace DataLabelProject.Business.Services.Auth
         }
 
         /// <summary>
-        /// Login method - validates user credentials and generates JWT token
-        /// Validates username/email, password, and active status
-        /// Returns specific error messages for different failure scenarios
+        /// Login method - validates user credentials and generates JWT + refresh tokens
+        /// Prevents login when user.IsActive = false
         /// </summary>
         public async Task<(LoginResponse? Response, string? ErrorMessage)> LoginAsync(LoginRequest request)
         {
-            // Find user by username or email (case-insensitive)
+            // Find user by username or email
             var user = await _userRepo.GetByUsernameOrEmailAsync(request.UsernameOrEmail);
 
-            // Check if user exists
             if (user == null)
             {
                 return (null, "Username or email not found");
             }
 
-            // Check if user is active
+            // Prevent login if user is disabled
             if (!user.IsActive)
             {
                 return (null, "Account has been deactivated. Please contact administrator");
@@ -75,61 +76,135 @@ namespace DataLabelProject.Business.Services.Auth
             var role = await _roleRepo.GetByIdAsync(user.RoleId);
             var roleName = role?.RoleName ?? "Unknown";
 
-            // Generate JWT token
-            var token = GenerateJwtToken(user.UserId, user.Username, roleName);
-            var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440");
-            var expiresAt = DateTime.UtcNow.AddMinutes(expireMinutes);
+            // Generate access token (15 minutes)
+            var accessToken = _jwtTokenService.GenerateAccessToken(user.UserId, user.Username, roleName);
+            var accessTokenExpiry = DateTime.UtcNow.AddMinutes(_jwtTokenService.GetAccessTokenExpiryMinutes());
 
-            var message = "Login successful";
+            // Generate refresh token (7 days)
+            var refreshToken = _jwtTokenService.GenerateRefreshToken();
+            var refreshTokenHash = _jwtTokenService.HashRefreshToken(refreshToken);
+
+            // Store refresh token in database
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.UserId,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtTokenService.GetRefreshTokenExpiryDays())
+            };
+
+            await _refreshTokenRepo.CreateAsync(refreshTokenEntity);
+            await _refreshTokenRepo.SaveChangesAsync();
 
             var response = new LoginResponse
             {
                 UserId = user.UserId,
                 Username = user.Username,
                 RoleName = roleName,
-                Token = token,
-                ExpiresAt = expiresAt,
-                Message = message,
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                AccessTokenExpiresAt = accessTokenExpiry,
+                Message = "Login successful"
             };
-            
+
             return (response, null);
         }
 
         /// <summary>
-        /// Generate JWT token for authenticated user
+        /// Refresh token flow - validates refresh token and generates new token pair
+        /// Implements token rotation (old token revoked, new token issued)
+        /// Rejects disabled users
         /// </summary>
-        private string GenerateJwtToken(Guid userId, string username, string roleName)
+        public async Task<(RefreshTokenResponse? Response, string? ErrorMessage)> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            var key = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
-            var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440");
+            var tokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
 
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            // Find refresh token in database
+            var token = await _refreshTokenRepo.GetByTokenHashAsync(tokenHash);
 
-            var claims = new[]
+            if (token == null)
             {
-                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, roleName)
+                return (null, "Invalid refresh token");
+            }
+
+            // Check if token is revoked
+            if (token.RevokedAt != null)
+            {
+                return (null, "Refresh token has been revoked");
+            }
+
+            // Check if token is expired
+            if (token.ExpiresAt < DateTime.UtcNow)
+            {
+                return (null, "Refresh token has expired");
+            }
+
+            // Check if user is still active
+            var user = await _userRepo.GetByIdAsync(token.UserId);
+            if (user == null || !user.IsActive)
+            {
+                return (null, "Account has been deactivated");
+            }
+
+            // Get role name
+            var role = await _roleRepo.GetByIdAsync(user.RoleId);
+            var roleName = role?.RoleName ?? "Unknown";
+
+            // Generate new access token
+            var newAccessToken = _jwtTokenService.GenerateAccessToken(user.UserId, user.Username, roleName);
+            var accessTokenExpiry = DateTime.UtcNow.AddMinutes(_jwtTokenService.GetAccessTokenExpiryMinutes());
+
+            // Generate new refresh token (token rotation)
+            var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
+            var newRefreshTokenHash = _jwtTokenService.HashRefreshToken(newRefreshToken);
+
+            // Revoke old refresh token
+            token.RevokedAt = DateTime.UtcNow;
+            await _refreshTokenRepo.UpdateAsync(token);
+
+            // Store new refresh token
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                UserId = user.UserId,
+                TokenHash = newRefreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtTokenService.GetRefreshTokenExpiryDays())
+            };
+            token.ReplacedByToken = newRefreshTokenEntity.TokenId;
+            await _refreshTokenRepo.CreateAsync(newRefreshTokenEntity);
+            await _refreshTokenRepo.SaveChangesAsync();
+
+            var response = new RefreshTokenResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+                AccessTokenExpiresAt = accessTokenExpiry
             };
 
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expireMinutes),
-                signingCredentials: credentials
-            );
+            return (response, null);
+        }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        /// <summary>
+        /// Logout - revokes refresh token
+        /// </summary>
+        public async Task<(bool Success, string? ErrorMessage)> LogoutAsync(LogoutRequest request)
+        {
+            var tokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
+
+            var token = await _refreshTokenRepo.GetByTokenHashAsync(tokenHash);
+
+            if (token != null && token.RevokedAt == null)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+                await _refreshTokenRepo.UpdateAsync(token);
+                await _refreshTokenRepo.SaveChangesAsync();
+            }
+
+            // Always return success even if token not found (idempotent operation)
+            return (true, null);
         }
 
         /// <summary>
         /// Change password for users
         /// Verifies old password before updating
-        /// Sets IsFirstLogin = false
         /// Returns error message if validation fails
         /// </summary>
         public async Task<(User? User, string? ErrorMessage)> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
