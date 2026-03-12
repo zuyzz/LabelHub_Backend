@@ -13,8 +13,7 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.ToTable("Annotation");
 
         entity.Property(e => e.AnnotationId).HasColumnName("annotationId").HasDefaultValueSql("uuid_generate_v4()");
-        entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
-        entity.Property(e => e.ProjectId).HasColumnName("projectId");
+        entity.Property(e => e.TaskId).HasColumnName("taskId");
         entity.Property(e => e.AnnotatorId).HasColumnName("annotatorId");
         entity.Property(e => e.Payload).HasColumnName("payload").HasColumnType("jsonb");
         entity.Property(e => e.SubmittedAt).HasColumnName("submittedAt");
@@ -24,14 +23,9 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Annotation_annotatorId_fkey");
 
-        entity.HasOne(d => d.AnnotationDatasetItem).WithMany(p => p.Annotations)
-            .HasForeignKey(d => d.DatasetItemId)
+        entity.HasOne(d => d.AnnotationTask).WithMany(p => p.Annotations)
+            .HasForeignKey(d => d.TaskId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Annotation_datasetItemId_fkey");
-
-        entity.HasOne(d => d.AnnotationProject).WithMany(p => p.Annotations)
-            .HasForeignKey(d => d.ProjectId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Annotation_projectId_fkey");
+            .HasConstraintName("Annotation_taskId_fkey");
     }
 }

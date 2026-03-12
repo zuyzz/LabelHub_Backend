@@ -20,11 +20,19 @@ public class ReviewRepository : IReviewRepository
             .FirstOrDefaultAsync(r => r.ReviewId == reviewId);
     }
 
-    public async Task<IEnumerable<Review>> GetByAnnotationIdAsync(Guid annotationId)
+    public async Task<IEnumerable<Review>> GetByTaskIdAsync(Guid taskId)
     {
         return await _context.Reviews
             .AsNoTracking()
-            .Where(r => r.AnnotationId == annotationId)
+            .Where(r => r.TaskId == taskId)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Review>> GetApprovedByTaskIdAsync(Guid taskId)
+    {
+        return await _context.Reviews
+            .Where(r => r.TaskId == taskId && r.Result == "approved")
+            .Include(r => r.ReviewAnnotation)
             .ToListAsync();
     }
 

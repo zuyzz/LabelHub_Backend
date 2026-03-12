@@ -18,8 +18,6 @@ public partial class DatasetItem
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
-    
-    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 
     public virtual Dataset ItemDataset { get; set; } = null!;
 }

@@ -7,9 +7,7 @@ public partial class Annotation
 {
     public Guid AnnotationId { get; set; }
 
-    // NB: database stores datasetItemId/projectId rather than taskId
-    public Guid DatasetItemId { get; set; }
-    public Guid ProjectId { get; set; }
+    public Guid TaskId { get; set; }
 
     public Guid AnnotatorId { get; set; }
 
@@ -21,7 +19,5 @@ public partial class Annotation
 
     public virtual User AnnotationAnnotator { get; set; } = null!;
 
-    public virtual DatasetItem AnnotationDatasetItem { get; set; } = null!;
-
-    public virtual Project AnnotationProject { get; set; } = null!;
+    public virtual LabelingTask AnnotationTask { get; set; } = null!;
 }

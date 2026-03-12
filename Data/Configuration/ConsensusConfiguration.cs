@@ -14,19 +14,13 @@ public class ConsensusConfiguration : IEntityTypeConfiguration<Consensus>
 
         entity.Property(e => e.ConsensusId).HasColumnName("consensusId").HasDefaultValueSql("gen_random_uuid()");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
-        entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
-        entity.Property(e => e.ProjectId).HasColumnName("projectId");
+        entity.Property(e => e.TaskId).HasColumnName("taskId");
         entity.Property(e => e.Payload).HasColumnName("payload").HasColumnType("jsonb");
         entity.Property(e => e.AgreementScore).HasColumnName("agreementScore");
 
-        entity.HasOne(d => d.ConsensusDatasetItem).WithMany()
-            .HasForeignKey(d => d.DatasetItemId)
+        entity.HasOne(d => d.ConsensusTask).WithMany()
+            .HasForeignKey(d => d.TaskId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Consensus_datasetItemId_fkey");
-
-        entity.HasOne(d => d.ConsensusProject).WithMany()
-            .HasForeignKey(d => d.ProjectId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Consensus_projectId_fkey");
+            .HasConstraintName("Consensus_taskId_fkey");
     }
 }

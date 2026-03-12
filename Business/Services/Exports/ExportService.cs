@@ -135,13 +135,13 @@ public class ExportService : IExportService
 
         var taskIds = tasks.Select(t => t.TaskId).ToList();
 
-        // Get all consensuses for these tasks' dataset items and project
+        // Get all consensuses for these tasks
         var consensuses = await _context.Consensuses
             .AsNoTracking()
-            .Where(c => c.ProjectId == projectId && tasks.Select(t => t.DatasetItemId).Contains(c.DatasetItemId))
+            .Where(c => taskIds.Contains(c.TaskId))
             .ToListAsync();
 
-        var consensusByDatasetItemId = consensuses.ToDictionary(c => c.DatasetItemId);
+        var consensusByTaskId = consensuses.ToDictionary(c => c.TaskId);
 
         var dataset = new ExportDataset();
         var categoriesMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -150,7 +150,8 @@ public class ExportService : IExportService
 
         foreach (var task in tasks)
         {
-            if (!consensusByDatasetItemId.TryGetValue(task.TaskId, out var consensus))
+            // Skip tasks without consensus
+            if (!consensusByTaskId.TryGetValue(task.TaskId, out var consensus))
                 continue;
 
             // Parse consensus payload
