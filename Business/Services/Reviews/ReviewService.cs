@@ -2,7 +2,6 @@ using DataLabelProject.Application.DTOs.Reviews;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data;
-using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Reviews
@@ -10,13 +9,11 @@ namespace DataLabelProject.Business.Services.Reviews
     public class ReviewService : IReviewService
     {
         private readonly AppDbContext _context;
-        private readonly IReviewRepository _reviewRepository;
         private readonly ICurrentUserService _currentUserService;
 
-        public ReviewService(AppDbContext context, IReviewRepository reviewRepository, ICurrentUserService currentUserService)
+        public ReviewService(AppDbContext context, ICurrentUserService currentUserService)
         {
             _context = context;
-            _reviewRepository = reviewRepository;
             _currentUserService = currentUserService;
         }
 
@@ -37,21 +34,21 @@ namespace DataLabelProject.Business.Services.Reviews
                 Result = request.Result,
                 Feedback = request.Feedback,
                 ReviewedAt = DateTime.UtcNow,
-                TaskId = annotation.TaskId
             };
 
-            await _reviewRepository.CreateAsync(review);
-            await _reviewRepository.SaveChangesAsync();
-
-            // after inserting a new review we attempt to recompute the consensus for the task
-            await EvaluateTaskConsensus(annotation.TaskId);
+            await _context.Reviews.AddAsync(review);
+            await _context.SaveChangesAsync();
 
             return MapToResponse(review);
         }
 
         public async Task<IEnumerable<ReviewResponse>> GetReviewsForTaskAsync(Guid taskId)
         {
-            var reviews = await _reviewRepository.GetByTaskIdAsync(taskId);
+            var reviews = await _context.Reviews
+                .AsNoTracking()
+                .Where(r => r.ReviewAnnotation.ProjectId == taskId)
+                .ToListAsync();
+
             return reviews.Select(MapToResponse);
         }
 
@@ -65,76 +62,78 @@ namespace DataLabelProject.Business.Services.Reviews
                 Result = review.Result,
                 Feedback = review.Feedback,
                 ReviewedAt = review.ReviewedAt,
-                TaskId = review.TaskId
             };
         }
 
-        private async Task EvaluateTaskConsensus(Guid taskId)
-        {
-            // Retrieve task and project configuration
-            var task = await _context.LabelingTasks
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.TaskId == taskId);
+    //     private async Task EvaluateTaskConsensus(Guid taskId)
+    //     {
+    //         // Retrieve task and project configuration
+    //         var task = await _context.LabelingTasks
+    //             .AsNoTracking()
+    //             .FirstOrDefaultAsync(t => t.TaskId == taskId);
 
-            if (task == null)
-                return;
+    //         if (task == null)
+    //             return;
 
-            var config = await _context.ProjectConfigs
-                .AsNoTracking()
-                .Where(c => c.ProjectId == task.ProjectId)
-                .OrderByDescending(c => c.ProjectConfigId)
-                .FirstOrDefaultAsync();
+    //         var config = await _context.ProjectConfigs
+    //             .AsNoTracking()
+    //             .Where(c => c.ProjectId == task.ProjectId)
+    //             .OrderByDescending(c => c.ProjectConfigId)
+    //             .FirstOrDefaultAsync();
 
-            if (config == null)
-                return;
+    //         if (config == null)
+    //             return;
 
-            // gather approved annotations (distinct by annotation id)
-            var approvedReviews = (await _reviewRepository.GetApprovedByTaskIdAsync(taskId)).ToList();
+    //         // gather approved annotations (distinct by annotation id)
+    //         var approvedReviews = await _context.Reviews
+    //             .Where(r => r.TaskId == taskId && r.Result == "approved")
+    //             .Include(r => r.ReviewAnnotation)
+    //             .ToListAsync();
 
-            var uniqueAnnotations = approvedReviews
-                .GroupBy(r => r.AnnotationId)
-                .Select(g => g.First().ReviewAnnotation)
-                .ToList();
+    //         var uniqueAnnotations = approvedReviews
+    //             .GroupBy(r => r.AnnotationId)
+    //             .Select(g => g.First().ReviewAnnotation)
+    //             .ToList();
 
-            if (uniqueAnnotations.Count < config.MinimumAnnotationsPerTask)
-                return;
+    //         if (uniqueAnnotations.Count < config.MinimumAnnotationsPerTask)
+    //             return;
 
-            // compute majority agreement score based on payload string equality
-            var payloadGroups = uniqueAnnotations
-                .GroupBy(a => a.Payload)
-                .Select(g => new { Payload = g.Key, Count = g.Count() });
+    //         // compute majority agreement score based on payload string equality
+    //         var payloadGroups = uniqueAnnotations
+    //             .GroupBy(a => a.Payload)
+    //             .Select(g => new { Payload = g.Key, Count = g.Count() });
 
-            var best = payloadGroups.OrderByDescending(g => g.Count).First();
-            double score = (double)best.Count / uniqueAnnotations.Count;
+    //         var best = payloadGroups.OrderByDescending(g => g.Count).First();
+    //         double score = (double)best.Count / uniqueAnnotations.Count;
 
-            if (score < config.AgreementThreshold)
-                return;
+    //         if (score < config.AgreementThreshold)
+    //             return;
 
-            var consensusPayload = best.Payload;
+    //         var consensusPayload = best.Payload;
 
-            var existing = await _context.Consensuses
-                .FirstOrDefaultAsync(c => c.TaskId == taskId);
+    //         var existing = await _context.Consensuses
+    //             .FirstOrDefaultAsync(c => c.TaskId == taskId);
 
-            if (existing == null)
-            {
-                existing = new Consensus
-                {
-                    ConsensusId = Guid.NewGuid(),
-                    TaskId = taskId,
-                    Payload = consensusPayload,
-                    AgreementScore = score
-                };
+    //         if (existing == null)
+    //         {
+    //             existing = new Consensus
+    //             {
+    //                 ConsensusId = Guid.NewGuid(),
+    //                 TaskId = taskId,
+    //                 Payload = consensusPayload,
+    //                 AgreementScore = score
+    //             };
 
-                await _context.Consensuses.AddAsync(existing);
-            }
-            else
-            {
-                existing.Payload = consensusPayload;
-                existing.AgreementScore = score;
-                _context.Consensuses.Update(existing);
-            }
+    //             await _context.Consensuses.AddAsync(existing);
+    //         }
+    //         else
+    //         {
+    //             existing.Payload = consensusPayload;
+    //             existing.AgreementScore = score;
+    //             _context.Consensuses.Update(existing);
+    //         }
 
-            await _context.SaveChangesAsync();
-        }
+    //         await _context.SaveChangesAsync();
+    //     }
     }
 }

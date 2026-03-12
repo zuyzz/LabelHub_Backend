@@ -14,7 +14,7 @@ public partial class ProjectConfig
 
     public double AgreementThreshold { get; set; } = 0.8;
 
-    public int MinimumAnnotationsPerTask { get; set; } = 3;
+    public int AnnotationsPerSample { get; set; } = 3;
 
     public virtual Project Project { get; set; } = null!;
 }

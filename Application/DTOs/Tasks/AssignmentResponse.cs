@@ -7,6 +7,7 @@ public class AssignmentResponse
     public Guid AssignedTo { get; set; }
     public Guid AssignedBy { get; set; }
     public DateTime AssignedAt { get; set; }
-    public DateTime DeadlineAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public double TimeLimitMinutes { get; set; }
     public string Status { get; set; } = null!;
 }

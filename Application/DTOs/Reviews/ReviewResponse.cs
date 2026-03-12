@@ -10,6 +10,5 @@ namespace DataLabelProject.Application.DTOs.Reviews
         public string Result { get; set; } = null!;
         public string? Feedback { get; set; }
         public DateTime? ReviewedAt { get; set; }
-        public Guid TaskId { get; set; }
-    }
+        }
 }

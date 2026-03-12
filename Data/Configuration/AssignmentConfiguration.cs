@@ -18,7 +18,8 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         entity.Property(e => e.AssignedTo).HasColumnName("assignedTo");
         entity.Property(e => e.AssignedBy).HasColumnName("assignedBy");
         entity.Property(e => e.AssignedAt).HasColumnName("assignedAt").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
-        entity.Property(e => e.DeadlineAt).HasColumnName("deadlineAt").HasColumnType("timestamp with time zone").IsRequired().HasDefaultValueSql("now()");
+        entity.Property(e => e.StartedAt).HasColumnName("startedAt").HasColumnType("timestamp with time zone");
+        entity.Property(e => e.TimeLimitMinutes).HasColumnName("timeLimitMinutes");
         entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(AssignmentStatus.incompleted);
 
         entity.HasOne(d => d.AssignedByUser).WithMany(p => p.AssignmentAssignedByUsers)

@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DataLabelProject.Application.DTOs.Tasks;
 
-public class UpdateAssignmentDeadlineRequest
+public class UpdateAssignmentTimeLimitRequest
 {
     [Required] public Guid TaskId { get; set; }
-    [Required] public DateTime DeadlineAt { get; set; }
+    [Required] public double TimeLimitMinutes { get; set; }
 }

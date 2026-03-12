@@ -38,10 +38,10 @@ public class ReviewsController : ControllerBase
         }
     }
 
-    [HttpGet("/api/tasks/{taskId}/reviews")]
-    public async Task<IActionResult> GetReviewsForTask(Guid taskId)
-    {
-        var reviews = await _reviewService.GetReviewsForTaskAsync(taskId);
-        return Ok(reviews);
-    }
+    // [HttpGet("/api/tasks/{taskId}/reviews")]
+    // public async Task<IActionResult> GetReviewsForTask(Guid taskId)
+    // {
+    //     var reviews = await _reviewService.GetReviewsForTaskAsync(taskId);
+    //     return Ok(reviews);
+    // }
 }

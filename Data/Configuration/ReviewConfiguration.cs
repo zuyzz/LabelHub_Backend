@@ -18,7 +18,6 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
         entity.Property(e => e.Result).HasColumnName("result").HasColumnType("character varying");
         entity.Property(e => e.Feedback).HasColumnName("feedback");
         entity.Property(e => e.ReviewedAt).HasColumnName("reviewedAt");
-        entity.Property(e => e.TaskId).HasColumnName("taskId");
 
         entity.HasOne(d => d.ReviewAnnotation).WithMany(p => p.Reviews)
             .HasForeignKey(d => d.AnnotationId)
@@ -29,10 +28,5 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .HasForeignKey(d => d.ReviewerId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Review_reviewerId_fkey");
-
-        entity.HasOne(d => d.ReviewTask).WithMany(p => p.Reviews)
-            .HasForeignKey(d => d.TaskId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Review_taskId_fkey");
     }
 }

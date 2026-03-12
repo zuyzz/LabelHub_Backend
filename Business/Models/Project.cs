@@ -35,6 +35,8 @@ public partial class Project
 
     public virtual ICollection<ProjectConfig> ProjectConfigs { get; set; } = new List<ProjectConfig>();
 
+    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
+
     public virtual Category ProjectCategory { get; set; } = null!;
 
     public virtual User? CreatedByUser { get; set; }
