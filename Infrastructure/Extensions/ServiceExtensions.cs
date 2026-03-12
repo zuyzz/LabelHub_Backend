@@ -26,8 +26,10 @@ using DataLabelProject.Business.Services.ProjectTemplates;
 using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
 using DataLabelProject.Business.Services.Annotations;
 using DataLabelProject.Business.Services.Tasks;
-using DataLabelProject.Business.Services.Consensus;
-using DataLabelProject.Data.Repositories.Implementations.Consensus;
+using DataLabelProject.Business.Services.Exports;
+using DataLabelProject.Data.Repositories.Implementations.ExportJobs;
+using DataLabelProject.Data.Repositories.Implementations.Reviews;
+using DataLabelProject.Business.Services.Reviews;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -53,8 +55,8 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
         services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
-        services.AddScoped<IAnnotationRepository, AnnotationRepository>();
-        services.AddScoped<IConsensusRepository, ConsensusRepository>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IExportJobRepository, ExportJobRepository>();
 
         // Services
         services.AddScoped<IAuthService, AuthService>();
@@ -69,11 +71,8 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
         services.AddScoped<ILabelingTaskService, LabelingTaskService>();
-        services.AddScoped<IAnnotationService, AnnotationService>();
-        services.AddScoped<IIoUService, IoUService>();
-        services.AddScoped<IClusteringService, ClusteringService>();
-        services.AddScoped<IAgreementService, AgreementService>();
-        services.AddScoped<IConsensusService, ConsensusService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IExportService, ExportService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();

@@ -80,6 +80,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
             // assignment status enum
             .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
+            // export job status enum
+            .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")
