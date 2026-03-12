@@ -34,12 +34,13 @@ public class LabelingTaskService : ILabelingTaskService
         if (currentUserRole == "admin" || currentUserRole == "manager")
             return await _taskRepo.GetAllAsync();
 
-        // reviewer or annotator: active tasks assigned to them (deadline not passed), sorted DESC
+        // reviewer or annotator: active tasks assigned to them (not expired), sorted DESC
         var assignments = await _assignmentRepo.GetByAssignedToAsync(currentUserId);
 
+        var now = DateTime.UtcNow;
         var taskIds = assignments
-            .Where(a => DateTime.UtcNow < a.DeadlineAt)
-            .OrderByDescending(a => a.DeadlineAt)
+            .Where(a => a.StartedAt.HasValue && now < a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes))
+            .OrderByDescending(a => a.StartedAt.HasValue ? a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes) : DateTime.MinValue)
             .Select(a => a.TaskId)
             .Distinct()
             .ToList();
@@ -106,7 +107,8 @@ public class LabelingTaskService : ILabelingTaskService
             AssignedTo = assignedTo,
             AssignedBy = assignedBy,
             AssignedAt = DateTime.UtcNow,
-            DeadlineAt = DateTime.UtcNow.AddDays(7),
+            StartedAt = DateTime.UtcNow,
+            TimeLimitMinutes = 7 * 24 * 60,                
             Status = AssignmentStatus.incompleted
         };
 
@@ -116,16 +118,16 @@ public class LabelingTaskService : ILabelingTaskService
         return assignment;
     }
 
-    public async Task<Assignment> UpdateDeadlineAsync(Guid taskId, DateTime deadlineAt)
+    public async Task<Assignment> UpdateTimeLimitAsync(Guid taskId, double timeLimitMinutes)
     {
-        if (deadlineAt <= DateTime.UtcNow)
-            throw new Exception("Deadline must be in the future");
+        if (timeLimitMinutes <= 0)
+            throw new Exception("Time limit must be positive");
 
         var assignment = await _assignmentRepo.GetByTaskIdAsync(taskId);
         if (assignment == null)
             throw new Exception("Assignment not found for this task");
 
-        assignment.DeadlineAt = deadlineAt;
+        assignment.TimeLimitMinutes = timeLimitMinutes;
         await _assignmentRepo.UpdateAsync(assignment);
         await _assignmentRepo.SaveChangesAsync();
 

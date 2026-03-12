@@ -17,7 +17,7 @@ public class ProjectConfigConfiguration : IEntityTypeConfiguration<ProjectConfig
         entity.Property(e => e.DefaultReviewDeadlineInterval).HasColumnName("defaultReviewDeadlineInterval");
         entity.Property(e => e.ProjectId).HasColumnName("projectId");
         entity.Property(e => e.AgreementThreshold).HasColumnName("agreementThreshold");
-        entity.Property(e => e.MinimumAnnotationsPerTask).HasColumnName("minimumAnnotationsPerTask").HasDefaultValue(3);
+        entity.Property(e => e.AnnotationsPerSample).HasColumnName("annotationsPerSample").HasDefaultValue(3);
 
         entity.HasOne(d => d.Project).WithMany(p => p.ProjectConfigs)
             .HasForeignKey(d => d.ProjectId)

@@ -16,7 +16,9 @@ public partial class Assignment
 
     public DateTime AssignedAt { get; set; }
 
-    public DateTime DeadlineAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+
+    public double TimeLimitMinutes { get; set; }
 
     public AssignmentStatus Status { get; set; }
 

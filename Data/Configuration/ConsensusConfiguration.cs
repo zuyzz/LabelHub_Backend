@@ -18,7 +18,7 @@ public class ConsensusConfiguration : IEntityTypeConfiguration<Consensus>
         entity.Property(e => e.Payload).HasColumnName("payload").HasColumnType("jsonb");
         entity.Property(e => e.AgreementScore).HasColumnName("agreementScore");
 
-        entity.HasOne(d => d.LabelingTask).WithMany()
+        entity.HasOne(d => d.ConsensusTask).WithMany()
             .HasForeignKey(d => d.TaskId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Consensus_taskId_fkey");

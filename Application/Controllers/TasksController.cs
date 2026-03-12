@@ -46,35 +46,13 @@ public class TasksController : ControllerBase
                 AssignedTo = a.AssignedTo,
                 AssignedBy = a.AssignedBy,
                 AssignedAt = a.AssignedAt,
-                DeadlineAt = a.DeadlineAt,
+                StartedAt = a.StartedAt,
+                TimeLimitMinutes = a.TimeLimitMinutes,
                 Status = a.Status.ToString()
             }).ToList()
         }).ToList();
 
         return Ok(response);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CreateTask([FromBody] CreateTaskRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(new { message = "Invalid input data", errors = ModelState });
-
-        try
-        {
-            var task = await _taskService.CreateTaskAsync(request.DatasetItemId, request.ProjectId);
-            var response = new TaskResponse
-            {
-                TaskId = task.TaskId,
-                DatasetItemId = task.DatasetItemId,
-                ProjectId = task.ProjectId
-            };
-            return CreatedAtAction(nameof(GetTasks), new { }, response);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
     }
 
     [HttpPost("assign")]
@@ -96,7 +74,8 @@ public class TasksController : ControllerBase
                 AssignedTo = assignment.AssignedTo,
                 AssignedBy = assignment.AssignedBy,
                 AssignedAt = assignment.AssignedAt,
-                DeadlineAt = assignment.DeadlineAt,
+                StartedAt = assignment.StartedAt,
+                TimeLimitMinutes = assignment.TimeLimitMinutes,
                 Status = assignment.Status.ToString()
             };
             return StatusCode(201, response);
@@ -109,14 +88,14 @@ public class TasksController : ControllerBase
 
     [HttpPut("assign")]
     [Authorize(Roles = "manager")]
-    public async Task<IActionResult> UpdateDeadline([FromBody] UpdateAssignmentDeadlineRequest request)
+    public async Task<IActionResult> UpdateTimeLimit([FromBody] UpdateAssignmentTimeLimitRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var assignment = await _taskService.UpdateDeadlineAsync(request.TaskId, request.DeadlineAt);
+            var assignment = await _taskService.UpdateTimeLimitAsync(request.TaskId, request.TimeLimitMinutes);
             var response = new AssignmentResponse
             {
                 AssignmentId = assignment.AssignmentId,
@@ -124,7 +103,8 @@ public class TasksController : ControllerBase
                 AssignedTo = assignment.AssignedTo,
                 AssignedBy = assignment.AssignedBy,
                 AssignedAt = assignment.AssignedAt,
-                DeadlineAt = assignment.DeadlineAt,
+                StartedAt = assignment.StartedAt,
+                TimeLimitMinutes = assignment.TimeLimitMinutes,
                 Status = assignment.Status.ToString()
             };
             return Ok(response);

@@ -14,5 +14,5 @@ public partial class Consensus
 
     public double AgreementScore { get; set; }
 
-    public virtual LabelingTask LabelingTask { get; set; } = null!;
+    public virtual LabelingTask ConsensusTask { get; set; } = null!;
 }
