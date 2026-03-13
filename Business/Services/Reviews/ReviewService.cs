@@ -42,8 +42,10 @@ namespace DataLabelProject.Business.Services.Reviews
             var task = await _taskRepository.GetByIdAsync(request.TaskId);
             if (task == null)
                 throw new KeyNotFoundException("Task not found");
+            if (task.Status == LabelingTaskStatus.Removed)
+                throw new KeyNotFoundException("Task is removed");
 
-            var reviewerId = _currentUserService.UserId ?? throw new InvalidOperationException("User not authenticated");
+            var reviewerId = _currentUserService.UserId!.Value;
 
             var reviews = new List<Review>();
             foreach (var reviewItem in request.Reviews)
@@ -58,7 +60,7 @@ namespace DataLabelProject.Business.Services.Reviews
                     AnnotationId = reviewItem.AnnotationId,
                     TaskId = request.TaskId,
                     ReviewerId = reviewerId,
-                    Result = Enum.Parse<ReviewResult>(reviewItem.Result),
+                    Result = reviewItem.Result,
                     Feedback = reviewItem.Feedback,
                     ReviewedAt = DateTime.UtcNow
                 };
@@ -166,7 +168,7 @@ namespace DataLabelProject.Business.Services.Reviews
                 .Select(g => g.First().ReviewAnnotation)
                 .ToList();
 
-            if (uniqueAnnotations.Count < config.AnnotationsPerSample)
+            if (uniqueAnnotations.Count == 2)
                 return;
 
             // compute majority agreement score based on payload string equality
