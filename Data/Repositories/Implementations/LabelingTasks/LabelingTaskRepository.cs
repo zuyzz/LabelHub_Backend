@@ -17,6 +17,9 @@ public class LabelingTaskRepository : ILabelingTaskRepository
     {
         return await _db.LabelingTasks
             .Include(t => t.Assignments)
+            .Include(t => t.LabelingTaskProject)
+            .Include(t => t.Annotations)
+            .Include(t => t.Reviews)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -24,7 +27,10 @@ public class LabelingTaskRepository : ILabelingTaskRepository
     public async Task<LabelingTask?> GetByIdAsync(Guid taskId)
     {
         return await _db.LabelingTasks
+            .Include(t => t.Assignments)
             .Include(t => t.LabelingTaskProject)
+            .Include(t => t.Annotations)
+            .Include(t => t.Reviews)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
     }
 

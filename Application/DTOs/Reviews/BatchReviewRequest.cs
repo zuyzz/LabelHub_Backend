@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Application.DTOs.Reviews
 {
@@ -19,8 +20,7 @@ namespace DataLabelProject.Application.DTOs.Reviews
         public Guid AnnotationId { get; set; }
 
         [Required]
-        [RegularExpression("approved|rejected", ErrorMessage = "Result must be 'approved' or 'rejected'")]
-        public string Result { get; set; } = null!;
+        public ReviewResult Result { get; set; }
 
         public string? Feedback { get; set; }
     }
