@@ -33,6 +33,7 @@ using DataLabelProject.Data.Repositories.Implementations.Reviews;
 using DataLabelProject.Business.Services.Reviews;
 using DataLabelProject.Data.Repositories.Implementations.Consensus;
 using DataLabelProject.Business.Services.Consensus;
+using DataLabelProject.Data.Repositories.Implementations.ProjectConfigs;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -62,6 +63,7 @@ public static class ServiceExtensions
         services.AddScoped<IAnnotationRepository, AnnotationRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
         services.AddScoped<IConsensusRepository, ConsensusRepository>();
+        services.AddScoped<IProjectConfigRepository, ProjectConfigRepository>();
         services.AddScoped<IExportJobRepository, ExportJobRepository>();
 
         // Services

@@ -22,6 +22,12 @@ public class ConsensusRepository : IConsensusRepository
 		return consensus;
 	}
 
+	public async Task UpdateAsync(ConsensusEntity consensus)
+	{
+		_context.Set<ConsensusEntity>().Update(consensus);
+		await _context.SaveChangesAsync();
+	}
+
 	public async Task<ConsensusEntity?> GetByIdAsync(Guid consensusId)
 	{
 		return await _context.Set<ConsensusEntity>()
