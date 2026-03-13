@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -10,6 +11,10 @@ public partial class LabelingTask
     public Guid DatasetItemId { get; set; }
 
     public Guid ProjectId { get; set; }
+
+    public LabelingTaskStatus Status { get; set; }
+
+    public int RevisionCount { get; set; }
 
     public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 

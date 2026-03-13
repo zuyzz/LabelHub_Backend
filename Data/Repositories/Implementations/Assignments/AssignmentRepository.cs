@@ -18,6 +18,13 @@ public class AssignmentRepository : IAssignmentRepository
         return await _db.Assignments.AsNoTracking().ToListAsync();
     }
 
+    public async Task<Assignment?> GetByIdAsync(Guid assignmentId)
+    {
+        return await _db.Assignments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId);
+    }
+
     public async Task<List<Assignment>> GetByAssignedToAsync(Guid userId)
     {
         return await _db.Assignments
@@ -32,14 +39,31 @@ public class AssignmentRepository : IAssignmentRepository
             .FirstOrDefaultAsync(a => a.TaskId == taskId);
     }
 
+    public async Task<Assignment?> GetByTaskIdAndUserAsync(Guid taskId, Guid userId)
+    {
+        return await _db.Assignments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.TaskId == taskId && a.AssignedTo == userId);
+    }
+
     public async Task AddAsync(Assignment assignment)
     {
         await _db.Assignments.AddAsync(assignment);
     }
 
+    public async Task AddRangeAsync(IEnumerable<Assignment> assignments)
+    {
+        await _db.Assignments.AddRangeAsync(assignments);
+    }
+
     public async Task UpdateAsync(Assignment assignment)
     {
         _db.Assignments.Update(assignment);
+    }
+
+    public async Task UpdateRangeAsync(IEnumerable<Assignment> assignments)
+    {
+        _db.Assignments.UpdateRange(assignments);
     }
 
     public async Task SaveChangesAsync()
