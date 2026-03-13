@@ -31,6 +31,8 @@ using DataLabelProject.Business.Services.Exports;
 using DataLabelProject.Data.Repositories.Implementations.ExportJobs;
 using DataLabelProject.Data.Repositories.Implementations.Reviews;
 using DataLabelProject.Business.Services.Reviews;
+using DataLabelProject.Data.Repositories.Implementations.Consensus;
+using DataLabelProject.Business.Services.Consensus;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -57,7 +59,9 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
         services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+        services.AddScoped<IAnnotationRepository, AnnotationRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IConsensusRepository, ConsensusRepository>();
         services.AddScoped<IExportJobRepository, ExportJobRepository>();
 
         // Services
@@ -74,7 +78,12 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
         services.AddScoped<ILabelingTaskService, LabelingTaskService>();
+        services.AddScoped<IAnnotationService, AnnotationService>();
         services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IConsensusService, ConsensusService>();
+        services.AddScoped<IAgreementService, AgreementService>();
+        services.AddScoped<IClusteringService, ClusteringService>();
+        services.AddScoped<IIoUService, IoUService>();
         services.AddScoped<IExportService, ExportService>();
 
         // File upload strategies

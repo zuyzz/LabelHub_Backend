@@ -9,7 +9,7 @@ public class CreateAnnotationRequest
     [JsonPropertyName("taskId")]
     public Guid TaskId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Payload is required")]
     [JsonPropertyName("payload")]
     public AnnotationPayload Payload { get; set; } = null!;
 }
