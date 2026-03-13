@@ -84,6 +84,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
             // export job status enum
             .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
+            // labeling task status enum
+            .HasPostgresEnum<LabelingTaskStatus>("public", "enum_task_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

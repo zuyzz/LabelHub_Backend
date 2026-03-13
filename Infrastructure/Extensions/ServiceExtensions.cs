@@ -34,6 +34,7 @@ using DataLabelProject.Business.Services.Reviews;
 using DataLabelProject.Data.Repositories.Implementations.Consensus;
 using DataLabelProject.Business.Services.Consensus;
 using DataLabelProject.Data.Repositories.Implementations.ProjectConfigs;
+using DataLabelProject.Business.Services.BackgroundServices;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -95,6 +96,9 @@ public static class ServiceExtensions
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
         services.AddScoped<MetadataExtractorFactory>();
+
+        // Background services
+        services.AddHostedService<AssignmentExpirationService>();
 
         return services;
     }

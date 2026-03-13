@@ -1,3 +1,4 @@
+using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -12,6 +13,7 @@ public class LabelingTaskService : ILabelingTaskService
     private readonly IRoleRepository _roleRepo;
     private readonly IProjectRepository _projectRepo;
     private readonly IProjectMemberRepository _projectMemberRepo;
+    private readonly IDatasetItemRepository _datasetItemRepo;
 
     public LabelingTaskService(
         ILabelingTaskRepository taskRepo,
@@ -19,7 +21,8 @@ public class LabelingTaskService : ILabelingTaskService
         IUserRepository userRepo,
         IRoleRepository roleRepo,
         IProjectRepository projectRepo,
-        IProjectMemberRepository projectMemberRepo)
+        IProjectMemberRepository projectMemberRepo,
+        IDatasetItemRepository datasetItemRepo)
     {
         _taskRepo = taskRepo;
         _assignmentRepo = assignmentRepo;
@@ -27,48 +30,93 @@ public class LabelingTaskService : ILabelingTaskService
         _roleRepo = roleRepo;
         _projectRepo = projectRepo;
         _projectMemberRepo = projectMemberRepo;
+        _datasetItemRepo = datasetItemRepo;
     }
 
-    public async Task<List<LabelingTask>> GetTasksForUserAsync(Guid currentUserId, string currentUserRole)
+    public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForReviewerAsync(
+        Guid reviewerId, LabelingTaskStatus? status, int page, int pageSize)
     {
-        if (currentUserRole == "admin" || currentUserRole == "manager")
-            return await _taskRepo.GetAllAsync();
+        return await GetTasksForUserWithRoleAsync(reviewerId, status, page, pageSize);
+    }
 
-        // reviewer or annotator: active tasks assigned to them (not expired), sorted DESC
-        var assignments = await _assignmentRepo.GetByAssignedToAsync(currentUserId);
+    public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForAnnotatorAsync(
+        Guid annotatorId, LabelingTaskStatus? status, int page, int pageSize)
+    {
+        return await GetTasksForUserWithRoleAsync(annotatorId, status, page, pageSize);
+    }
 
+    private async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForUserWithRoleAsync(
+        Guid userId, LabelingTaskStatus? status, int page, int pageSize)
+    {
+        var assignments = await _assignmentRepo.GetByAssignedToAsync(userId);
         var now = DateTime.UtcNow;
-        var taskIds = assignments
+
+        // Filter: StartedAt != null AND currentTime < deadline
+        var activeAssignments = assignments
             .Where(a => a.StartedAt.HasValue && now < a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes))
-            .OrderByDescending(a => a.StartedAt.HasValue ? a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes) : DateTime.MinValue)
-            .Select(a => a.TaskId)
-            .Distinct()
             .ToList();
 
+        if (activeAssignments.Count == 0)
+            return (new List<LabelingTask>(), 0);
+
+        var taskIds = activeAssignments.Select(a => a.TaskId).Distinct().ToList();
         var tasks = await _taskRepo.GetByIdsAsync(taskIds);
 
-        // Preserve deadline DESC sort order (EF IN query does not guarantee order)
-        return taskIds
-            .Select(id => tasks.First(t => t.TaskId == id))
+        // Filter by status if provided
+        if (status.HasValue)
+        {
+            tasks = tasks.Where(t => t.Status == status.Value).ToList();
+        }
+
+        // Sort by deadline DESC
+        var tasksWithDeadline = tasks
+            .Select(t => new
+            {
+                Task = t,
+                Deadline = activeAssignments
+                    .Where(a => a.TaskId == t.TaskId)
+                    .Select(a => a.StartedAt!.Value.AddMinutes(a.TimeLimitMinutes))
+                    .FirstOrDefault()
+            })
+            .OrderByDescending(x => x.Deadline)
             .ToList();
+
+        var totalCount = tasksWithDeadline.Count;
+
+        // Pagination
+        var paginatedTasks = tasksWithDeadline
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => x.Task)
+            .ToList();
+
+        return (paginatedTasks, totalCount);
     }
 
-    public async Task<LabelingTask> CreateTaskAsync(Guid datasetItemId, Guid projectId)
+    public async Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId)
     {
-        var task = new LabelingTask
-        {
-            TaskId = Guid.NewGuid(),
-            DatasetItemId = datasetItemId,
-            ProjectId = projectId
-        };
+        var task = await _taskRepo.GetByIdAsync(taskId);
+        if (task == null)
+            return null;
 
-        await _taskRepo.AddAsync(task);
-        await _taskRepo.SaveChangesAsync();
+        var assignment = await _assignmentRepo.GetByTaskIdAndUserAsync(taskId, userId);
+        if (assignment == null)
+            return null;
+
+        // Check if assignment is still active
+        if (!assignment.StartedAt.HasValue)
+            return null;
+
+        var now = DateTime.UtcNow;
+        var deadline = assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
+        if (now >= deadline)
+            return null;
 
         return task;
     }
 
-    public async Task<Assignment> AssignTaskAsync(Guid taskId, Guid projectId, Guid assignedTo, Guid assignedBy)
+    public async Task<List<Assignment>> BulkAssignTasksAsync(
+        Guid datasetId, Guid projectId, Guid assignedTo, Guid assignedBy)
     {
         // Validate project exists and is active
         var project = await _projectRepo.GetByIdAsync(projectId);
@@ -76,14 +124,6 @@ public class LabelingTaskService : ILabelingTaskService
             throw new Exception("Project not found");
         if (!project.IsActive)
             throw new Exception("Project is not active");
-
-        // Validate task exists and belongs to the given project
-        var task = await _taskRepo.GetByIdAsync(taskId);
-        if (task == null)
-            throw new Exception("Task not found");
-
-        if (task.ProjectId != projectId)
-            throw new Exception("Task does not belong to the specified project");
 
         // Validate assignee exists
         var user = await _userRepo.GetByIdAsync(assignedTo);
@@ -100,37 +140,90 @@ public class LabelingTaskService : ILabelingTaskService
         if (role == null || (role.RoleName != "reviewer" && role.RoleName != "annotator"))
             throw new Exception("User must have role 'reviewer' or 'annotator' to be assigned a task");
 
-        var assignment = new Assignment
+        // Get dataset items
+        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
+        var datasetItemIds = datasetItems.Select(di => di.ItemId).ToList();
+
+        if (datasetItemIds.Count == 0)
+            throw new Exception("No dataset items found for this dataset");
+
+        // Get tasks by dataset item IDs
+        var tasks = await _taskRepo.GetByDatasetItemIdsAsync(datasetItemIds);
+
+        if (tasks.Count == 0)
+            throw new Exception("No tasks found for dataset items");
+
+        // Validate all tasks belong to the project
+        if (tasks.Any(t => t.ProjectId != projectId))
+            throw new Exception("Some tasks do not belong to the specified project");
+
+        // Create assignments (StartedAt = DateTime.UtcNow - tasks are immediately active)
+        var assignments = tasks.Select(t => new Assignment
         {
             AssignmentId = Guid.NewGuid(),
-            TaskId = taskId,
+            TaskId = t.TaskId,
             AssignedTo = assignedTo,
             AssignedBy = assignedBy,
             AssignedAt = DateTime.UtcNow,
             StartedAt = DateTime.UtcNow,
-            TimeLimitMinutes = 7 * 24 * 60,                
+            TimeLimitMinutes = 7 * 24 * 60, // Default 7 days
             Status = AssignmentStatus.Incompleted
-        };
+        }).ToList();
 
-        await _assignmentRepo.AddAsync(assignment);
+        await _assignmentRepo.AddRangeAsync(assignments);
         await _assignmentRepo.SaveChangesAsync();
 
-        return assignment;
+        return assignments;
     }
 
-    public async Task<Assignment> UpdateTimeLimitAsync(Guid taskId, double timeLimitMinutes)
+    public async Task<List<Assignment>> UpdateAssignmentsByDatasetAsync(
+        Guid assignmentId, Guid datasetId, double timeLimitMinutes)
     {
         if (timeLimitMinutes <= 0)
             throw new Exception("Time limit must be positive");
 
-        var assignment = await _assignmentRepo.GetByTaskIdAsync(taskId);
+        // Get the assignment
+        var assignment = await _assignmentRepo.GetByIdAsync(assignmentId);
         if (assignment == null)
-            throw new Exception("Assignment not found for this task");
+            throw new Exception("Assignment not found");
 
-        assignment.TimeLimitMinutes = timeLimitMinutes;
-        await _assignmentRepo.UpdateAsync(assignment);
+        // Cannot update if assignment is already finished
+        if (assignment.Status == AssignmentStatus.Expired || assignment.Status == AssignmentStatus.Completed)
+            throw new Exception("Cannot update time limit: assignment is already finished");
+
+        // Get dataset items
+        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
+        var datasetItemIds = datasetItems.Select(di => di.ItemId).ToList();
+
+        if (datasetItemIds.Count == 0)
+            throw new Exception("No dataset items found for this dataset");
+
+        // Get tasks by dataset item IDs
+        var tasks = await _taskRepo.GetByDatasetItemIdsAsync(datasetItemIds);
+        var taskIds = tasks.Select(t => t.TaskId).ToList();
+
+        // Get assignments for these tasks and the same user
+        var allAssignments = await _assignmentRepo.GetByAssignedToAsync(assignment.AssignedTo);
+        var assignmentsToUpdate = allAssignments
+            .Where(a => taskIds.Contains(a.TaskId))
+            .ToList();
+
+        if (assignmentsToUpdate.Count == 0)
+            throw new Exception("No assignments found for the specified dataset");
+
+        // Cannot update finished assignments
+        if (assignmentsToUpdate.Any(a => a.Status == AssignmentStatus.Expired || a.Status == AssignmentStatus.Completed))
+            throw new Exception("Cannot update time limit: some assignments are already finished");
+
+        // Update time limits
+        foreach (var a in assignmentsToUpdate)
+        {
+            a.TimeLimitMinutes = timeLimitMinutes;
+        }
+
+        await _assignmentRepo.UpdateRangeAsync(assignmentsToUpdate);
         await _assignmentRepo.SaveChangesAsync();
 
-        return assignment;
+        return assignmentsToUpdate;
     }
 }

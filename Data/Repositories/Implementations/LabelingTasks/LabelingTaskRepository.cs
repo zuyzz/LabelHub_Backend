@@ -36,6 +36,14 @@ public class LabelingTaskRepository : ILabelingTaskRepository
             .ToListAsync();
     }
 
+    public async Task<List<LabelingTask>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds)
+    {
+        return await _db.LabelingTasks
+            .Where(t => datasetItemIds.Contains(t.DatasetItemId))
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task<List<LabelingTask>> GetByIdsAsync(IEnumerable<Guid> taskIds)
     {
         return await _db.LabelingTasks
