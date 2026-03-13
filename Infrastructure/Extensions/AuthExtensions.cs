@@ -55,7 +55,8 @@ public static class AuthExtensions
                     OnTokenValidated = async context =>
                     {
                         // Check if user is still active after JWT validation
-                        var userId = context.Principal?.FindFirst("sub")?.Value;
+                        var userId = context.Principal?
+                            .FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                         if (userId == null)
                         {
