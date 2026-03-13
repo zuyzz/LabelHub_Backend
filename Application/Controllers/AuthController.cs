@@ -85,12 +85,69 @@ namespace DataLabelProject.Application.Controllers
                 return BadRequest(new { message = errorMessage });
             }
 
-            return Ok(new 
-            { 
+            return Ok(new
+            {
                 message = "Password changed successfully. You can now access all features.",
                 userId = user.UserId,
                 username = user.Username
             });
+        }
+
+        /// <summary>
+        /// Refresh access token using refresh token
+        /// </summary>
+        /// <param name="request">Refresh token</param>
+        /// <response code="200">New tokens generated successfully</response>
+        /// <response code="400">Invalid input data</response>
+        /// <response code="401">Invalid or expired refresh token</response>
+        /// <response code="403">Account has been deactivated</response>
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
+
+            var (response, errorMessage) = await _authService.RefreshTokenAsync(request);
+
+            if (response == null)
+            {
+                if (errorMessage?.Contains("deactivated") == true)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = errorMessage });
+                }
+                return Unauthorized(new { message = errorMessage });
+            }
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// Logout user by revoking refresh token
+        /// </summary>
+        /// <param name="request">Refresh token to revoke</param>
+        /// <response code="200">Logout successful</response>
+        /// <response code="400">Invalid input data</response>
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid input data", errors = ModelState });
+            }
+
+            var (success, errorMessage) = await _authService.LogoutAsync(request);
+
+            return Ok(new { message = "Logout successful" });
         }
 
         // ❌ NO REGISTER ENDPOINT

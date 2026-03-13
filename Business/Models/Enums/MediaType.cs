@@ -1,12 +1,11 @@
 using System.Text.Json.Serialization;
 
-namespace DataLabelProject.Business.Models.Enums
+namespace DataLabelProject.Business.Models.Enums;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum MediaType
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public enum MediaType
-    {
-        image,
-        audio,
-        video
-    }
+    Image,
+    Audio,
+    Video
 }

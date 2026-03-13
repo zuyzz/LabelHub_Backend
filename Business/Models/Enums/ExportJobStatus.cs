@@ -5,6 +5,6 @@ namespace DataLabelProject.Business.Models.Enums;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ExportJobStatus
 {
-    completed,
-    failed
+    Completed,
+    Failed
 }

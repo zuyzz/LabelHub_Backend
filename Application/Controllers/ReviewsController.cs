@@ -18,15 +18,15 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> ReviewAnnotation([FromBody] CreateReviewRequest request)
+    public async Task<IActionResult> BatchReviewAnnotations([FromBody] BatchReviewRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var review = await _reviewService.ReviewAnnotationAsync(request);
-            return StatusCode(201, review);
+            var reviews = await _reviewService.BatchReviewAnnotationsAsync(request);
+            return StatusCode(201, reviews);
         }
         catch (KeyNotFoundException knf)
         {
@@ -38,10 +38,41 @@ public class ReviewsController : ControllerBase
         }
     }
 
-    // [HttpGet("/api/tasks/{taskId}/reviews")]
-    // public async Task<IActionResult> GetReviewsForTask(Guid taskId)
-    // {
-    //     var reviews = await _reviewService.GetReviewsForTaskAsync(taskId);
-    //     return Ok(reviews);
-    // }
+    [HttpGet]
+    public async Task<IActionResult> GetReviews([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        try
+        {
+            var (reviews, totalCount) = await _reviewService.GetReviewsAsync(status, page, pageSize);
+            return Ok(new
+            {
+                reviews,
+                pagination = new
+                {
+                    page,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("task/{taskId}")]
+    public async Task<IActionResult> GetReviewsForTask(Guid taskId)
+    {
+        try
+        {
+            var reviews = await _reviewService.GetReviewsForTaskAsync(taskId);
+            return Ok(reviews);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

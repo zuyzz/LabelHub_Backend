@@ -10,6 +10,7 @@ using DataLabelProject.Data.Repositories.Implementations.DatasetItems;
 using DataLabelProject.Data.Repositories.Implementations.LabelingTasks;
 using DataLabelProject.Data.Repositories.Implementations.Assignments;
 using DataLabelProject.Data.Repositories.Implementations.Annotations;
+using DataLabelProject.Data.Repositories.Implementations.RefreshTokens;
 using DataLabelProject.Business.Services;
 using DataLabelProject.Business.Services.Auth;
 using DataLabelProject.Business.Services.Users;
@@ -30,6 +31,9 @@ using DataLabelProject.Business.Services.Exports;
 using DataLabelProject.Data.Repositories.Implementations.ExportJobs;
 using DataLabelProject.Data.Repositories.Implementations.Reviews;
 using DataLabelProject.Business.Services.Reviews;
+using DataLabelProject.Data.Repositories.Implementations.Consensus;
+using DataLabelProject.Business.Services.Consensus;
+using DataLabelProject.Data.Repositories.Implementations.ProjectConfigs;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -43,6 +47,7 @@ public static class ServiceExtensions
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
@@ -55,10 +60,14 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
         services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+        services.AddScoped<IAnnotationRepository, AnnotationRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IConsensusRepository, ConsensusRepository>();
+        services.AddScoped<IProjectConfigRepository, ProjectConfigRepository>();
         services.AddScoped<IExportJobRepository, ExportJobRepository>();
 
         // Services
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
@@ -71,7 +80,12 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
         services.AddScoped<ILabelingTaskService, LabelingTaskService>();
+        services.AddScoped<IAnnotationService, AnnotationService>();
         services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IConsensusService, ConsensusService>();
+        services.AddScoped<IAgreementService, AgreementService>();
+        services.AddScoped<IClusteringService, ClusteringService>();
+        services.AddScoped<IIoUService, IoUService>();
         services.AddScoped<IExportService, ExportService>();
 
         // File upload strategies
@@ -80,6 +94,7 @@ public static class ServiceExtensions
 
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
+        services.AddScoped<MetadataExtractorFactory>();
 
         return services;
     }

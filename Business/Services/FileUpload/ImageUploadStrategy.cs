@@ -8,18 +8,17 @@ public class ImageUploadStrategy : IFileUploadStrategy
     private readonly Storage.IFileStorage _storage;
     private readonly MetadataExtractorFactory _metadataExtractorFactory;
 
-    private static readonly string[] ImageTypes = new[] { "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp" };
-
-    public ImageUploadStrategy(Storage.IFileStorage storage, IEnumerable<IMetadataExtractor> metadataExtractors)
+    public ImageUploadStrategy(Storage.IFileStorage storage, MetadataExtractorFactory metadataExtractorFactory)
     {
         _storage = storage;
-        _metadataExtractorFactory = new MetadataExtractorFactory(metadataExtractors);
+        _metadataExtractorFactory = metadataExtractorFactory;
     }
 
     public bool CanHandle(IFormFile file)
     {
-        var ct = file.ContentType?.ToLowerInvariant() ?? string.Empty;
-        return ImageTypes.Contains(ct) && !IsArchive(file.FileName);
+        var contentType = file.ContentType?.ToLowerInvariant() ?? string.Empty;
+        var isImage = MediaTypeConstants.Image.SupportedContentTypes.Contains(contentType);
+        return isImage && !IsArchive(file.FileName);
     }
 
     public async Task<FileProcessResult> ProcessAsync(
@@ -36,29 +35,12 @@ public class ImageUploadStrategy : IFileUploadStrategy
         var path = $"{baseFolder}/{filename}";
 
         using var stream = file.OpenReadStream();
+        var contentType = file.ContentType ?? "application/octet-stream";
 
-        // Extract metadata from header bytes
-        string? metadata = null;
-        try
-        {
-            metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream);
-        }
-        catch
-        {
-            // Swallow metadata extraction errors - item will be created without metadata
-        }
+        var metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream, contentType);
+        var uri = await _storage.CreateFileAsync(stream, path, contentType);
 
-        // Upload file
-        var uri = await _storage.CreateFileAsync(
-            stream,
-            path,
-            file.ContentType ?? "application/octet-stream");
-
-        var item = new FileItem(
-            filename,
-            file.ContentType ?? "application/octet-stream",
-            uri,
-            metadata ?? "");
+        var item = new FileItem(filename, contentType, uri, metadata ?? "");
 
         return new FileProcessResult(
             new[] { item },
@@ -69,6 +51,6 @@ public class ImageUploadStrategy : IFileUploadStrategy
     {
         if (string.IsNullOrWhiteSpace(fileName)) return false;
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        return ext == ".zip" || ext == ".rar";
+        return MediaTypeConstants.Archive.SupportedExtensions.Contains(ext);
     }
 }

@@ -26,10 +26,24 @@ public class AssignmentRepository : IAssignmentRepository
             .ToListAsync();
     }
 
+    public async Task<List<Assignment>> GetAllByTaskIdAsync(Guid taskId)
+    {
+        return await _db.Assignments
+            .Where(a => a.TaskId == taskId)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task<Assignment?> GetByTaskIdAsync(Guid taskId)
     {
         return await _db.Assignments
             .FirstOrDefaultAsync(a => a.TaskId == taskId);
+    }
+
+    public async Task<Assignment?> GetByTaskIdAndUserAsync(Guid taskId, Guid userId)
+    {
+        return await _db.Assignments
+            .FirstOrDefaultAsync(a => a.TaskId == taskId && a.AssignedTo == userId);
     }
 
     public async Task AddAsync(Assignment assignment)

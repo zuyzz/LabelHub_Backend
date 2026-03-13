@@ -1,4 +1,5 @@
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +32,7 @@ public class ReviewRepository : IReviewRepository
     public async Task<IEnumerable<Review>> GetApprovedByTaskIdAsync(Guid taskId)
     {
         return await _context.Reviews
-            .Where(r => r.TaskId == taskId && r.Result == "approved")
+            .Where(r => r.TaskId == taskId && r.Result == ReviewResult.Approved)
             .Include(r => r.ReviewAnnotation)
             .ToListAsync();
     }

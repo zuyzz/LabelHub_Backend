@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 namespace DataLabelProject.Business.Models.Enums;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum AssignmentStatus
+public enum LabelingTaskStatus
 {
-    Incompleted,
-    Completed,
-    Expired
+    Opened,
+    Closed,
+    Removed
 }
