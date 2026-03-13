@@ -20,6 +20,6 @@ public class ProjectTemplateConfiguration : IEntityTypeConfiguration<ProjectTemp
             .HasColumnName("mediaType")
             .HasColumnType("enum_media_type")
             .HasConversion<string>()
-            .HasDefaultValue(MediaType.image);
+            .HasDefaultValue(MediaType.Image);
     }
 }

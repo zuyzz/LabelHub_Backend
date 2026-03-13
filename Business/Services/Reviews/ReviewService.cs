@@ -73,7 +73,7 @@ namespace DataLabelProject.Business.Services.Reviews
             await _reviewRepository.SaveChangesAsync();
 
             // Check if all annotations are rejected
-            bool allRejected = reviews.All(r => r.Result == ReviewResult.rejected);
+            bool allRejected = reviews.All(r => r.Result == ReviewResult.Rejected);
 
             if (allRejected)
             {
@@ -81,15 +81,15 @@ namespace DataLabelProject.Business.Services.Reviews
                 task.RevisionCount++;
                 if (task.RevisionCount >= 3)
                 {
-                    task.Status = LabelingTaskStatus.removed;
+                    task.Status = LabelingTaskStatus.Removed;
                 }
                 else
                 {
                     // Reopen task: set assignments back to incompleted
                     var assignments = await _assignmentRepository.GetAllByTaskIdAsync(request.TaskId);
-                    foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.completed))
+                    foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.Completed))
                     {
-                        assignment.Status = AssignmentStatus.incompleted;
+                        assignment.Status = AssignmentStatus.Incompleted;
                         await _assignmentRepository.UpdateAsync(assignment);
                     }
                     await _assignmentRepository.SaveChangesAsync();

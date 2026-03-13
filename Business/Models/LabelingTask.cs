@@ -14,7 +14,7 @@ public partial class LabelingTask
 
     public int RevisionCount { get; set; } = 0;
 
-    public LabelingTaskStatus Status { get; set; } = LabelingTaskStatus.active;
+    public LabelingTaskStatus Status { get; set; } = LabelingTaskStatus.Active;
 
     public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 

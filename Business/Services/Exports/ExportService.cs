@@ -94,7 +94,7 @@ public class ExportService : IExportService
                 InitiatorId = userId,
                 ProjectId = projectId,
                 Format = format,
-                Status = ExportJobStatus.completed,
+                Status = ExportJobStatus.Completed,
                 FileUri = fileUri
             };
 
@@ -112,7 +112,7 @@ public class ExportService : IExportService
                 InitiatorId = userId,
                 ProjectId = projectId,
                 Format = format,
-                Status = ExportJobStatus.failed
+                Status = ExportJobStatus.Failed
             };
 
             await _exportJobRepository.CreateAsync(exportJob);

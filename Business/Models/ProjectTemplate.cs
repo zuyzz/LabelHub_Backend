@@ -10,7 +10,7 @@ public partial class ProjectTemplate
 
     public string Name { get; set; } = null!;
 
-    public MediaType MediaType { get; set; } = MediaType.image;
+    public MediaType MediaType { get; set; } = MediaType.Image;
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 }

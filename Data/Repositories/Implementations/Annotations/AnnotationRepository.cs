@@ -43,7 +43,7 @@ public class AnnotationRepository : IAnnotationRepository
         return annotations.Where(a =>
             a.Reviews
                 .OrderByDescending(r => r.ReviewedAt ?? DateTime.MinValue)
-                .First().Result == ReviewResult.approved);
+                .First().Result == ReviewResult.Approved);
     }
 
     public async Task<Annotation?> GetByIdAsync(Guid annotationId)
