@@ -1,6 +1,4 @@
 using System.Linq;
-using System.Text.Json;
-using DataLabelProject.Application.DTOs.Annotations;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -11,13 +9,16 @@ public class AnnotationService : IAnnotationService
 {
     private readonly IAnnotationRepository _annotationRepository;
     private readonly ILabelingTaskRepository _taskRepository;
+    private readonly IAssignmentRepository _assignmentRepository;
 
     public AnnotationService(
         IAnnotationRepository annotationRepository,
-        ILabelingTaskRepository taskRepository)
+        ILabelingTaskRepository taskRepository,
+        IAssignmentRepository assignmentRepository)
     {
         _annotationRepository = annotationRepository;
         _taskRepository = taskRepository;
+        _assignmentRepository = assignmentRepository;
     }
 
     public async Task<IEnumerable<Annotation>> GetAnnotationsForUserAsync(Guid currentUserId, string currentUserRole, string? status)
@@ -46,24 +47,31 @@ public class AnnotationService : IAnnotationService
         return annotations.Where(a => a.Reviews.Any(r => r.Result == parsedStatus));
     }
 
-    public async Task<Annotation> CreateAnnotationAsync(CreateAnnotationRequest request, Guid currentUserId, string currentUserRole)
+    public async Task<Annotation> CreateAnnotationAsync(Guid taskId, string payloadJson, Guid currentUserId, string currentUserRole)
     {
         if (currentUserRole != "annotator")
             throw new UnauthorizedAccessException("Only annotator can create annotations");
 
-        var task = await _taskRepository.GetByIdAsync(request.TaskId);
+        var task = await _taskRepository.GetByIdAsync(taskId);
         if (task == null)
             throw new KeyNotFoundException("Task not found");
 
-        var annotatorId = currentUserId;
+        if (task.Status != LabelingTaskStatus.Opened)
+            throw new InvalidOperationException("Task is not in a state that allows annotations.");
 
-        var payloadJson = JsonSerializer.Serialize(request.Payload);
+        var assignment = await _assignmentRepository.GetByTaskIdAndUserAsync(taskId, currentUserId);
+        if (assignment == null)
+            throw new UnauthorizedAccessException("You are not assigned to this task.");
+
+        var existing = await _annotationRepository.GetByTaskIdAndAnnotatorIdAsync(taskId, currentUserId);
+        if (existing != null)
+            throw new InvalidOperationException("You have already submitted an annotation for this task.");
 
         var annotation = new Annotation
         {
             AnnotationId = Guid.NewGuid(),
-            TaskId = request.TaskId,
-            AnnotatorId = annotatorId,
+            TaskId = taskId,
+            AnnotatorId = currentUserId,
             Payload = payloadJson,
             SubmittedAt = DateTime.UtcNow
         };

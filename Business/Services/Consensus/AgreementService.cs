@@ -8,6 +8,10 @@ public interface IAgreementService
 
 public class AgreementService : IAgreementService
 {
+	/// <summary>
+	/// Majority vote: for each cluster, score = annotators voting majority label / total annotators in that cluster.
+	/// Overall score = average across all clusters.
+	/// </summary>
 	public double CalculateOverallScore(List<BoxCluster> clusters, int totalAnnotators)
 	{
 		if (clusters.Count == 0 || totalAnnotators <= 0)
@@ -20,13 +24,18 @@ public class AgreementService : IAgreementService
 				.OrderByDescending(g => g.Count())
 				.First().Key;
 
-			var strictAgreeAnnotators = cluster.Members
+			var majorityVotes = cluster.Members
 				.Where(m => m.Label == majorityLabel)
 				.Select(m => m.AnnotatorId)
 				.Distinct()
 				.Count();
 
-			return (double)strictAgreeAnnotators / totalAnnotators;
+			var totalVoters = cluster.Members
+				.Select(m => m.AnnotatorId)
+				.Distinct()
+				.Count();
+
+			return (double)majorityVotes / totalVoters;
 		});
 
 		return clusterScores.Average();
