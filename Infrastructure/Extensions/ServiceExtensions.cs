@@ -33,8 +33,8 @@ using DataLabelProject.Data.Repositories.Implementations.Reviews;
 using DataLabelProject.Business.Services.Reviews;
 using DataLabelProject.Data.Repositories.Implementations.Consensus;
 using DataLabelProject.Business.Services.Consensus;
+using DataLabelProject.Business.Services.Statistics;
 using DataLabelProject.Data.Repositories.Implementations.ProjectConfigs;
-using DataLabelProject.Business.Services.BackgroundServices;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -88,6 +88,7 @@ public static class ServiceExtensions
         services.AddScoped<IClusteringService, ClusteringService>();
         services.AddScoped<IIoUService, IoUService>();
         services.AddScoped<IExportService, ExportService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
 
         // File upload strategies
         services.AddScoped<IFileUploadStrategy, ImageUploadStrategy>();
@@ -96,9 +97,6 @@ public static class ServiceExtensions
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
         services.AddScoped<MetadataExtractorFactory>();
-
-        // Background services
-        services.AddHostedService<AssignmentExpirationService>();
 
         return services;
     }
