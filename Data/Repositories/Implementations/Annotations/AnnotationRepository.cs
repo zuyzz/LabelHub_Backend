@@ -34,16 +34,21 @@ public class AnnotationRepository : IAnnotationRepository
 
     public async Task<IEnumerable<Annotation>> GetApprovedByTaskIdAsync(Guid taskId)
     {
-        var annotations = await _context.Annotations
+        return await _context.Annotations
             .AsNoTracking()
             .Include(a => a.Reviews)
-            .Where(a => a.TaskId == taskId && a.Reviews.Any())
+            .Where(a => a.TaskId == taskId
+                && a.Reviews
+                    .OrderByDescending(r => r.ReviewedAt)
+                    .First().Result == ReviewResult.Approved)
             .ToListAsync();
+    }
 
-        return annotations.Where(a =>
-            a.Reviews
-                .OrderByDescending(r => r.ReviewedAt ?? DateTime.MinValue)
-                .First().Result == ReviewResult.Approved);
+    public async Task<Annotation?> GetByTaskIdAndAnnotatorIdAsync(Guid taskId, Guid annotatorId)
+    {
+        return await _context.Annotations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.TaskId == taskId && a.AnnotatorId == annotatorId);
     }
 
     public async Task<Annotation?> GetByIdAsync(Guid annotationId)

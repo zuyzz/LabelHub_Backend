@@ -7,7 +7,6 @@ public interface ILabelingTaskRepository
     Task<List<LabelingTask>> GetAllAsync();
     Task<LabelingTask?> GetByIdAsync(Guid taskId);
     Task<IEnumerable<LabelingTask>> GetAllByDatasetIdAsync(Guid datasetId);
-    Task<List<LabelingTask>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds);
     Task<List<LabelingTask>> GetByIdsAsync(IEnumerable<Guid> taskIds);
     Task<List<LabelingTask>> GetByProjectIdAsync(Guid projectId);
     Task AddAsync(LabelingTask task);
