@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text.Json;
 using DataLabelProject.Application.DTOs.Annotations;
+using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Services.Annotations;
 
 namespace DataLabelProject.Application.Controllers;
@@ -18,15 +20,38 @@ public class AnnotationsController : ControllerBase
         _annotationService = annotationService;
     }
 
-    private Guid GetCurrentUserId()
+    private Guid? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 
     private string GetCurrentUserRole()
     {
         return User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+    }
+
+    private static AnnotationResponse MapToResponse(Annotation a)
+    {
+        object payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<AnnotationPayload>(a.Payload) ?? (object)a.Payload;
+        }
+        catch
+        {
+            payload = a.Payload;
+        }
+
+        return new AnnotationResponse
+        {
+            AnnotationId = a.AnnotationId,
+            TaskId = a.TaskId,
+            AnnotatorId = a.AnnotatorId,
+            Payload = payload,
+            SubmittedAt = a.SubmittedAt,
+            Status = a.Reviews.OrderByDescending(r => r.ReviewedAt).FirstOrDefault()?.Result.ToString().ToLower()
+        };
     }
 
     [HttpGet]
@@ -36,45 +61,24 @@ public class AnnotationsController : ControllerBase
         try
         {
             var currentUserId = GetCurrentUserId();
+            if (currentUserId == null)
+                return Unauthorized(new { message = "Invalid user identity." });
+
             var currentUserRole = GetCurrentUserRole();
 
-            var annotations = await _annotationService.GetAnnotationsForUserAsync(currentUserId, currentUserRole, status);
+            var annotations = await _annotationService.GetAnnotationsForUserAsync(currentUserId.Value, currentUserRole, status);
 
-            var response = annotations.Select(a => {
-                AnnotationPayload? parsedPayload = null;
-                try
-                {
-                    parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(a.Payload);
-                }
-                catch
-                {
-                    parsedPayload = null;
-                }
-
-                return new AnnotationResponse
-                {
-                    AnnotationId = a.AnnotationId,
-                    TaskId = a.TaskId,
-                    AnnotatorId = a.AnnotatorId,
-                    Payload = parsedPayload ?? (object)a.Payload,
-                    SubmittedAt = a.SubmittedAt,
-                    Status = a.Reviews.OrderByDescending(r => r.ReviewedAt).FirstOrDefault()?.Result.ToString().ToLower()
-                };
-            }).ToList();
+            var response = annotations.Select(MapToResponse).ToList();
 
             return Ok(response);
         }
-        catch (ArgumentException)
+        catch (ArgumentException ex)
         {
-            return BadRequest(new { message = "Invalid status filter." });
+            return BadRequest(new { message = ex.Message });
         }
         catch (UnauthorizedAccessException)
         {
             return Forbid();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
         }
     }
 
@@ -88,34 +92,25 @@ public class AnnotationsController : ControllerBase
         try
         {
             var currentUserId = GetCurrentUserId();
+            if (currentUserId == null)
+                return Unauthorized(new { message = "Invalid user identity." });
+
             var currentUserRole = GetCurrentUserRole();
-            var annotation = await _annotationService.CreateAnnotationAsync(request, currentUserId, currentUserRole);
+            var payloadJson = JsonSerializer.Serialize(request.Payload);
+            var annotation = await _annotationService.CreateAnnotationAsync(request.TaskId, payloadJson, currentUserId.Value, currentUserRole);
 
-            var parsedPayload = (AnnotationPayload?)null;
-            try
-            {
-                parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);
-            }
-            catch
-            {
-                parsedPayload = null;
-            }
-
-            var response = new AnnotationResponse
-            {
-                AnnotationId = annotation.AnnotationId,
-                TaskId = annotation.TaskId,
-                AnnotatorId = annotation.AnnotatorId,
-                Payload = parsedPayload ?? (object)annotation.Payload,
-                SubmittedAt = annotation.SubmittedAt,
-                Status = null
-            };
+            var response = MapToResponse(annotation);
+            response.Status = null;
 
             return StatusCode(201, response);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {
@@ -124,10 +119,6 @@ public class AnnotationsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
         }
     }
 }

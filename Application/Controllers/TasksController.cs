@@ -29,223 +29,56 @@ public class TasksController : ControllerBase
         return User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
     }
 
-    /// <summary>
-    /// GET api/tasks/reviewer?status={status}&page={page}&pageSize={pageSize}
-    /// Get active tasks for reviewer with filtering and pagination
-    /// </summary>
-    [HttpGet("reviewer")]
-    [Authorize(Roles = "reviewer")]
-    public async Task<IActionResult> GetTasksForReviewer([FromQuery] TaskQueryParameters @params)
+    [HttpGet]
+    public async Task<IActionResult> GetTasks()
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var (tasks, totalCount) = await _taskService.GetTasksForReviewerAsync(
-                userId, @params.Status, @params.Page, @params.PageSize);
+        var tasks = await _taskService.GetTasksForUserAsync(GetCurrentUserId(), GetCurrentUserRole());
 
-            var response = tasks.Select(t => new TaskResponse
-            {
-                TaskId = t.TaskId,
-                DatasetItemId = t.DatasetItemId,
-                ProjectId = t.ProjectId,
-                Status = t.Status.ToString(),
-                RevisionCount = t.RevisionCount,
-                Assignments = t.Assignments?.Select(a => new AssignmentResponse
-                {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
-            }).ToList();
-
-            return Ok(new
-            {
-                data = response,
-                totalCount,
-                page = @params.Page,
-                pageSize = @params.PageSize
-            });
-        }
-        catch (Exception ex)
+        var response = tasks.Select(t => new TaskResponse
         {
-            return BadRequest(new { message = ex.Message });
-        }
+            TaskId = t.TaskId,
+            DatasetItemId = t.DatasetItemId,
+            ProjectId = t.ProjectId,
+            Assignments = t.Assignments.Select(a => new AssignmentResponse
+            {
+                AssignmentId = a.AssignmentId,
+                TaskId = a.TaskId,
+                AssignedTo = a.AssignedTo,
+                AssignedBy = a.AssignedBy,
+                AssignedAt = a.AssignedAt,
+                StartedAt = a.StartedAt,
+                TimeLimitMinutes = a.TimeLimitMinutes,
+                Status = a.Status.ToString()
+            }).ToList()
+        }).ToList();
+
+        return Ok(response);
     }
 
-    /// <summary>
-    /// GET api/tasks/annotator?status={status}&page={page}&pageSize={pageSize}
-    /// Get active tasks for annotator with filtering and pagination
-    /// </summary>
-    [HttpGet("annotator")]
-    [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> GetTasksForAnnotator([FromQuery] TaskQueryParameters @params)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var (tasks, totalCount) = await _taskService.GetTasksForAnnotatorAsync(
-                userId, @params.Status, @params.Page, @params.PageSize);
-
-            var response = tasks.Select(t => new TaskResponse
-            {
-                TaskId = t.TaskId,
-                DatasetItemId = t.DatasetItemId,
-                ProjectId = t.ProjectId,
-                Status = t.Status.ToString(),
-                RevisionCount = t.RevisionCount,
-                Assignments = t.Assignments?.Select(a => new AssignmentResponse
-                {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
-            }).ToList();
-
-            return Ok(new
-            {
-                data = response,
-                totalCount,
-                page = @params.Page,
-                pageSize = @params.PageSize
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// GET api/tasks/{id}/reviewer
-    /// Get task detail by ID for reviewer
-    /// </summary>
-    [HttpGet("{id}/reviewer")]
-    [Authorize(Roles = "reviewer")]
-    public async Task<IActionResult> GetTaskByIdForReviewer(Guid id)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
-
-            if (task == null)
-                return NotFound(new { message = "Task not found or not accessible" });
-
-            var response = new TaskResponse
-            {
-                TaskId = task.TaskId,
-                DatasetItemId = task.DatasetItemId,
-                ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
-                RevisionCount = task.RevisionCount,
-                Assignments = task.Assignments?.Select(a => new AssignmentResponse
-                {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// GET api/tasks/{id}/annotator
-    /// Get task detail by ID for annotator
-    /// </summary>
-    [HttpGet("{id}/annotator")]
-    [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> GetTaskByIdForAnnotator(Guid id)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
-
-            if (task == null)
-                return NotFound(new { message = "Task not found or not accessible" });
-
-            var response = new TaskResponse
-            {
-                TaskId = task.TaskId,
-                DatasetItemId = task.DatasetItemId,
-                ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
-                RevisionCount = task.RevisionCount,
-                Assignments = task.Assignments?.Select(a => new AssignmentResponse
-                {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// POST api/tasks/assign
-    /// Bulk assign tasks from a dataset to a user
-    /// </summary>
     [HttpPost("assign")]
     [Authorize(Roles = "manager")]
-    public async Task<IActionResult> BulkAssignTasks([FromBody] BulkAssignTaskRequest request)
+    public async Task<IActionResult> AssignTask([FromBody] AssignTaskRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var assignments = await _taskService.BulkAssignTasksAsync(
-                request.DatasetId, request.ProjectId, request.AssignedTo, GetCurrentUserId());
+            var assignment = await _taskService.AssignTaskAsync(
+                request.TaskId, request.ProjectId, request.AssignedTo, GetCurrentUserId());
 
-            var response = assignments.Select(a => new AssignmentResponse
+            var response = new AssignmentResponse
             {
-                AssignmentId = a.AssignmentId,
-                TaskId = a.TaskId,
-                AssignedTo = a.AssignedTo,
-                AssignedBy = a.AssignedBy,
-                AssignedAt = a.AssignedAt,
-                StartedAt = a.StartedAt,
-                TimeLimitMinutes = a.TimeLimitMinutes,
-                Status = a.Status.ToString()
-            }).ToList();
-
-            return StatusCode(201, new
-            {
-                message = $"Successfully assigned {assignments.Count} tasks",
-                data = response
-            });
+                AssignmentId = assignment.AssignmentId,
+                TaskId = assignment.TaskId,
+                AssignedTo = assignment.AssignedTo,
+                AssignedBy = assignment.AssignedBy,
+                AssignedAt = assignment.AssignedAt,
+                StartedAt = assignment.StartedAt,
+                TimeLimitMinutes = assignment.TimeLimitMinutes,
+                Status = assignment.Status.ToString()
+            };
+            return StatusCode(201, response);
         }
         catch (Exception ex)
         {
@@ -253,39 +86,28 @@ public class TasksController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// PUT api/tasks/assign/{id}
-    /// Update time limit for assignments by dataset
-    /// </summary>
-    [HttpPut("assign/{id}")]
+    [HttpPut("assign")]
     [Authorize(Roles = "manager")]
-    public async Task<IActionResult> UpdateAssignmentByDataset(Guid id, [FromBody] UpdateAssignmentByIdRequest request)
+    public async Task<IActionResult> UpdateTimeLimit([FromBody] UpdateAssignmentTimeLimitRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var assignments = await _taskService.UpdateAssignmentsByDatasetAsync(
-                id, request.DatasetId, request.TimeLimitMinutes);
-
-            var response = assignments.Select(a => new AssignmentResponse
+            var assignment = await _taskService.UpdateTimeLimitAsync(request.TaskId, request.TimeLimitMinutes);
+            var response = new AssignmentResponse
             {
-                AssignmentId = a.AssignmentId,
-                TaskId = a.TaskId,
-                AssignedTo = a.AssignedTo,
-                AssignedBy = a.AssignedBy,
-                AssignedAt = a.AssignedAt,
-                StartedAt = a.StartedAt,
-                TimeLimitMinutes = a.TimeLimitMinutes,
-                Status = a.Status.ToString()
-            }).ToList();
-
-            return Ok(new
-            {
-                message = $"Successfully updated {assignments.Count} assignments",
-                data = response
-            });
+                AssignmentId = assignment.AssignmentId,
+                TaskId = assignment.TaskId,
+                AssignedTo = assignment.AssignedTo,
+                AssignedBy = assignment.AssignedBy,
+                AssignedAt = assignment.AssignedAt,
+                StartedAt = assignment.StartedAt,
+                TimeLimitMinutes = assignment.TimeLimitMinutes,
+                Status = assignment.Status.ToString()
+            };
+            return Ok(response);
         }
         catch (Exception ex)
         {
