@@ -54,7 +54,7 @@ public class AnnotationsController : ControllerBase
                 return new AnnotationResponse
                 {
                     AnnotationId = a.AnnotationId,
-                    TaskId = a.TaskId,
+                    TaskId = a.TaskItemId,
                     AnnotatorId = a.AnnotatorId,
                     Payload = parsedPayload ?? (object)a.Payload,
                     SubmittedAt = a.SubmittedAt,
@@ -104,7 +104,7 @@ public class AnnotationsController : ControllerBase
             var response = new AnnotationResponse
             {
                 AnnotationId = annotation.AnnotationId,
-                TaskId = annotation.TaskId,
+                TaskId = annotation.TaskItemId,
                 AnnotatorId = annotation.AnnotatorId,
                 Payload = parsedPayload ?? (object)annotation.Payload,
                 SubmittedAt = annotation.SubmittedAt,

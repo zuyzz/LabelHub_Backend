@@ -20,7 +20,7 @@ public partial class Assignment
 
     public double TimeLimitMinutes { get; set; }
 
-    public AssignmentStatus Status { get; set; }
+    public AssignmentStatus Status { get; set; } = AssignmentStatus.Incompleted;
 
     public virtual User AssignedByUser { get; set; } = null!;
 

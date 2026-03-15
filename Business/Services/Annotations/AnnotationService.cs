@@ -10,11 +10,11 @@ namespace DataLabelProject.Business.Services.Annotations;
 public class AnnotationService : IAnnotationService
 {
     private readonly IAnnotationRepository _annotationRepository;
-    private readonly ILabelingTaskRepository _taskRepository;
+    private readonly ILabelingTaskItemRepository _taskRepository;
 
     public AnnotationService(
         IAnnotationRepository annotationRepository,
-        ILabelingTaskRepository taskRepository)
+        ILabelingTaskItemRepository taskRepository)
     {
         _annotationRepository = annotationRepository;
         _taskRepository = taskRepository;
@@ -62,7 +62,7 @@ public class AnnotationService : IAnnotationService
         var annotation = new Annotation
         {
             AnnotationId = Guid.NewGuid(),
-            TaskId = request.TaskId,
+            TaskItemId = request.TaskId,
             AnnotatorId = annotatorId,
             Payload = payloadJson,
             SubmittedAt = DateTime.UtcNow

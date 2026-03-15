@@ -8,9 +8,7 @@ public partial class Review
 {
     public Guid ReviewId { get; set; }
 
-    public Guid AnnotationId { get; set; }
-
-    public Guid TaskId { get; set; }
+    public Guid TaskItemId { get; set; }
 
     public Guid ReviewerId { get; set; }
 
@@ -20,9 +18,7 @@ public partial class Review
 
     public DateTime? ReviewedAt { get; set; }
 
-    public virtual Annotation ReviewAnnotation { get; set; } = null!;
-
-    public virtual LabelingTask ReviewTask { get; set; } = null!;
+    public virtual LabelingTaskItem ReviewTaskItem { get; set; } = null!;
 
     public virtual User ReviewUser { get; set; } = null!;
 }

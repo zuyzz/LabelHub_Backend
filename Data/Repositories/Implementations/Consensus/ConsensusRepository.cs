@@ -35,11 +35,11 @@ public class ConsensusRepository : IConsensusRepository
 			.FirstOrDefaultAsync(c => c.ConsensusId == consensusId);
 	}
 
-	public async Task<IEnumerable<ConsensusEntity>> GetByTaskIdAsync(Guid taskId)
+	public async Task<IEnumerable<ConsensusEntity>> GetByDatasetItemIdAsync(Guid datasetItemId)
 	{
 		return await _context.Set<ConsensusEntity>()
 			.AsNoTracking()
-			.Where(c => c.TaskId == taskId)
+			.Where(c => c.DatasetItemId == datasetItemId)
 			.OrderByDescending(c => c.CreatedAt)
 			.ToListAsync();
 	}
@@ -51,14 +51,16 @@ public class ConsensusRepository : IConsensusRepository
 			.OrderByDescending(c => c.CreatedAt)
 			.AsQueryable();
 
-		if (@params.TaskId.HasValue)
-			query = query.Where(c => c.TaskId == @params.TaskId.Value);
+		// fix
 
-		if (@params.MinAgreementScore.HasValue)
-			query = query.Where(c => c.AgreementScore >= @params.MinAgreementScore.Value);
+		// if (@params.TaskId.HasValue)
+		// 	query = query.Where(c => c.TaskId == @params.TaskId.Value);
 
-		if (@params.MaxAgreementScore.HasValue)
-			query = query.Where(c => c.AgreementScore <= @params.MaxAgreementScore.Value);
+		// if (@params.MinAgreementScore.HasValue)
+		// 	query = query.Where(c => c.AgreementScore >= @params.MinAgreementScore.Value);
+
+		// if (@params.MaxAgreementScore.HasValue)
+		// 	query = query.Where(c => c.AgreementScore <= @params.MaxAgreementScore.Value);
 
 		var total = await query.CountAsync();
 		var items = await query

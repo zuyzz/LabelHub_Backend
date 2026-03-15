@@ -28,10 +28,6 @@ public class DatasetRepository : IDatasetRepository
         if (!string.IsNullOrWhiteSpace(@params.Description))
             query = query.Where(d => EF.Functions.ILike(d.Description ?? "", $"%{@params.Description}%"));
 
-        if (@params.ProjectId.HasValue)
-            query = query.Where(d => d.ProjectDatasets
-                .Any(pd => pd.ProjectId == @params.ProjectId.Value));
-
         var totalCount = await query.CountAsync();
 
         var items = await query
@@ -48,7 +44,7 @@ public class DatasetRepository : IDatasetRepository
             .AsNoTracking()
             .Where(d => d.CreatedBy == creatorId)
             .Include(d => d.DatasetItems)
-            .Include(d => d.ProjectDatasets)
+            .Include(d => d.DatasetProject)
             .OrderByDescending(d => d.CreatedAt)
             .AsQueryable();
 
@@ -57,10 +53,6 @@ public class DatasetRepository : IDatasetRepository
 
         if (!string.IsNullOrWhiteSpace(@params.Description))
             query = query.Where(d => EF.Functions.ILike(d.Description ?? "", $"%{@params.Description.Trim()}%"));
-            
-        if (@params.ProjectId.HasValue)
-            query = query.Where(d => d.ProjectDatasets
-                .Any(pd => pd.ProjectId == @params.ProjectId.Value));
 
         var totalCount = await query.CountAsync();
 
@@ -76,7 +68,7 @@ public class DatasetRepository : IDatasetRepository
     {
         return await _context.Datasets
             .Include(d => d.DatasetItems)
-            .Include(d => d.ProjectDatasets)
+            .Include(d => d.DatasetProject)
             .FirstOrDefaultAsync(d => d.DatasetId == id);
     }
 

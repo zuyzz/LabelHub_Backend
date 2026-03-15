@@ -30,7 +30,7 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// GET api/tasks/reviewer?status={status}&page={page}&pageSize={pageSize}
+    /// GET api/tasks/reviewer?status={status}&amp;page={page}&amp;pageSize={pageSize}
     /// Get active tasks for reviewer with filtering and pagination
     /// </summary>
     [HttpGet("reviewer")]
@@ -46,21 +46,16 @@ public class TasksController : ControllerBase
             var response = tasks.Select(t => new TaskResponse
             {
                 TaskId = t.TaskId,
-                DatasetItemId = t.DatasetItemId,
                 ProjectId = t.ProjectId,
                 Status = t.Status.ToString(),
-                RevisionCount = t.RevisionCount,
-                Assignments = t.Assignments?.Select(a => new AssignmentResponse
+                TaskItems = t.TaskItems?.Select(i => new TaskItemResponse
                 {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
             }).ToList();
 
             return Ok(new
@@ -78,7 +73,7 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// GET api/tasks/annotator?status={status}&page={page}&pageSize={pageSize}
+    /// GET api/tasks/annotator?status={status}&amp;page={page}&amp;pageSize={pageSize}
     /// Get active tasks for annotator with filtering and pagination
     /// </summary>
     [HttpGet("annotator")]
@@ -94,21 +89,16 @@ public class TasksController : ControllerBase
             var response = tasks.Select(t => new TaskResponse
             {
                 TaskId = t.TaskId,
-                DatasetItemId = t.DatasetItemId,
                 ProjectId = t.ProjectId,
                 Status = t.Status.ToString(),
-                RevisionCount = t.RevisionCount,
-                Assignments = t.Assignments?.Select(a => new AssignmentResponse
+                TaskItems = t.TaskItems?.Select(i => new TaskItemResponse
                 {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
             }).ToList();
 
             return Ok(new
@@ -144,21 +134,16 @@ public class TasksController : ControllerBase
             var response = new TaskResponse
             {
                 TaskId = task.TaskId,
-                DatasetItemId = task.DatasetItemId,
                 ProjectId = task.ProjectId,
                 Status = task.Status.ToString(),
-                RevisionCount = task.RevisionCount,
-                Assignments = task.Assignments?.Select(a => new AssignmentResponse
+                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
                 {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
             };
 
             return Ok(response);
@@ -188,24 +173,90 @@ public class TasksController : ControllerBase
             var response = new TaskResponse
             {
                 TaskId = task.TaskId,
-                DatasetItemId = task.DatasetItemId,
                 ProjectId = task.ProjectId,
                 Status = task.Status.ToString(),
-                RevisionCount = task.RevisionCount,
-                Assignments = task.Assignments?.Select(a => new AssignmentResponse
+                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
                 {
-                    AssignmentId = a.AssignmentId,
-                    TaskId = a.TaskId,
-                    AssignedTo = a.AssignedTo,
-                    AssignedBy = a.AssignedBy,
-                    AssignedAt = a.AssignedAt,
-                    StartedAt = a.StartedAt,
-                    TimeLimitMinutes = a.TimeLimitMinutes,
-                    Status = a.Status.ToString()
-                }).ToList() ?? new List<AssignmentResponse>()
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
             };
 
             return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET api/tasks/{id}
+    /// Get task detail by ID (task with its task items)
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = "reviewer,annotator")]
+    public async Task<IActionResult> GetTaskById(Guid id)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
+
+            if (task == null)
+                return NotFound(new { message = "Task not found or not accessible" });
+
+            var response = new TaskResponse
+            {
+                TaskId = task.TaskId,
+                ProjectId = task.ProjectId,
+                Status = task.Status.ToString(),
+                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
+                {
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST api/tasks/{id}/assign-items
+    /// Assign existing task items to a task
+    /// </summary>
+    [HttpPost("{id:guid}/assign-items")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> AssignTaskItems(Guid id, [FromBody] AssignTaskItemsRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var taskItems = await _taskService.AssignTaskItemsToTaskAsync(id, request.TaskItemIds);
+
+            var response = taskItems.Select(i => new TaskItemResponse
+            {
+                TaskItemId = i.TaskItemId,
+                DatasetItemId = i.DatasetItemId,
+                TaskId = i.TaskId,
+                RevisionCount = i.RevisionCount,
+                Status = i.Status.ToString()
+            }).ToList();
+
+            return Ok(new { message = "Task items assigned successfully", data = response });
         }
         catch (Exception ex)
         {

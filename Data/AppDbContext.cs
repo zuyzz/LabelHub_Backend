@@ -36,11 +36,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<LabelingTask> LabelingTasks { get; set; }
 
+    public virtual DbSet<LabelingTaskItem> LabelingTaskItems { get; set; }
+
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectConfig> ProjectConfigs { get; set; }
-
-    public virtual DbSet<ProjectDataset> ProjectDatasets { get; set; }
 
     public virtual DbSet<ProjectLabel> ProjectLabels { get; set; }
 
@@ -86,6 +86,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
             // labeling task status enum
             .HasPostgresEnum<LabelingTaskStatus>("public", "enum_task_status")
+            // labeling task item status enum
+            .HasPostgresEnum<LabelingTaskItemStatus>("public", "enum_task_item_status")
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

@@ -14,6 +14,7 @@ public class LabelingTaskService : ILabelingTaskService
     private readonly IProjectRepository _projectRepo;
     private readonly IProjectMemberRepository _projectMemberRepo;
     private readonly IDatasetItemRepository _datasetItemRepo;
+    private readonly ILabelingTaskItemRepository _taskItemRepo;
 
     public LabelingTaskService(
         ILabelingTaskRepository taskRepo,
@@ -22,7 +23,8 @@ public class LabelingTaskService : ILabelingTaskService
         IRoleRepository roleRepo,
         IProjectRepository projectRepo,
         IProjectMemberRepository projectMemberRepo,
-        IDatasetItemRepository datasetItemRepo)
+        IDatasetItemRepository datasetItemRepo,
+        ILabelingTaskItemRepository taskItemRepo)
     {
         _taskRepo = taskRepo;
         _assignmentRepo = assignmentRepo;
@@ -31,6 +33,7 @@ public class LabelingTaskService : ILabelingTaskService
         _projectRepo = projectRepo;
         _projectMemberRepo = projectMemberRepo;
         _datasetItemRepo = datasetItemRepo;
+        _taskItemRepo = taskItemRepo;
     }
 
     public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForReviewerAsync(
@@ -142,7 +145,7 @@ public class LabelingTaskService : ILabelingTaskService
 
         // Get dataset items
         var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
-        var datasetItemIds = datasetItems.Select(di => di.ItemId).ToList();
+        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
 
         if (datasetItemIds.Count == 0)
             throw new Exception("No dataset items found for this dataset");
@@ -193,7 +196,7 @@ public class LabelingTaskService : ILabelingTaskService
 
         // Get dataset items
         var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
-        var datasetItemIds = datasetItems.Select(di => di.ItemId).ToList();
+        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
 
         if (datasetItemIds.Count == 0)
             throw new Exception("No dataset items found for this dataset");
@@ -225,5 +228,36 @@ public class LabelingTaskService : ILabelingTaskService
         await _assignmentRepo.SaveChangesAsync();
 
         return assignmentsToUpdate;
+    }
+
+    public async Task<List<LabelingTaskItem>> AssignTaskItemsToTaskAsync(Guid taskId, IEnumerable<Guid> taskItemIds)
+    {
+        var task = await _taskRepo.GetByIdAsync(taskId);
+        if (task == null)
+            throw new Exception("Task not found");
+
+        var taskItems = await _taskItemRepo.GetByIdsAsync(taskItemIds);
+        if (taskItems == null || taskItems.Count == 0)
+            throw new Exception("No task items found");
+
+        // Ensure all task items belong to the same project as the task
+        if (taskItems.Any(ti => ti.ProjectId != task.ProjectId))
+            throw new Exception("All task items must belong to the same project as the task");
+
+        foreach (var taskItem in taskItems)
+        {
+            taskItem.TaskId = taskId;
+            taskItem.Status = LabelingTaskItemStatus.Assigned;
+        }
+
+        await _taskItemRepo.UpdateRangeAsync(taskItems);
+        await _taskItemRepo.SaveChangesAsync();
+
+        return taskItems;
+    }
+
+    public async Task<List<LabelingTaskItem>> GetTaskItemsByProjectIdAsync(Guid projectId)
+    {
+        return await _taskItemRepo.GetByProjectIdAsync(projectId);
     }
 }

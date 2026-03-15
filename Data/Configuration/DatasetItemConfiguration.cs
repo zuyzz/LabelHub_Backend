@@ -8,11 +8,11 @@ public class DatasetItemConfiguration : IEntityTypeConfiguration<DatasetItem>
 {
     public void Configure(EntityTypeBuilder<DatasetItem> entity)
     {
-        entity.HasKey(e => e.ItemId).HasName("DatasetItem_pkey");
+        entity.HasKey(e => e.DatasetItemId).HasName("DatasetItem_pkey");
 
         entity.ToTable("DatasetItem");
 
-        entity.Property(e => e.ItemId).HasColumnName("itemId").HasDefaultValueSql("uuid_generate_v4()");
+        entity.Property(e => e.DatasetItemId).HasColumnName("itemId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.DatasetId).HasColumnName("datasetId");
         entity.Property(e => e.MediaType).HasColumnName("mediaType").HasColumnType("character varying");
         entity.Property(e => e.StorageUri).HasColumnName("storageUri");

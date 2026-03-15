@@ -5,6 +5,7 @@ using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using ConsensusModel = DataLabelProject.Business.Models.Consensus;
 
 namespace DataLabelProject.Business.Services.Reviews
@@ -13,7 +14,7 @@ namespace DataLabelProject.Business.Services.Reviews
     {
         private readonly AppDbContext _context;
         private readonly IReviewRepository _reviewRepository;
-        private readonly ILabelingTaskRepository _taskRepository;
+        private readonly ILabelingTaskItemRepository _taskRepository;
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly IProjectConfigRepository _projectConfigRepository;
         private readonly IConsensusRepository _consensusRepository;
@@ -22,7 +23,7 @@ namespace DataLabelProject.Business.Services.Reviews
         public ReviewService(
             AppDbContext context,
             IReviewRepository reviewRepository,
-            ILabelingTaskRepository taskRepository,
+            ILabelingTaskItemRepository taskRepository,
             IAssignmentRepository assignmentRepository,
             IProjectConfigRepository projectConfigRepository,
             IConsensusRepository consensusRepository,
@@ -42,23 +43,20 @@ namespace DataLabelProject.Business.Services.Reviews
             var task = await _taskRepository.GetByIdAsync(request.TaskId);
             if (task == null)
                 throw new KeyNotFoundException("Task not found");
-            if (task.Status == LabelingTaskStatus.Removed)
-                throw new KeyNotFoundException("Task is removed");
 
             var reviewerId = _currentUserService.UserId!.Value;
 
             var reviews = new List<Review>();
             foreach (var reviewItem in request.Reviews)
             {
-                var annotation = task.Annotations.FirstOrDefault(a => a.AnnotationId == reviewItem.AnnotationId);
-                if (annotation == null)
+                var annotation = task.Annotation;
+                if (annotation == null || annotation.AnnotationId != reviewItem.AnnotationId)
                     throw new KeyNotFoundException($"Annotation {reviewItem.AnnotationId} not found for task");
 
                 var review = new Review
                 {
                     ReviewId = Guid.NewGuid(),
-                    AnnotationId = reviewItem.AnnotationId,
-                    TaskId = request.TaskId,
+                    TaskItemId = request.TaskId,
                     ReviewerId = reviewerId,
                     Result = reviewItem.Result,
                     Feedback = reviewItem.Feedback,
@@ -83,7 +81,7 @@ namespace DataLabelProject.Business.Services.Reviews
                 task.RevisionCount++;
                 if (task.RevisionCount >= 3)
                 {
-                    task.Status = LabelingTaskStatus.Removed;
+                    task.Status = LabelingTaskItemStatus.Locked;
                 }
                 else
                 {
@@ -109,7 +107,7 @@ namespace DataLabelProject.Business.Services.Reviews
 
         public async Task<IEnumerable<ReviewResponse>> GetReviewsForTaskAsync(Guid taskId)
         {
-            var reviews = await _reviewRepository.GetByTaskIdAsync(taskId);
+            var reviews = await _reviewRepository.GetByTaskItemIdAsync(taskId);
             return reviews.Select(MapToResponse);
         }
 
@@ -140,12 +138,12 @@ namespace DataLabelProject.Business.Services.Reviews
             return new ReviewResponse
             {
                 ReviewId = review.ReviewId,
-                AnnotationId = review.AnnotationId,
+                AnnotationId = Guid.Empty, // Not stored in model
                 ReviewerId = review.ReviewerId,
                 Result = review.Result.ToString(),
                 Feedback = review.Feedback,
                 ReviewedAt = review.ReviewedAt,
-                TaskId = review.TaskId
+                TaskId = review.TaskItemId
             };
         }
 
@@ -161,11 +159,11 @@ namespace DataLabelProject.Business.Services.Reviews
                 return;
 
             // gather approved annotations (distinct by annotation id)
-            var approvedReviews = (await _reviewRepository.GetApprovedByTaskIdAsync(taskId)).ToList();
+            var approvedReviews = (await _reviewRepository.GetApprovedByTaskItemIdAsync(taskId)).ToList();
 
             var uniqueAnnotations = approvedReviews
-                .GroupBy(r => r.AnnotationId)
-                .Select(g => g.First().ReviewAnnotation)
+                .GroupBy(r => r.ReviewTaskItem.Annotation.AnnotationId)
+                .Select(g => g.First().ReviewTaskItem.Annotation)
                 .ToList();
 
             if (uniqueAnnotations.Count == 2)
@@ -184,7 +182,7 @@ namespace DataLabelProject.Business.Services.Reviews
 
             var consensusPayload = best.Payload;
 
-            var existingConsensuses = await _consensusRepository.GetByTaskIdAsync(taskId);
+            var existingConsensuses = await _consensusRepository.GetByDatasetItemIdAsync(taskId);
             var existing = existingConsensuses.FirstOrDefault();
 
             if (existing == null)
@@ -192,17 +190,16 @@ namespace DataLabelProject.Business.Services.Reviews
                 existing = new ConsensusModel
                 {
                     ConsensusId = Guid.NewGuid(),
-                    TaskId = taskId,
-                    Payload = consensusPayload,
-                    AgreementScore = score
+                    DatasetItemId = taskId,
+                    Payload = JsonSerializer.Serialize(new { originalPayload = consensusPayload, agreementScore = score }),
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 await _consensusRepository.CreateAsync(existing);
             }
             else
             {
-                existing.Payload = consensusPayload;
-                existing.AgreementScore = score;
+                existing.Payload = JsonSerializer.Serialize(new { originalPayload = consensusPayload, agreementScore = score });
                 await _consensusRepository.UpdateAsync(existing);
             }
         }

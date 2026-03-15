@@ -27,7 +27,9 @@ public partial class Project
 
     public virtual ICollection<Guideline> Guidelines { get; set; } = new List<Guideline>();
 
-    public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
+    public virtual ICollection<LabelingTask> Tasks { get; set; } = new List<LabelingTask>();
+
+    public virtual ICollection<LabelingTaskItem> TaskItems { get; set; } = new List<LabelingTaskItem>();
 
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
 

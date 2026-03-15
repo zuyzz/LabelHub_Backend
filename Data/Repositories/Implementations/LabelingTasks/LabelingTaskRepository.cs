@@ -18,6 +18,7 @@ public class LabelingTaskRepository : ILabelingTaskRepository
         return await _db.LabelingTasks
             .Include(t => t.Assignments)
             .Include(t => t.LabelingTaskProject)
+            .Include(t => t.TaskItems)
             .Include(t => t.Annotations)
             .Include(t => t.Reviews)
             .AsNoTracking()
@@ -29,31 +30,17 @@ public class LabelingTaskRepository : ILabelingTaskRepository
         return await _db.LabelingTasks
             .Include(t => t.Assignments)
             .Include(t => t.LabelingTaskProject)
+            .Include(t => t.TaskItems)
             .Include(t => t.Annotations)
             .Include(t => t.Reviews)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
-    }
-
-    public async Task<IEnumerable<LabelingTask>> GetAllByDatasetIdAsync(Guid datasetId)
-    {
-        return await _db.LabelingTasks
-            .Include(t => t.LabelingTaskDatasetItem)
-            .Where(t => t.LabelingTaskDatasetItem.DatasetId == datasetId)
-            .ToListAsync();
-    }
-
-    public async Task<List<LabelingTask>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds)
-    {
-        return await _db.LabelingTasks
-            .Where(t => datasetItemIds.Contains(t.DatasetItemId))
-            .AsNoTracking()
-            .ToListAsync();
     }
 
     public async Task<List<LabelingTask>> GetByIdsAsync(IEnumerable<Guid> taskIds)
     {
         return await _db.LabelingTasks
             .Include(t => t.Assignments)
+            .Include(t => t.TaskItems)
             .Where(t => taskIds.Contains(t.TaskId))
             .AsNoTracking()
             .ToListAsync();
@@ -66,6 +53,20 @@ public class LabelingTaskRepository : ILabelingTaskRepository
             .Where(t => t.ProjectId == projectId)
             .AsNoTracking()
             .ToListAsync();
+    }
+
+    public async Task<List<LabelingTask>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds)
+    {
+        var taskIds = await _db.LabelingTaskItems
+            .Where(ti => datasetItemIds.Contains(ti.DatasetItemId) && ti.TaskId.HasValue)
+            .Select(ti => ti.TaskId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        if (taskIds.Count == 0)
+            return new List<LabelingTask>();
+
+        return await GetByIdsAsync(taskIds);
     }
 
     public async Task AddAsync(LabelingTask task)

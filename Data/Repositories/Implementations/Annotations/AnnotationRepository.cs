@@ -32,12 +32,12 @@ public class AnnotationRepository : IAnnotationRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Annotation>> GetApprovedByTaskIdAsync(Guid taskId)
+    public async Task<IEnumerable<Annotation>> GetApprovedByTaskItemIdAsync(Guid taskItemId)
     {
         var annotations = await _context.Annotations
             .AsNoTracking()
             .Include(a => a.Reviews)
-            .Where(a => a.TaskId == taskId && a.Reviews.Any())
+            .Where(a => a.TaskItemId == taskItemId && a.Reviews.Any())
             .ToListAsync();
 
         return annotations.Where(a =>
