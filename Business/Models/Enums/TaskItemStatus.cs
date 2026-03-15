@@ -7,5 +7,7 @@ public enum LabelingTaskItemStatus
 {
     Unassigned,
     Assigned,
+    Incompleted,
+    Completed,
     Locked
 }

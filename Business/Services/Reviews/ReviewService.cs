@@ -43,70 +43,71 @@ namespace DataLabelProject.Business.Services.Reviews
 
         public async Task<ReviewResponse[]> BatchReviewConsensusesAsync(BatchReviewRequest request)
         {
-            var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId);
-            if (taskItem == null)
-                throw new KeyNotFoundException("Task not found");
+            // var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId);
+            // if (taskItem == null)
+            //     throw new KeyNotFoundException("Task not found");
 
-            var reviewerId = _currentUserService.UserId ?? throw new InvalidOperationException("User not authenticated");
+            // var reviewerId = _currentUserService.UserId ?? throw new InvalidOperationException("User not authenticated");
 
-            var reviews = new List<Review>();
-            foreach (var reviewItem in request.Reviews)
-            {
-                var consensus = await _consensusRepository.GetByIdAsync(reviewItem.ConsensusId);
-                if (consensus == null || consensus.ConsensusId != reviewItem.ConsensusId)
-                    throw new KeyNotFoundException($"Consensus {reviewItem.ConsensusId} not found for task");
+            // var reviews = new List<Review>();
+            // foreach (var reviewItem in request.Reviews)
+            // {
+            //     var consensus = await _consensusRepository.GetByIdAsync(reviewItem.ConsensusId);
+            //     if (consensus == null || consensus.ConsensusId != reviewItem.ConsensusId)
+            //         throw new KeyNotFoundException($"Consensus {reviewItem.ConsensusId} not found for task");
 
-                var review = new Review
-                {
-                    ReviewId = Guid.NewGuid(),
-                    ConsensusId = consensus.ConsensusId,
-                    TaskItemId = request.TaskItemId,
-                    ReviewerId = reviewerId,
-                    Result = reviewItem.Result,
-                    Feedback = reviewItem.Feedback,
-                    ReviewedAt = DateTime.UtcNow
-                };
-                reviews.Add(review);
-            }
+            //     var review = new Review
+            //     {
+            //         ReviewId = Guid.NewGuid(),
+            //         ConsensusId = consensus.ConsensusId,
+            //         TaskItemId = request.TaskItemId,
+            //         ReviewerId = reviewerId,
+            //         Result = reviewItem.Result,
+            //         Feedback = reviewItem.Feedback,
+            //         ReviewedAt = DateTime.UtcNow
+            //     };
+            //     reviews.Add(review);
+            // }
 
-            // Save all reviews
-            foreach (var review in reviews)
-            {
-                await _reviewRepository.CreateAsync(review);
-            }
-            await _reviewRepository.SaveChangesAsync();
+            // // Save all reviews
+            // foreach (var review in reviews)
+            // {
+            //     await _reviewRepository.CreateAsync(review);
+            // }
+            // await _reviewRepository.SaveChangesAsync();
 
-            // Check if all annotations are rejected
-            bool allRejected = reviews.All(r => r.Result == ReviewResult.Rejected);
+            // // Check if all annotations are rejected
+            // bool allRejected = reviews.All(r => r.Result == ReviewResult.Rejected);
 
-            if (allRejected)
-            {
-                // Increment revision count
-                taskItem.RevisionCount++;
-                if (taskItem.RevisionCount >= 3)
-                {
-                    taskItem.Status = LabelingTaskItemStatus.Locked;
-                }
-                else
-                {
-                    // Reopen task: set assignments back to incompleted
-                    var assignments = await _assignmentRepository.GetAllByTaskIdAsync(request.TaskItemId);
-                    foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.Completed))
-                    {
-                        assignment.Status = AssignmentStatus.Incompleted;
-                        await _assignmentRepository.UpdateAsync(assignment);
-                    }
-                    await _assignmentRepository.SaveChangesAsync();
-                }
-                await _taskRepository.SaveChangesAsync();
-            }
-            else
-            {
-                // Create consensus from approved annotations
-                await CreateConsensusFromApproved(request.TaskItemId);
-            }
+            // if (allRejected)
+            // {
+            //     // Increment revision count
+            //     taskItem.RevisionCount++;
+            //     if (taskItem.RevisionCount >= 3)
+            //     {
+            //         taskItem.Status = LabelingTaskItemStatus.Locked;
+            //     }
+            //     else
+            //     {
+            //         // Reopen task: set assignments back to incompleted
+            //         var assignments = await _assignmentRepository.GetAllByTaskIdAsync(request.TaskItemId);
+            //         foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.Completed))
+            //         {
+            //             assignment.Status = AssignmentStatus.Incompleted;
+            //             await _assignmentRepository.UpdateAsync(assignment);
+            //         }
+            //         await _assignmentRepository.SaveChangesAsync();
+            //     }
+            //     await _taskRepository.SaveChangesAsync();
+            // }
+            // else
+            // {
+            //     // Create consensus from approved annotations
+            //     await CreateConsensusFromApproved(request.TaskItemId);
+            // }
 
-            return reviews.Select(MapToResponse).ToArray();
+            // return reviews.Select(MapToResponse).ToArray();
+            return null;
         }
 
         public async Task<IEnumerable<ReviewResponse>> GetReviewsForTaskAsync(Guid taskId)

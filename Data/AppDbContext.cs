@@ -81,8 +81,6 @@ public partial class AppDbContext : DbContext
 
             // project/dataset media type enum
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
-            // assignment status enum
-            .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
             // export job status enum
             .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
             // labeling task status enum

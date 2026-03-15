@@ -170,7 +170,6 @@ public class LabelingTaskService : ILabelingTaskService
             AssignedAt = DateTime.UtcNow,
             StartedAt = DateTime.UtcNow,
             TimeLimitMinutes = 7 * 24 * 60, // Default 7 days
-            Status = AssignmentStatus.Incompleted
         }).ToList();
 
         await _assignmentRepo.AddRangeAsync(assignments);

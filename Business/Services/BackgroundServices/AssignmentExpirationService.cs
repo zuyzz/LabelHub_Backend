@@ -43,34 +43,34 @@ public class AssignmentExpirationService : BackgroundService
 
     private async Task CheckAndExpireAssignmentsAsync()
     {
-        using var scope = _serviceProvider.CreateScope();
-        var assignmentRepo = scope.ServiceProvider.GetRequiredService<IAssignmentRepository>();
+        // using var scope = _serviceProvider.CreateScope();
+        // var assignmentRepo = scope.ServiceProvider.GetRequiredService<IAssignmentRepository>();
 
-        var allAssignments = await assignmentRepo.GetAllAsync();
-        var now = DateTime.UtcNow;
+        // var allAssignments = await assignmentRepo.GetAllAsync();
+        // var now = DateTime.UtcNow;
 
-        // Filter only assignments that need to be checked (started and not already expired/completed)
-        var activeAssignments = allAssignments
-            .Where(a => a.StartedAt.HasValue && a.Status == AssignmentStatus.Incompleted)
-            .ToList();
+        // // Filter only assignments that need to be checked (started and not already expired/completed)
+        // var activeAssignments = allAssignments
+        //     .Where(a => a.StartedAt.HasValue && a.Status == AssignmentStatus.Incompleted)
+        //     .ToList();
 
-        var expiredAssignments = new List<Business.Models.Assignment>();
+        // var expiredAssignments = new List<Business.Models.Assignment>();
 
-        foreach (var assignment in activeAssignments)
-        {
-            var deadline = assignment.StartedAt!.Value.AddMinutes(assignment.TimeLimitMinutes);
-            if (now > deadline)
-            {
-                // assignment.Status = AssignmentStatus.Expired;
-                expiredAssignments.Add(assignment);
-            }
-        }
+        // foreach (var assignment in activeAssignments)
+        // {
+        //     var deadline = assignment.StartedAt!.Value.AddMinutes(assignment.TimeLimitMinutes);
+        //     if (now > deadline)
+        //     {
+        //         // assignment.Status = AssignmentStatus.Expired;
+        //         expiredAssignments.Add(assignment);
+        //     }
+        // }
 
-        if (expiredAssignments.Count > 0)
-        {
-            await assignmentRepo.UpdateRangeAsync(expiredAssignments);
-            await assignmentRepo.SaveChangesAsync();
-            _logger.LogInformation($"[Assignment Expiration] Expired {expiredAssignments.Count} assignment(s)");
-        }
+        // if (expiredAssignments.Count > 0)
+        // {
+        //     await assignmentRepo.UpdateRangeAsync(expiredAssignments);
+        //     await assignmentRepo.SaveChangesAsync();
+        //     _logger.LogInformation($"[Assignment Expiration] Expired {expiredAssignments.Count} assignment(s)");
+        // }
     }
 }

@@ -129,49 +129,50 @@ public class StatisticsService : IStatisticsService
 
     public async Task<List<AnnotatorProductivityResponse>> GetAnnotatorProductivityAsync(Guid projectId)
     {
-        var projectTaskItemIds = _context.LabelingTaskItems
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.TaskItemId);
+        // var projectTaskItemIds = _context.LabelingTaskItems
+        //     .Where(ti => ti.ProjectId == projectId)
+        //     .Select(ti => ti.TaskItemId);
 
-        var annotatorStats = await (
-            from a in _context.Annotations.AsNoTracking()
-            join u in _context.Users on a.AnnotatorId equals u.UserId
-            where projectTaskItemIds.Contains(a.TaskItemId)
-            group a by new { u.UserId, u.DisplayName } into g
-            select new
-            {
-                UserId = g.Key.UserId,
-                DisplayName = g.Key.DisplayName,
-                Annotations = g.Count()
-            }
-        ).ToListAsync();
+        // var annotatorStats = await (
+        //     from a in _context.Annotations.AsNoTracking()
+        //     join u in _context.Users on a.AnnotatorId equals u.UserId
+        //     where projectTaskItemIds.Contains(a.TaskItemId)
+        //     group a by new { u.UserId, u.DisplayName } into g
+        //     select new
+        //     {
+        //         UserId = g.Key.UserId,
+        //         DisplayName = g.Key.DisplayName,
+        //         Annotations = g.Count()
+        //     }
+        // ).ToListAsync();
 
-        // Get task IDs for this project
-        var projectTaskIds = _context.LabelingTasks
-            .Where(t => t.ProjectId == projectId)
-            .Select(t => t.TaskId);
+        // // Get task IDs for this project
+        // var projectTaskIds = _context.LabelingTasks
+        //     .Where(t => t.ProjectId == projectId)
+        //     .Select(t => t.TaskId);
 
-        var assignmentStats = await (
-            from asgn in _context.Assignments.AsNoTracking()
-            where projectTaskIds.Contains(asgn.TaskId) && asgn.Status == AssignmentStatus.Completed
-            group asgn by asgn.AssignedTo into g
-            select new
-            {
-                UserId = g.Key,
-                CompletedAssignments = g.Count()
-            }
-        ).ToListAsync();
+        // var assignmentStats = await (
+        //     from asgn in _context.Assignments.AsNoTracking()
+        //     where projectTaskIds.Contains(asgn.TaskId) && asgn.Status == AssignmentStatus.Completed
+        //     group asgn by asgn.AssignedTo into g
+        //     select new
+        //     {
+        //         UserId = g.Key,
+        //         CompletedAssignments = g.Count()
+        //     }
+        // ).ToListAsync();
 
-        var assignmentLookup = assignmentStats.ToDictionary(a => a.UserId, a => a.CompletedAssignments);
+        // var assignmentLookup = assignmentStats.ToDictionary(a => a.UserId, a => a.CompletedAssignments);
 
-        return annotatorStats.Select(a => new AnnotatorProductivityResponse
-        {
-            UserId = a.UserId,
-            DisplayName = a.DisplayName,
-            Annotations = a.Annotations,
-            CompletedAssignments = assignmentLookup.GetValueOrDefault(a.UserId, 0),
-            AvgTimePerTaskMinutes = null
-        }).ToList();
+        // return annotatorStats.Select(a => new AnnotatorProductivityResponse
+        // {
+        //     UserId = a.UserId,
+        //     DisplayName = a.DisplayName,
+        //     Annotations = a.Annotations,
+        //     CompletedAssignments = assignmentLookup.GetValueOrDefault(a.UserId, 0),
+        //     AvgTimePerTaskMinutes = null
+        // }).ToList();
+        return null;
     }
 
     public async Task<AgreementDistributionResponse> GetAgreementDistributionAsync(Guid projectId)

@@ -289,7 +289,7 @@ public class TasksController : ControllerBase
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
                 TimeLimitMinutes = a.TimeLimitMinutes,
-                Status = a.Status.ToString()
+                // Status = a.Status.ToString()
             }).ToList();
 
             return StatusCode(201, new
@@ -329,7 +329,7 @@ public class TasksController : ControllerBase
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
                 TimeLimitMinutes = a.TimeLimitMinutes,
-                Status = a.Status.ToString()
+                // Status = a.Status.ToString()
             }).ToList();
 
             return Ok(new

@@ -20,7 +20,6 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         entity.Property(e => e.AssignedAt).HasColumnName("assignedAt").HasColumnType("timestamp with time zone").HasDefaultValueSql("now()");
         entity.Property(e => e.StartedAt).HasColumnName("startedAt").HasColumnType("timestamp with time zone");
         entity.Property(e => e.TimeLimitMinutes).HasColumnName("timeLimitMinutes");
-        entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(AssignmentStatus.Incompleted);
 
         entity.HasOne(d => d.AssignedByUser).WithMany(p => p.AssignmentAssignedByUsers)
             .HasForeignKey(d => d.AssignedBy)
