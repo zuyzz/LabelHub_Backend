@@ -60,6 +60,18 @@ public class AnnotationRepository : IAnnotationRepository
         await _context.Annotations.AddAsync(annotation);
     }
 
+    public Task UpdateAsync(Annotation annotation)
+    {
+        _context.Annotations.Update(annotation);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateRangeAsync(IEnumerable<Annotation> annotations)
+    {
+        _context.Annotations.UpdateRange(annotations);
+        return Task.CompletedTask;
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();

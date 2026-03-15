@@ -60,6 +60,15 @@ public class LabelingTaskItemRepository : ILabelingTaskItemRepository
             .ToListAsync();
     }
 
+    public async Task<List<LabelingTaskItem>> GetByTaskIdAsync(Guid taskId)
+    {
+        return await _context.LabelingTaskItems
+            .Where(ti => ti.TaskId == taskId)
+            .Include(ti => ti.DatasetItem)
+            .Include(ti => ti.Annotations)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(LabelingTaskItem taskItem)
     {
         await _context.LabelingTaskItems.AddAsync(taskItem);

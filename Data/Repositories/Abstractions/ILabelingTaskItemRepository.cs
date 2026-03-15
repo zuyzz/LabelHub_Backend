@@ -9,6 +9,7 @@ public interface ILabelingTaskItemRepository
     Task<List<LabelingTaskItem>> GetByIdsAsync(IEnumerable<Guid> ids);
     Task<List<LabelingTaskItem>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds);
     Task<List<LabelingTaskItem>> GetByProjectIdAsync(Guid projectId);
+    Task<List<LabelingTaskItem>> GetByTaskIdAsync(Guid taskId);
     Task AddAsync(LabelingTaskItem taskItem);
     Task DeleteAsync(LabelingTaskItem taskItem);
     Task AddRangeAsync(IEnumerable<LabelingTaskItem> taskItems);
