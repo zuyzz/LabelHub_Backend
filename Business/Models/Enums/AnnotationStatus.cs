@@ -7,7 +7,6 @@ public enum AnnotationStatus
 {
     Submitted,
     Skipped,
-    Expired,
     Conflicted,
     Resolved
 }

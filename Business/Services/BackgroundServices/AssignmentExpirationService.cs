@@ -61,7 +61,7 @@ public class AssignmentExpirationService : BackgroundService
             var deadline = assignment.StartedAt!.Value.AddMinutes(assignment.TimeLimitMinutes);
             if (now > deadline)
             {
-                assignment.Status = AssignmentStatus.Expired;
+                // assignment.Status = AssignmentStatus.Expired;
                 expiredAssignments.Add(assignment);
             }
         }

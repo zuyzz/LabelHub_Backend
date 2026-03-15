@@ -119,6 +119,7 @@ public class ConsensusService : IConsensusService
 		foreach (var annotation in annotations)
 		{
 			AnnotationPayload? payload;
+			if (string.IsNullOrWhiteSpace(annotation.Payload)) continue;
 			try
 			{
 				payload = JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);

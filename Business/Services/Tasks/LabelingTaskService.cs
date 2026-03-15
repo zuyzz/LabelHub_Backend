@@ -191,8 +191,8 @@ public class LabelingTaskService : ILabelingTaskService
             throw new Exception("Assignment not found");
 
         // Cannot update if assignment is already finished
-        if (assignment.Status == AssignmentStatus.Expired || assignment.Status == AssignmentStatus.Completed)
-            throw new Exception("Cannot update time limit: assignment is already finished");
+        // if (assignment.Status == AssignmentStatus.Expired || assignment.Status == AssignmentStatus.Completed)
+        //     throw new Exception("Cannot update time limit: assignment is already finished");
 
         // Get dataset items
         var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
@@ -215,8 +215,8 @@ public class LabelingTaskService : ILabelingTaskService
             throw new Exception("No assignments found for the specified dataset");
 
         // Cannot update finished assignments
-        if (assignmentsToUpdate.Any(a => a.Status == AssignmentStatus.Expired || a.Status == AssignmentStatus.Completed))
-            throw new Exception("Cannot update time limit: some assignments are already finished");
+        // if (assignmentsToUpdate.Any(a => a.Status == AssignmentStatus.Expired || a.Status == AssignmentStatus.Completed))
+        //     throw new Exception("Cannot update time limit: some assignments are already finished");
 
         // Update time limits
         foreach (var a in assignmentsToUpdate)
