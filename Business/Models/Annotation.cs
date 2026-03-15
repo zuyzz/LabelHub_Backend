@@ -17,8 +17,6 @@ public partial class Annotation
 
     public string? Note { get; set; }
 
-    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
-
     public virtual User AnnotationAnnotator { get; set; } = null!;
 
     public virtual LabelingTaskItem AnnotationTaskItem { get; set; } = null!;

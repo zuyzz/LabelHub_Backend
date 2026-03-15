@@ -19,8 +19,6 @@ public class LabelingTaskRepository : ILabelingTaskRepository
             .Include(t => t.Assignments)
             .Include(t => t.LabelingTaskProject)
             .Include(t => t.TaskItems)
-            .Include(t => t.Annotations)
-            .Include(t => t.Reviews)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -31,8 +29,6 @@ public class LabelingTaskRepository : ILabelingTaskRepository
             .Include(t => t.Assignments)
             .Include(t => t.LabelingTaskProject)
             .Include(t => t.TaskItems)
-            .Include(t => t.Annotations)
-            .Include(t => t.Reviews)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
     }
 

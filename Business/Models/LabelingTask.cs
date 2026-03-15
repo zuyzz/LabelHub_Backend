@@ -12,13 +12,9 @@ public partial class LabelingTask
 
     public LabelingTaskStatus Status { get; set; } = LabelingTaskStatus.Opened;
 
-    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
-
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
     public virtual ICollection<LabelingTaskItem> TaskItems { get; set; } = new List<LabelingTaskItem>();
-
-    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     public virtual Project LabelingTaskProject { get; set; } = null!;
 }

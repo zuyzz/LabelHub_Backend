@@ -34,7 +34,7 @@ public class ReviewRepository : IReviewRepository
         return await _context.Reviews
             .Where(r => r.TaskItemId == taskItemId && r.Result == ReviewResult.Approved)
             .Include(r => r.ReviewTaskItem)
-                .ThenInclude(t => t.Annotation)
+                .ThenInclude(t => t.Annotations)
             .ToListAsync();
     }
 

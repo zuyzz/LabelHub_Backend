@@ -24,8 +24,8 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Annotation_annotatorId_fkey");
 
-        entity.HasOne(d => d.AnnotationTaskItem).WithOne(p => p.Annotation)
-            .HasForeignKey<Annotation>(d => d.TaskItemId)
+        entity.HasOne(d => d.AnnotationTaskItem).WithMany(p => p.Annotations)
+            .HasForeignKey(d => d.TaskItemId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Annotation_taskItemId_fkey");
     }

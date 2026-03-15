@@ -58,7 +58,6 @@ public class AnnotationsController : ControllerBase
                     AnnotatorId = a.AnnotatorId,
                     Payload = parsedPayload ?? (object)a.Payload,
                     SubmittedAt = a.SubmittedAt,
-                    Status = a.Reviews.OrderByDescending(r => r.ReviewedAt).FirstOrDefault()?.Result.ToString().ToLower()
                 };
             }).ToList();
 
@@ -89,7 +88,8 @@ public class AnnotationsController : ControllerBase
         {
             var currentUserId = GetCurrentUserId();
             var currentUserRole = GetCurrentUserRole();
-            var annotation = await _annotationService.CreateAnnotationAsync(request, currentUserId, currentUserRole);
+            var payloadJson = System.Text.Json.JsonSerializer.Serialize(request.Payload);
+            var annotation = await _annotationService.CreateAnnotationAsync(request.TaskId, payloadJson, currentUserId, currentUserRole);
 
             var parsedPayload = (AnnotationPayload?)null;
             try
@@ -108,7 +108,6 @@ public class AnnotationsController : ControllerBase
                 AnnotatorId = annotation.AnnotatorId,
                 Payload = parsedPayload ?? (object)annotation.Payload,
                 SubmittedAt = annotation.SubmittedAt,
-                Status = null
             };
 
             return StatusCode(201, response);

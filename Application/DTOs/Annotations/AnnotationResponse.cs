@@ -7,5 +7,4 @@ public class AnnotationResponse
     public Guid AnnotatorId { get; set; }
     public object Payload { get; set; } = null!;
     public DateTime? SubmittedAt { get; set; }
-    public string? Status { get; set; }
 }

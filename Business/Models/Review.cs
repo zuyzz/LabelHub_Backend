@@ -12,6 +12,8 @@ public partial class Review
 
     public Guid ReviewerId { get; set; }
 
+    public Guid ConsensusId { get; set; }
+
     public ReviewResult Result { get; set; }
 
     public string? Feedback { get; set; }
@@ -21,4 +23,6 @@ public partial class Review
     public virtual LabelingTaskItem ReviewTaskItem { get; set; } = null!;
 
     public virtual User ReviewUser { get; set; } = null!;
+
+    public virtual Consensus ReviewConsensus { get; set; } = null!;
 }

@@ -6,9 +6,9 @@ public interface IAnnotationRepository
 {
     Task<IEnumerable<Annotation>> GetAllAsync();
     Task<IEnumerable<Annotation>> GetByAnnotatorIdAsync(Guid annotatorId);
-    Task<IEnumerable<Annotation>> GetApprovedByTaskItemIdAsync(Guid taskItemId);
+    Task<IEnumerable<Annotation>> GetByTaskItemIdAsync(Guid taskItemId);
     Task<Annotation?> GetByIdAsync(Guid annotationId);
-    Task<Annotation?> GetByTaskIdAndAnnotatorIdAsync(Guid taskId, Guid annotatorId);
+    Task<Annotation?> GetByTaskItemIdAndAnnotatorIdAsync(Guid taskItemId, Guid annotatorId);
     Task AddAsync(Annotation annotation);
     Task SaveChangesAsync();
 }

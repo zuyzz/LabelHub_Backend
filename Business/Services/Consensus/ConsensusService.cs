@@ -41,8 +41,8 @@ public class ConsensusService : IConsensusService
 		var task = await _taskRepository.GetByIdAsync(taskId)
 			?? throw new KeyNotFoundException("Task not found");
 
-		var approvedAnnotations = (await _annotationRepository.GetApprovedByTaskItemIdAsync(taskId)).ToList();
-		var distinctAnnotatorCount = approvedAnnotations.Select(a => a.AnnotatorId).Distinct().Count();
+		var annotations = (await _annotationRepository.GetByTaskItemIdAsync(taskId)).ToList();
+		var distinctAnnotatorCount = annotations.Select(a => a.AnnotatorId).Distinct().Count();
 
 		var projectConfig = await _context.ProjectConfigs
 			.AsNoTracking()
@@ -57,7 +57,7 @@ public class ConsensusService : IConsensusService
 			throw new InvalidOperationException(
 				$"At least {minimumAnnotations} approved annotations are required to evaluate consensus");
 
-		var allBoxes = FlattenBoxes(approvedAnnotations);
+		var allBoxes = FlattenBoxes(annotations);
 		if (allBoxes.Count == 0)
 			throw new InvalidOperationException("No bounding boxes found in approved annotations");
 

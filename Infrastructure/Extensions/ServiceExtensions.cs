@@ -58,6 +58,7 @@ public static class ServiceExtensions
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
         services.AddScoped<IDatasetRepository, DatasetRepository>();
         services.AddScoped<IDatasetItemRepository, DatasetItemRepository>();
+        services.AddScoped<ILabelingTaskRepository, LabelingTaskRepository>();
         services.AddScoped<ILabelingTaskItemRepository, LabelingTaskItemRepository>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();
         services.AddScoped<IAnnotationRepository, AnnotationRepository>();

@@ -40,6 +40,12 @@ public class AssignmentRepository : IAssignmentRepository
             .FirstOrDefaultAsync(a => a.TaskId == taskId);
     }
 
+    public async Task<Assignment?> GetByIdAsync(Guid id)
+    {
+        return await _db.Assignments
+            .FirstOrDefaultAsync(a => a.AssignmentId == id);
+    }
+
     public async Task<Assignment?> GetByTaskIdAndUserAsync(Guid taskId, Guid userId)
     {
         return await _db.Assignments
@@ -51,9 +57,19 @@ public class AssignmentRepository : IAssignmentRepository
         await _db.Assignments.AddAsync(assignment);
     }
 
+    public async Task AddRangeAsync(List<Assignment> assignments)
+    {
+        await _db.Assignments.AddRangeAsync(assignments);
+    }
+
     public async Task UpdateAsync(Assignment assignment)
     {
         _db.Assignments.Update(assignment);
+    }
+
+    public async Task UpdateRangeAsync(List<Assignment> assignments)
+    {
+        _db.Assignments.UpdateRange(assignments);
     }
 
     public async Task SaveChangesAsync()

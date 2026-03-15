@@ -24,7 +24,7 @@ public partial class LabelingTaskItem
     
     public virtual DatasetItem DatasetItem { get; set; } = null!;
 
-    public virtual Annotation Annotation { get; set; } = null!;
+    public virtual ICollection<Annotation> Annotations { get; set; } = new List<Annotation>();
 
-    public virtual Review Review { get; set; } = null!;
+    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 }

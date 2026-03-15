@@ -43,26 +43,24 @@ public class AnnotationService : IAnnotationService
         if (!Enum.TryParse<ReviewResult>(status, true, out var parsedStatus))
             throw new ArgumentException("Invalid status filter. Allowed values: approved, rejected.");
 
-        return annotations.Where(a => a.Reviews.Any(r => r.Result == parsedStatus));
+        return annotations;
     }
 
-    public async Task<Annotation> CreateAnnotationAsync(CreateAnnotationRequest request, Guid currentUserId, string currentUserRole)
+    public async Task<Annotation> CreateAnnotationAsync(Guid taskId, string payloadJson, Guid currentUserId, string currentUserRole)
     {
         if (currentUserRole != "annotator")
             throw new UnauthorizedAccessException("Only annotator can create annotations");
 
-        var task = await _taskRepository.GetByIdAsync(request.TaskId);
+        var task = await _taskRepository.GetByIdAsync(taskId);
         if (task == null)
             throw new KeyNotFoundException("Task not found");
 
         var annotatorId = currentUserId;
 
-        var payloadJson = JsonSerializer.Serialize(request.Payload);
-
         var annotation = new Annotation
         {
             AnnotationId = Guid.NewGuid(),
-            TaskItemId = request.TaskId,
+            TaskItemId = taskId,
             AnnotatorId = annotatorId,
             Payload = payloadJson,
             SubmittedAt = DateTime.UtcNow

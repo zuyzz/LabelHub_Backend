@@ -15,6 +15,7 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
         entity.Property(e => e.ReviewId).HasColumnName("reviewId").HasDefaultValueSql("uuid_generate_v4()");
         entity.Property(e => e.TaskItemId).HasColumnName("taskItemId");
         entity.Property(e => e.ReviewerId).HasColumnName("reviewerId");
+        entity.Property(e => e.ConsensusId).HasColumnName("consensusId");
         entity.Property(e => e.Result)
             .HasColumnName("result")
             .HasColumnType("character varying")
@@ -22,13 +23,18 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
         entity.Property(e => e.Feedback).HasColumnName("feedback");
         entity.Property(e => e.ReviewedAt).HasColumnName("reviewedAt");
 
-        entity.HasOne(d => d.ReviewTaskItem).WithOne(p => p.Review)
-            .HasForeignKey<Review>(d => d.TaskItemId)
+        entity.HasOne(d => d.ReviewTaskItem).WithMany(p => p.Reviews)
+            .HasForeignKey(d => d.TaskItemId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Review_taskItemId_fkey");
 
         entity.HasOne(d => d.ReviewUser).WithMany(p => p.ReviewUsers)
             .HasForeignKey(d => d.ReviewerId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("Review_reviewerId_fkey");
+
+        entity.HasOne(d => d.ReviewConsensus).WithOne(p => p.Review)
+            .HasForeignKey<Consensus>(d => d.ConsensusId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Review_reviewerId_fkey");
     }

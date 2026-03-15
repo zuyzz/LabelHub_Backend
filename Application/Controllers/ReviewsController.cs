@@ -25,7 +25,7 @@ public class ReviewsController : ControllerBase
 
         try
         {
-            var reviews = await _reviewService.BatchReviewAnnotationsAsync(request);
+            var reviews = await _reviewService.BatchReviewConsensusesAsync(request);
             return StatusCode(201, reviews);
         }
         catch (KeyNotFoundException knf)
