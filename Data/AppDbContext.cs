@@ -78,6 +78,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
+
             // project/dataset media type enum
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
             // assignment status enum
@@ -88,6 +89,11 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum<LabelingTaskStatus>("public", "enum_task_status")
             // labeling task item status enum
             .HasPostgresEnum<LabelingTaskItemStatus>("public", "enum_task_item_status")
+            // annotation status enum
+            .HasPostgresEnum<AnnotationStatus>("public", "enum_annotation_status")
+            // review result enum
+            .HasPostgresEnum<ReviewResult>("public", "enum_review_result")
+
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

@@ -42,13 +42,17 @@ public class AnnotationsController : ControllerBase
 
             var response = annotations.Select(a => {
                 AnnotationPayload? parsedPayload = null;
-                try
+                if (!string.IsNullOrWhiteSpace(a.Payload))
                 {
-                    parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(a.Payload);
-                }
-                catch
-                {
-                    parsedPayload = null;
+                    try
+                    {
+                        parsedPayload = System.Text.Json.JsonSerializer
+                            .Deserialize<AnnotationPayload>(a.Payload);
+                    }
+                    catch
+                    {
+                        parsedPayload = null;
+                    }
                 }
 
                 return new AnnotationResponse
@@ -56,7 +60,7 @@ public class AnnotationsController : ControllerBase
                     AnnotationId = a.AnnotationId,
                     TaskId = a.TaskItemId,
                     AnnotatorId = a.AnnotatorId,
-                    Payload = parsedPayload ?? (object)a.Payload,
+                    Payload = parsedPayload ?? (object?)a.Payload,
                     SubmittedAt = a.SubmittedAt,
                 };
             }).ToList();
@@ -92,13 +96,17 @@ public class AnnotationsController : ControllerBase
             var annotation = await _annotationService.CreateAnnotationAsync(request.TaskId, payloadJson, currentUserId, currentUserRole);
 
             var parsedPayload = (AnnotationPayload?)null;
-            try
+            if (!string.IsNullOrWhiteSpace(annotation.Payload))
             {
-                parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);
-            }
-            catch
-            {
-                parsedPayload = null;
+                try
+                {
+                    parsedPayload = System.Text.Json.JsonSerializer
+                        .Deserialize<AnnotationPayload>(annotation.Payload);
+                }
+                catch
+                {
+                    parsedPayload = null;
+                }
             }
 
             var response = new AnnotationResponse
@@ -106,7 +114,7 @@ public class AnnotationsController : ControllerBase
                 AnnotationId = annotation.AnnotationId,
                 TaskId = annotation.TaskItemId,
                 AnnotatorId = annotation.AnnotatorId,
-                Payload = parsedPayload ?? (object)annotation.Payload,
+                Payload = parsedPayload ?? (object?)annotation.Payload,
                 SubmittedAt = annotation.SubmittedAt,
             };
 

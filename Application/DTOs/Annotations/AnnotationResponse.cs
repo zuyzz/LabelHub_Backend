@@ -5,6 +5,6 @@ public class AnnotationResponse
     public Guid AnnotationId { get; set; }
     public Guid TaskId { get; set; }
     public Guid AnnotatorId { get; set; }
-    public object Payload { get; set; } = null!;
+    public object? Payload { get; set; } = null!;
     public DateTime? SubmittedAt { get; set; }
 }

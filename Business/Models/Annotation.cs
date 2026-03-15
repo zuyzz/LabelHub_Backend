@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Models;
 
@@ -11,9 +12,11 @@ public partial class Annotation
 
     public Guid AnnotatorId { get; set; }
 
-    public string Payload { get; set; } = null!;
+    public string? Payload { get; set; } = null!;
 
     public DateTime? SubmittedAt { get; set; }
+
+    public AnnotationStatus Status { get; set; }
 
     public string? Note { get; set; }
 
