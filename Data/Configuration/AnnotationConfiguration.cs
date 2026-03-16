@@ -13,19 +13,21 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.ToTable("Annotation");
 
         entity.Property(e => e.AnnotationId).HasColumnName("annotationId").HasDefaultValueSql("uuid_generate_v4()");
-        entity.Property(e => e.TaskId).HasColumnName("taskId");
+        entity.Property(e => e.TaskItemId).HasColumnName("taskItemId");
         entity.Property(e => e.AnnotatorId).HasColumnName("annotatorId");
         entity.Property(e => e.Payload).HasColumnName("payload").HasColumnType("jsonb");
         entity.Property(e => e.SubmittedAt).HasColumnName("submittedAt");
+        entity.Property(e => e.Status).HasColumnName("status");
+        entity.Property(e => e.Note).HasColumnName("note");
 
         entity.HasOne(d => d.AnnotationAnnotator).WithMany(p => p.Annotations)
             .HasForeignKey(d => d.AnnotatorId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Annotation_annotatorId_fkey");
 
-        entity.HasOne(d => d.AnnotationTask).WithMany(p => p.Annotations)
-            .HasForeignKey(d => d.TaskId)
+        entity.HasOne(d => d.AnnotationTaskItem).WithMany(p => p.Annotations)
+            .HasForeignKey(d => d.TaskItemId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Annotation_taskId_fkey");
+            .HasConstraintName("Annotation_taskItemId_fkey");
     }
 }

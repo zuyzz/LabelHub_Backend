@@ -13,8 +13,7 @@ public class DatasetService : IDatasetService
     private readonly IDatasetRepository _datasetRepository;
     private readonly IDatasetItemRepository _datasetItemRepository;
     private readonly IProjectRepository _projectRepository;
-    private readonly IProjectDatasetRepository _projectDatasetRepository;
-    private readonly ILabelingTaskRepository _taskRepository;
+    private readonly ILabelingTaskItemRepository _taskItemRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorage _fileStorage;
 
@@ -22,16 +21,14 @@ public class DatasetService : IDatasetService
         IDatasetRepository datasetRepository,
         IDatasetItemRepository datasetItemRepository,
         IProjectRepository projectRepository,
-        IProjectDatasetRepository projectDatasetRepository,
-        ILabelingTaskRepository taskRepository,
+        ILabelingTaskItemRepository taskItemRepository,
         ICurrentUserService currentUserService,
         IFileStorage fileStorage)
     {
         _datasetRepository = datasetRepository;
         _datasetItemRepository = datasetItemRepository;
         _projectRepository = projectRepository;
-        _projectDatasetRepository = projectDatasetRepository;
-        _taskRepository = taskRepository;
+        _taskItemRepository = taskItemRepository;
         _currentUserService = currentUserService;
         _fileStorage = fileStorage;
     }
@@ -98,8 +95,8 @@ public class DatasetService : IDatasetService
             throw new KeyNotFoundException($"Dataset with ID {id} not found");
         if (dataset.CreatedBy != currentUserId && currentUserRole.Contains("manager"))
             throw new UnauthorizedAccessException("Managers can only delete their own datasets");
-        if (dataset.ProjectDatasets.Count > 0)
-            throw new InvalidOperationException("Cannot delete dataset that is associated with projects. Please remove the dataset from those projects first.");
+        if (dataset.DatasetProject != null)
+            throw new InvalidOperationException("Cannot delete dataset that is associated with a project. Please remove the dataset from that project first.");
 
         var storagePrefix = $"datasets/{id}/";
         await _fileStorage.DeleteFolderAsync(storagePrefix);
@@ -142,17 +139,16 @@ public class DatasetService : IDatasetService
         var currentUserId = _currentUserService.UserId!.Value;
         var currentUserRole = _currentUserService.Roles;
 
-        var existing = await _projectDatasetRepository.GetByIdAsync(projectId, datasetId);
-        if (existing != null)
-            throw new InvalidOperationException("Dataset already exists in this project");
+        var project = await _projectRepository.GetByIdAsync(projectId);
+        if (project == null)
+            throw new KeyNotFoundException("Project not found");
 
         var dataset = await _datasetRepository.GetByIdAsync(datasetId);
         if (dataset == null)
             throw new KeyNotFoundException("Dataset not found");
 
-        var project = await _projectRepository.GetByIdAsync(projectId);
-        if (project == null)
-            throw new KeyNotFoundException("Project not found");
+        if (dataset.DatasetProject != null) 
+            throw new InvalidOperationException("Dataset is already associated with a project. Please remove the dataset from that project first.");
 
         if (currentUserRole.Contains("manager") &&
             (project.CreatedBy != currentUserId || dataset.CreatedBy != currentUserId))
@@ -161,26 +157,23 @@ public class DatasetService : IDatasetService
                 "Managers can only add their datasets to their own projects");
         }
 
-        var projectDataset = new ProjectDataset
-        {
-            ProjectId = projectId,
-            DatasetId = datasetId,
-            AttachedBy = currentUserId
-        };
-
-        await _projectDatasetRepository.CreateAsync(projectDataset);
-        await _projectDatasetRepository.SaveChangesAsync();
+        dataset.ProjectId = projectId;
 
         var items = await _datasetItemRepository.GetAllByDatasetIdAsync(datasetId);
-        var tasks = items.Select(i => new LabelingTask
+        var taskItems = items.Select(i => new LabelingTaskItem
         {
-            TaskId = Guid.NewGuid(),
+            TaskItemId = Guid.NewGuid(),
+            TaskId = null,
             ProjectId = projectId,
-            DatasetItemId = i.ItemId
+            DatasetItemId = i.DatasetItemId,
+            RevisionCount = 0,
+            Status = Models.Enums.LabelingTaskItemStatus.Unassigned
         });
 
-        await _taskRepository.AddRangeAsync(tasks);
-        await _taskRepository.SaveChangesAsync();
+        await _taskItemRepository.AddRangeAsync(taskItems);
+        
+        await _datasetRepository.SaveChangesAsync();
+        await _taskItemRepository.SaveChangesAsync();
     }
 
     public async Task RemoveDatasetFromProject(Guid datasetId, Guid projectId)
@@ -188,25 +181,31 @@ public class DatasetService : IDatasetService
         var currentUserId = _currentUserService.UserId!.Value;
         var currentUserRoles = _currentUserService.Roles;
 
-        var projectDataset = await _projectDatasetRepository.GetByIdAsync(projectId, datasetId);
-        if (projectDataset == null)
-            throw new KeyNotFoundException("Dataset does not exist in this project");
+        var project = await _projectRepository.GetByIdAsync(projectId);
+        if (project == null)
+            throw new KeyNotFoundException("Project not found");
+
+        var dataset = await _datasetRepository.GetByIdAsync(datasetId);
+        if (dataset == null)
+            throw new KeyNotFoundException("Dataset not found");
+
+        if (dataset.DatasetProject == null)
+            throw new InvalidOperationException("This dataset doesnt associated with any project");
+
+        if (dataset.DatasetProject != project)
+            throw new InvalidOperationException("This dataset is associated with other project");
 
         if (currentUserRoles.Contains("manager") &&
-            (projectDataset.Project.CreatedBy != currentUserId ||
-            projectDataset.Dataset.CreatedBy != currentUserId))
+            (project.CreatedBy != currentUserId ||
+            dataset.CreatedBy != currentUserId))
         {
             throw new UnauthorizedAccessException(
                 "Managers can only remove their datasets from their own projects");
         }
 
-        var tasks = await _taskRepository.GetAllByDatasetIdAsync(datasetId);
+        dataset.ProjectId = null;
 
-        await _taskRepository.DeleteRangeAsync(tasks);
-        await _taskRepository.SaveChangesAsync();
-
-        await _projectDatasetRepository.DeleteAsync(projectDataset);
-        await _projectDatasetRepository.SaveChangesAsync();
+        await _datasetRepository.SaveChangesAsync();
     }
 
     private DatasetResponse MapToResponse(Dataset dataset)

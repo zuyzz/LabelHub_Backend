@@ -10,7 +10,7 @@ public class AssignmentExpirationService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<AssignmentExpirationService> _logger;
-    private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1); // Check every 1 second
+    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1); // Check every 1 minute
 
     public AssignmentExpirationService(
         IServiceProvider serviceProvider,
@@ -45,32 +45,50 @@ public class AssignmentExpirationService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var assignmentRepo = scope.ServiceProvider.GetRequiredService<IAssignmentRepository>();
+        var taskRepo = scope.ServiceProvider.GetRequiredService<ILabelingTaskRepository>();
+        var taskItemRepo = scope.ServiceProvider.GetRequiredService<ILabelingTaskItemRepository>();
+        var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var roleRepo = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
 
-        var allAssignments = await assignmentRepo.GetAllAsync();
-        var now = DateTime.UtcNow;
+        var expiredAssignments = await assignmentRepo.GetExpiredAsync();
 
-        // Filter only assignments that need to be checked (started and not already expired/completed)
-        var activeAssignments = allAssignments
-            .Where(a => a.StartedAt.HasValue && a.Status == AssignmentStatus.Incompleted)
-            .ToList();
-
-        var expiredAssignments = new List<Business.Models.Assignment>();
-
-        foreach (var assignment in activeAssignments)
+        foreach (var assignment in expiredAssignments)
         {
-            var deadline = assignment.StartedAt!.Value.AddMinutes(assignment.TimeLimitMinutes);
-            if (now > deadline)
+            // Get user to check role
+            var user = await userRepo.GetByIdAsync(assignment.AssignedTo);
+            if (user == null)
+                continue;
+
+            var role = await roleRepo.GetByIdAsync(user.RoleId);
+            if (role == null || role.RoleName != "reviewer")
+                continue; // Only expire reviewer assignments
+
+            // Get task
+            var task = await taskRepo.GetByIdAsync(assignment.TaskId);
+            if (task == null || task.Status == LabelingTaskStatus.Closed)
+                continue;
+
+            // Close task
+            task.Status = LabelingTaskStatus.Closed;
+
+            // Get task items
+            var taskItems = await taskItemRepo.GetByTaskIdAsync(assignment.TaskId);
+
+            // Mark assigned items as incompleted
+            foreach (var item in taskItems)
             {
-                assignment.Status = AssignmentStatus.Expired;
-                expiredAssignments.Add(assignment);
+                if (item.Status == LabelingTaskItemStatus.Assigned)
+                {
+                    item.Status = LabelingTaskItemStatus.Incompleted;
+                }
             }
-        }
 
-        if (expiredAssignments.Count > 0)
-        {
-            await assignmentRepo.UpdateRangeAsync(expiredAssignments);
-            await assignmentRepo.SaveChangesAsync();
-            _logger.LogInformation($"[Assignment Expiration] Expired {expiredAssignments.Count} assignment(s)");
+            // Save changes
+            await taskItemRepo.UpdateRangeAsync(taskItems);
+            await taskItemRepo.SaveChangesAsync();
+            await taskRepo.SaveChangesAsync();
+
+            _logger.LogInformation($"[Assignment Expiration] Closed task {task.TaskId} for expired reviewer assignment {assignment.AssignmentId}");
         }
     }
 }

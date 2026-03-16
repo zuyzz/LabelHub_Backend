@@ -36,11 +36,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<LabelingTask> LabelingTasks { get; set; }
 
+    public virtual DbSet<LabelingTaskItem> LabelingTaskItems { get; set; }
+
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectConfig> ProjectConfigs { get; set; }
-
-    public virtual DbSet<ProjectDataset> ProjectDatasets { get; set; }
 
     public virtual DbSet<ProjectLabel> ProjectLabels { get; set; }
 
@@ -78,14 +78,20 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
+
             // project/dataset media type enum
             .HasPostgresEnum("public", "enum_media_type", new[] { "image", "audio", "video" })
-            // assignment status enum
-            .HasPostgresEnum<AssignmentStatus>("public", "enum_assignment_status")
             // export job status enum
             .HasPostgresEnum<ExportJobStatus>("public", "enum_export_job_status")
             // labeling task status enum
             .HasPostgresEnum<LabelingTaskStatus>("public", "enum_task_status")
+            // labeling task item status enum
+            .HasPostgresEnum<LabelingTaskItemStatus>("public", "enum_task_item_status")
+            // annotation status enum
+            .HasPostgresEnum<AnnotationStatus>("public", "enum_annotation_status")
+            // review result enum
+            .HasPostgresEnum<ReviewResult>("public", "enum_review_result")
+
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")

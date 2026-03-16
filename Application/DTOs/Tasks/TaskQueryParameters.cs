@@ -6,4 +6,5 @@ namespace DataLabelProject.Application.DTOs.Tasks;
 public class TaskQueryParameters : PaginationParameters
 {
     public LabelingTaskStatus? Status { get; set; }
+    public bool? IsExpired { get; set; }
 }

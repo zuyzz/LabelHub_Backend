@@ -17,9 +17,10 @@ public static class DatabaseExtensions
             ?? throw new InvalidOperationException("DefaultConnection not configured");
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-        dataSourceBuilder.MapEnum<AssignmentStatus>("enum_assignment_status");
         dataSourceBuilder.MapEnum<ExportJobStatus>("enum_export_job_status");
         dataSourceBuilder.MapEnum<LabelingTaskStatus>("enum_task_status");
+        dataSourceBuilder.MapEnum<LabelingTaskItemStatus>("enum_task_item_status");
+        dataSourceBuilder.MapEnum<AnnotationStatus>("enum_annotation_status");
         dataSourceBuilder.MapEnum<ReviewResult>("enum_review_result");
         var dataSource = dataSourceBuilder.Build();
 

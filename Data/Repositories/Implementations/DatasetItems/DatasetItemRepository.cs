@@ -42,7 +42,7 @@ public class DatasetItemRepository : IDatasetItemRepository
     public async Task<DatasetItem?> GetByIdAsync(Guid id)
     {
         return await _context.DatasetItems
-            .FirstOrDefaultAsync(i => i.ItemId == id);
+            .FirstOrDefaultAsync(i => i.DatasetItemId == id);
     }
 
     public async Task CreateAsync(DatasetItem item)

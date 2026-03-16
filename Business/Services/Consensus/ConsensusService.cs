@@ -15,7 +15,7 @@ public class ConsensusService : IConsensusService
 
 	private readonly IConsensusRepository _consensusRepository;
 	private readonly IAnnotationRepository _annotationRepository;
-	private readonly ILabelingTaskRepository _taskRepository;
+	private readonly ILabelingTaskItemRepository _taskRepository;
 	private readonly IClusteringService _clusteringService;
 	private readonly IAgreementService _agreementService;
 	private readonly AppDbContext _context;
@@ -23,7 +23,7 @@ public class ConsensusService : IConsensusService
 	public ConsensusService(
 		IConsensusRepository consensusRepository,
 		IAnnotationRepository annotationRepository,
-		ILabelingTaskRepository taskRepository,
+		ILabelingTaskItemRepository taskRepository,
 		IClusteringService clusteringService,
 		IAgreementService agreementService,
 		AppDbContext context)
@@ -41,8 +41,8 @@ public class ConsensusService : IConsensusService
 		var task = await _taskRepository.GetByIdAsync(taskId)
 			?? throw new KeyNotFoundException("Task not found");
 
-		var approvedAnnotations = (await _annotationRepository.GetApprovedByTaskIdAsync(taskId)).ToList();
-		var distinctAnnotatorCount = approvedAnnotations.Select(a => a.AnnotatorId).Distinct().Count();
+		var annotations = (await _annotationRepository.GetByTaskItemIdAsync(taskId)).ToList();
+		var distinctAnnotatorCount = annotations.Select(a => a.AnnotatorId).Distinct().Count();
 
 		var projectConfig = await _context.ProjectConfigs
 			.AsNoTracking()
@@ -57,7 +57,7 @@ public class ConsensusService : IConsensusService
 			throw new InvalidOperationException(
 				$"At least {minimumAnnotations} approved annotations are required to evaluate consensus");
 
-		var allBoxes = FlattenBoxes(approvedAnnotations);
+		var allBoxes = FlattenBoxes(annotations);
 		if (allBoxes.Count == 0)
 			throw new InvalidOperationException("No bounding boxes found in approved annotations");
 
@@ -76,15 +76,15 @@ public class ConsensusService : IConsensusService
 			? request.Payload.Value.GetRawText()
 			: JsonSerializer.Serialize(new
 			{
-				bboxes = _agreementService.BuildConsensusBboxes(clusters)
+				bboxes = _agreementService.BuildConsensusBboxes(clusters),
+				agreementScore = finalScore
 			});
 
 		var consensus = new Business.Models.Consensus
 		{
 			ConsensusId = Guid.NewGuid(),
-			TaskId = taskId,
+			DatasetItemId = taskId,
 			Payload = payloadJson,
-			AgreementScore = finalScore,
 			CreatedAt = DateTime.UtcNow
 		};
 
@@ -119,6 +119,7 @@ public class ConsensusService : IConsensusService
 		foreach (var annotation in annotations)
 		{
 			AnnotationPayload? payload;
+			if (string.IsNullOrWhiteSpace(annotation.Payload)) continue;
 			try
 			{
 				payload = JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);
@@ -157,9 +158,23 @@ public class ConsensusService : IConsensusService
 	private static ConsensusDto MapToDto(Business.Models.Consensus consensus)
 	{
 		object parsedPayload;
+		double agreementScore = 0;
 		try
 		{
-			parsedPayload = JsonSerializer.Deserialize<object>(consensus.Payload) ?? consensus.Payload;
+			var jsonDoc = JsonDocument.Parse(consensus.Payload);
+			var root = jsonDoc.RootElement;
+			if (root.TryGetProperty("originalPayload", out var originalElement))
+			{
+				parsedPayload = JsonSerializer.Deserialize<object>(originalElement.GetString() ?? "{}") ?? "{}";
+			}
+			else
+			{
+				parsedPayload = JsonSerializer.Deserialize<object>(consensus.Payload) ?? consensus.Payload;
+			}
+			if (root.TryGetProperty("agreementScore", out var scoreElement) && scoreElement.TryGetDouble(out var score))
+			{
+				agreementScore = score;
+			}
 		}
 		catch
 		{
@@ -169,9 +184,9 @@ public class ConsensusService : IConsensusService
 		return new ConsensusDto
 		{
 			ConsensusId = consensus.ConsensusId,
-			TaskId = consensus.TaskId,
+			TaskId = consensus.DatasetItemId,
 			Payload = parsedPayload,
-			AgreementScore = consensus.AgreementScore,
+			AgreementScore = agreementScore,
 			CreatedAt = consensus.CreatedAt
 		};
 	}

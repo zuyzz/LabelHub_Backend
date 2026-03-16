@@ -126,32 +126,40 @@ public class ExportService : IExportService
 
     private async Task<ExportDataset> BuildDatasetFromConsensus(Guid projectId)
     {
-        // Get all labeling tasks for this project, with their dataset items and consensus
-        var tasks = await _context.LabelingTasks
+        // Get all dataset items belonging to the project
+        var datasetItemIds = await _context.DatasetItems
             .AsNoTracking()
-            .Where(t => t.ProjectId == projectId)
-            .Include(t => t.LabelingTaskDatasetItem)
+            .Where(di => di.ItemDataset != null && di.ItemDataset.ProjectId == projectId)
+            .Select(di => di.DatasetItemId)
             .ToListAsync();
 
-        var taskIds = tasks.Select(t => t.TaskId).ToList();
-
-        // Get all consensuses for these tasks
+        // Get the latest consensus per dataset item
         var consensuses = await _context.Consensuses
             .AsNoTracking()
-            .Where(c => taskIds.Contains(c.TaskId))
+            .Where(c => datasetItemIds.Contains(c.DatasetItemId))
             .ToListAsync();
 
-        var consensusByTaskId = consensuses.ToDictionary(c => c.TaskId);
+        var consensusByDatasetItemId = consensuses
+            .GroupBy(c => c.DatasetItemId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.CreatedAt).First());
+
+        // Load dataset items for the consensus entries
+        var datasetItems = await _context.DatasetItems
+            .AsNoTracking()
+            .Where(di => consensusByDatasetItemId.Keys.Contains(di.DatasetItemId))
+            .ToDictionaryAsync(di => di.DatasetItemId);
 
         var dataset = new ExportDataset();
         var categoriesMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         int imageIdCounter = 1;
         int annotationIdCounter = 1;
 
-        foreach (var task in tasks)
+        foreach (var kvp in consensusByDatasetItemId)
         {
-            // Skip tasks without consensus
-            if (!consensusByTaskId.TryGetValue(task.TaskId, out var consensus))
+            var datasetItemId = kvp.Key;
+            var consensus = kvp.Value;
+
+            if (!datasetItems.TryGetValue(datasetItemId, out var datasetItem))
                 continue;
 
             // Parse consensus payload
@@ -159,7 +167,6 @@ public class ExportService : IExportService
             if (objects == null || objects.Count == 0)
                 continue;
 
-            var datasetItem = task.LabelingTaskDatasetItem;
             var imageId = imageIdCounter++;
 
             // Parse metadata for image dimensions
@@ -325,8 +332,11 @@ public class ExportService : IExportService
         try
         {
             using var doc = JsonDocument.Parse(payload);
+            var root = doc.RootElement;
 
-            if (doc.RootElement.TryGetProperty("objects", out var objectsElement))
+            // Allow payload structures like { objects: [...] } or { originalPayload: { objects: [...] } }
+            if (root.TryGetProperty("objects", out var objectsElement) ||
+                (root.TryGetProperty("originalPayload", out var original) && original.ValueKind == JsonValueKind.Object && original.TryGetProperty("objects", out objectsElement)))
             {
                 var objects = new List<ConsensusObject>();
 

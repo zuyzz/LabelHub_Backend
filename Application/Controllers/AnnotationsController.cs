@@ -7,7 +7,7 @@ using DataLabelProject.Business.Services.Annotations;
 namespace DataLabelProject.Application.Controllers;
 
 [ApiController]
-[Route("api/annotations")]
+[Route("api")]
 [Authorize]
 public class AnnotationsController : ControllerBase
 {
@@ -29,48 +29,19 @@ public class AnnotationsController : ControllerBase
         return User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
     }
 
-    [HttpGet]
+    /// <summary>
+    /// GET api/tasks/items/{itemId}/annotations
+    /// Get annotations by task item
+    /// </summary>
+    [HttpGet("tasks/items/{itemId:guid}/annotations")]
     [Authorize(Roles = "admin,manager,annotator")]
-    public async Task<IActionResult> GetAnnotations([FromQuery] string? status)
+    public async Task<IActionResult> GetAnnotationsByTaskItem(Guid itemId, [FromQuery] AnnotationQueryParameters parameters)
     {
         try
         {
-            var currentUserId = GetCurrentUserId();
-            var currentUserRole = GetCurrentUserRole();
-
-            var annotations = await _annotationService.GetAnnotationsForUserAsync(currentUserId, currentUserRole, status);
-
-            var response = annotations.Select(a => {
-                AnnotationPayload? parsedPayload = null;
-                try
-                {
-                    parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(a.Payload);
-                }
-                catch
-                {
-                    parsedPayload = null;
-                }
-
-                return new AnnotationResponse
-                {
-                    AnnotationId = a.AnnotationId,
-                    TaskId = a.TaskId,
-                    AnnotatorId = a.AnnotatorId,
-                    Payload = parsedPayload ?? (object)a.Payload,
-                    SubmittedAt = a.SubmittedAt,
-                    Status = a.Reviews.OrderByDescending(r => r.ReviewedAt).FirstOrDefault()?.Result.ToString().ToLower()
-                };
-            }).ToList();
-
-            return Ok(response);
-        }
-        catch (ArgumentException)
-        {
-            return BadRequest(new { message = "Invalid status filter." });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
+            var result = await _annotationService.GetAnnotationsByTaskItemAsync(
+                itemId, parameters, GetCurrentUserId(), GetCurrentUserRole());
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -78,44 +49,71 @@ public class AnnotationsController : ControllerBase
         }
     }
 
-    [HttpPost]
+    /// <summary>
+    /// GET api/tasks/{taskId}/annotations
+    /// Get annotations of a task
+    /// </summary>
+    [HttpGet("tasks/{taskId:guid}/annotations")]
+    [Authorize(Roles = "admin,manager,annotator")]
+    public async Task<IActionResult> GetAnnotationsByTask(Guid taskId, [FromQuery] AnnotationQueryParameters parameters)
+    {
+        try
+        {
+            var result = await _annotationService.GetAnnotationsByTaskAsync(
+                taskId, parameters, GetCurrentUserId(), GetCurrentUserRole());
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST api/annotations/submit
+    /// Submit annotation
+    /// </summary>
+    [HttpPost("annotations/submit")]
     [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> CreateAnnotation([FromBody] CreateAnnotationRequest request)
+    public async Task<IActionResult> SubmitAnnotation([FromBody] SubmitAnnotationRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var currentUserId = GetCurrentUserId();
-            var currentUserRole = GetCurrentUserRole();
-            var annotation = await _annotationService.CreateAnnotationAsync(request, currentUserId, currentUserRole);
-
-            var parsedPayload = (AnnotationPayload?)null;
-            try
-            {
-                parsedPayload = System.Text.Json.JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);
-            }
-            catch
-            {
-                parsedPayload = null;
-            }
-
-            var response = new AnnotationResponse
-            {
-                AnnotationId = annotation.AnnotationId,
-                TaskId = annotation.TaskId,
-                AnnotatorId = annotation.AnnotatorId,
-                Payload = parsedPayload ?? (object)annotation.Payload,
-                SubmittedAt = annotation.SubmittedAt,
-                Status = null
-            };
-
-            return StatusCode(201, response);
+            var result = await _annotationService.SubmitAnnotationAsync(request, GetCurrentUserId());
+            return StatusCode(201, result);
         }
-        catch (ArgumentException ex)
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// PUT api/annotations/{id}
+    /// Update annotation (conflict resolution)
+    /// </summary>
+    [HttpPut("annotations/{id:guid}")]
+    [Authorize(Roles = "annotator")]
+    public async Task<IActionResult> UpdateAnnotation(Guid id, [FromBody] UpdateAnnotationRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var result = await _annotationService.UpdateAnnotationAsync(id, request, GetCurrentUserId());
+            return Ok(result);
         }
         catch (KeyNotFoundException ex)
         {
@@ -124,6 +122,40 @@ public class AnnotationsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST api/annotations/skip
+    /// Skip annotation
+    /// </summary>
+    [HttpPost("annotations/skip")]
+    [Authorize(Roles = "annotator")]
+    public async Task<IActionResult> SkipAnnotation([FromBody] SkipAnnotationRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid input data", errors = ModelState });
+
+        try
+        {
+            var result = await _annotationService.SkipAnnotationAsync(request, GetCurrentUserId());
+            return StatusCode(201, result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

@@ -5,7 +5,7 @@ namespace DataLabelProject.Business.Models;
 
 public partial class DatasetItem
 {
-    public Guid ItemId { get; set; }
+    public Guid DatasetItemId { get; set; }
 
     public Guid DatasetId { get; set; }
 
@@ -17,7 +17,7 @@ public partial class DatasetItem
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual ICollection<LabelingTask> LabelingTasks { get; set; } = new List<LabelingTask>();
-
     public virtual Dataset ItemDataset { get; set; } = null!;
+
+    public virtual ICollection<LabelingTaskItem> TaskItems { get; set; } = new List<LabelingTaskItem>();
 }

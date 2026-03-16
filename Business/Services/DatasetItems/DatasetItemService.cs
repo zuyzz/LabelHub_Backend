@@ -11,21 +11,18 @@ namespace DataLabelProject.Business.Services.DatasetItems
     {
         private readonly IDatasetItemRepository _datasetItemRepository;
         private readonly IDatasetRepository _datasetRepository;
-        private readonly IProjectDatasetRepository _projectDatasetRepository;
-        private readonly ILabelingTaskRepository _taskRepository;
+        private readonly ILabelingTaskItemRepository _taskItemRepository;
         private readonly IFileStorage _fileStorage;
 
         public DatasetItemService(
             IDatasetItemRepository datasetItemRepository, 
             IDatasetRepository datasetRepository,
-            IProjectDatasetRepository projectDatasetRepository,
-            ILabelingTaskRepository taskRepository,
+            ILabelingTaskItemRepository taskItemRepository,
             IFileStorage fileStorage)
         {
             _datasetItemRepository = datasetItemRepository;
             _datasetRepository = datasetRepository;
-            _projectDatasetRepository = projectDatasetRepository;
-            _taskRepository = taskRepository;
+            _taskItemRepository = taskItemRepository;
             _fileStorage = fileStorage;
         }
 
@@ -61,7 +58,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
 
             var item = new DatasetItem
             {
-                ItemId = Guid.NewGuid(),
+                DatasetItemId = Guid.NewGuid(),
                 DatasetId = datasetId,
                 MediaType = mediaType,
                 StorageUri = storageUri,
@@ -70,18 +67,24 @@ namespace DataLabelProject.Business.Services.DatasetItems
             };
 
             await _datasetItemRepository.CreateAsync(item);
-            await _datasetItemRepository.SaveChangesAsync();
 
-            var projects = await _projectDatasetRepository.GetProjectByDatasetAsync(datasetId);
-            var tasks = projects.Select(p => new LabelingTask
+            if (dataset.ProjectId.HasValue)
             {
-                TaskId = Guid.NewGuid(),
-                ProjectId = p.ProjectId,
-                DatasetItemId = item.ItemId
-            });
+                var taskItem = new LabelingTaskItem
+                {
+                    TaskItemId = Guid.NewGuid(),
+                    TaskId = null,
+                    ProjectId = dataset.ProjectId.Value,
+                    DatasetItemId = item.DatasetItemId,
+                    RevisionCount = 0,
+                    Status = Models.Enums.LabelingTaskItemStatus.Unassigned
+                };
 
-            await _taskRepository.AddRangeAsync(tasks);
-            await _taskRepository.SaveChangesAsync();
+                await _taskItemRepository.AddAsync(taskItem);
+            }
+
+            await _datasetItemRepository.SaveChangesAsync();
+            await _taskItemRepository.SaveChangesAsync();
 
             return MapToResponse(item);
         }
@@ -105,11 +108,6 @@ namespace DataLabelProject.Business.Services.DatasetItems
                 }
             }
 
-            var tasks = await _taskRepository.GetAllByDatasetIdAsync(item.DatasetId);
-
-            await _taskRepository.DeleteRangeAsync(tasks);
-            await _taskRepository.SaveChangesAsync();
-
             await _datasetItemRepository.DeleteAsync(item);
             await _datasetItemRepository.SaveChangesAsync();
 
@@ -120,7 +118,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
         {
             return new DatasetItemResponse 
             {
-                ItemId = item.ItemId,
+                ItemId = item.DatasetItemId,
                 DatasetId = item.DatasetId,
                 MediaType = item.MediaType,
                 StorageUri = item.StorageUri,

@@ -1,14 +1,15 @@
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Consensus;
-using ConsensusEntity = DataLabelProject.Business.Models.Consensus;
+using DataLabelProject.Business.Models;
 
 namespace DataLabelProject.Data.Repositories.Abstractions;
 
 public interface IConsensusRepository
 {
-	Task<ConsensusEntity> CreateAsync(ConsensusEntity consensus);
-	Task UpdateAsync(ConsensusEntity consensus);
-	Task<ConsensusEntity?> GetByIdAsync(Guid consensusId);
-	Task<IEnumerable<ConsensusEntity>> GetByTaskIdAsync(Guid taskId);
-	Task<PagedResult<ConsensusEntity>> GetConsensusesAsync(ConsensusQueryParameters @params);
+	Task<Consensus> CreateAsync(Consensus consensus);
+	Task UpdateAsync(Consensus consensus);
+	Task<Consensus?> GetByIdAsync(Guid consensusId);
+	Task<Consensus?> GetByReviewIdAsync(Guid reviewId);
+	Task<IEnumerable<Consensus>> GetByDatasetItemIdAsync(Guid taskId);
+	Task<PagedResult<Consensus>> GetConsensusesAsync(ConsensusQueryParameters @params);
 }

@@ -14,13 +14,12 @@ public class ConsensusConfiguration : IEntityTypeConfiguration<Consensus>
 
         entity.Property(e => e.ConsensusId).HasColumnName("consensusId").HasDefaultValueSql("gen_random_uuid()");
         entity.Property(e => e.CreatedAt).HasColumnName("createdAt").HasDefaultValueSql("now()");
-        entity.Property(e => e.TaskId).HasColumnName("taskId");
+        entity.Property(e => e.DatasetItemId).HasColumnName("datasetItemId");
         entity.Property(e => e.Payload).HasColumnName("payload").HasColumnType("jsonb");
-        entity.Property(e => e.AgreementScore).HasColumnName("agreementScore");
 
-        entity.HasOne(d => d.ConsensusTask).WithMany()
-            .HasForeignKey(d => d.TaskId)
+        entity.HasOne(d => d.DatasetItem).WithMany()
+            .HasForeignKey(d => d.DatasetItemId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("Consensus_taskId_fkey");
+            .HasConstraintName("Consensus_datasetItemId_fkey");
     }
 }

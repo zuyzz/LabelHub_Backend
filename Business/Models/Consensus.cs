@@ -8,11 +8,11 @@ public partial class Consensus
 
     public DateTime CreatedAt { get; set; }
 
-    public Guid TaskId { get; set; }
+    public Guid DatasetItemId { get; set; }
 
     public string Payload { get; set; } = null!;
 
-    public double AgreementScore { get; set; }
+    public virtual LabelingTask DatasetItem { get; set; } = null!;
 
-    public virtual LabelingTask ConsensusTask { get; set; } = null!;
+    public virtual Review Review { get; set; } = null!;
 }

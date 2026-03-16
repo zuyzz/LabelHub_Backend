@@ -7,6 +7,8 @@ public partial class Dataset
 {
     public Guid DatasetId { get; set; }
 
+    public Guid? ProjectId { get; set; }
+
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
@@ -19,7 +21,7 @@ public partial class Dataset
 
     public virtual ICollection<DatasetItem> DatasetItems { get; set; } = new List<DatasetItem>();
     
-    public virtual ICollection<ProjectDataset> ProjectDatasets { get; set; } = new List<ProjectDataset>();
+    public virtual Project? DatasetProject { get; set; } = null!;
 
     public virtual User CreatedByUser { get; set; } = null!;
 }

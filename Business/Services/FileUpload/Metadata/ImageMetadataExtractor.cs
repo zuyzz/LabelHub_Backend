@@ -23,11 +23,19 @@ public class ImageMetadataExtractor : IMetadataExtractor
     {
         try
         {
+            long? sizeBytes = null;
+
+            if (stream.CanSeek)
+            {
+                sizeBytes = stream.Length;
+                stream.Position = 0;
+            }
+
             var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(stream));
             var (width, height) = ExtractDimensions(directories);
 
             if (width > 0 && height > 0)
-                return JsonSerializer.Serialize(new { width, height });
+                return JsonSerializer.Serialize(new { width, height, sizeBytes });
         }
         catch
         {

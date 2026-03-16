@@ -15,19 +15,25 @@ public class AssignmentRepository : IAssignmentRepository
 
     public async Task<List<Assignment>> GetAllAsync()
     {
-        return await _db.Assignments.AsNoTracking().ToListAsync();
+        return await _db.Assignments
+            .Include(a => a.AssignmentTask)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
-    public async Task<Assignment?> GetByIdAsync(Guid assignmentId)
+    public async Task<List<Assignment>> GetExpiredAsync()
     {
+        var now = DateTime.UtcNow;
         return await _db.Assignments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId);
+            .Where(a => a.StartedAt != null &&
+                        a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes) < now)
+            .ToListAsync();
     }
 
     public async Task<List<Assignment>> GetByAssignedToAsync(Guid userId)
     {
         return await _db.Assignments
+            .Include(a => a.AssignmentTask)
             .Where(a => a.AssignedTo == userId)
             .AsNoTracking()
             .ToListAsync();
@@ -47,10 +53,15 @@ public class AssignmentRepository : IAssignmentRepository
             .FirstOrDefaultAsync(a => a.TaskId == taskId);
     }
 
+    public async Task<Assignment?> GetByIdAsync(Guid id)
+    {
+        return await _db.Assignments
+            .FirstOrDefaultAsync(a => a.AssignmentId == id);
+    }
+
     public async Task<Assignment?> GetByTaskIdAndUserAsync(Guid taskId, Guid userId)
     {
         return await _db.Assignments
-            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.TaskId == taskId && a.AssignedTo == userId);
     }
 
@@ -59,7 +70,7 @@ public class AssignmentRepository : IAssignmentRepository
         await _db.Assignments.AddAsync(assignment);
     }
 
-    public async Task AddRangeAsync(IEnumerable<Assignment> assignments)
+    public async Task AddRangeAsync(List<Assignment> assignments)
     {
         await _db.Assignments.AddRangeAsync(assignments);
     }
@@ -69,7 +80,7 @@ public class AssignmentRepository : IAssignmentRepository
         _db.Assignments.Update(assignment);
     }
 
-    public async Task UpdateRangeAsync(IEnumerable<Assignment> assignments)
+    public async Task UpdateRangeAsync(List<Assignment> assignments)
     {
         _db.Assignments.UpdateRange(assignments);
     }

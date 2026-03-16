@@ -20,8 +20,6 @@ public partial class Assignment
 
     public double TimeLimitMinutes { get; set; }
 
-    public AssignmentStatus Status { get; set; }
-
     public virtual User AssignedByUser { get; set; } = null!;
 
     public virtual LabelingTask AssignmentTask { get; set; } = null!;

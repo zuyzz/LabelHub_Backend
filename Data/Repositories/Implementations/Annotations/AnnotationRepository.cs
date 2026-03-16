@@ -19,7 +19,7 @@ public class AnnotationRepository : IAnnotationRepository
     {
         return await _context.Annotations
             .AsNoTracking()
-            .Include(a => a.Reviews)
+            .Include(a => a.AnnotationTaskItem)
             .ToListAsync();
     }
 
@@ -27,35 +27,49 @@ public class AnnotationRepository : IAnnotationRepository
     {
         return await _context.Annotations
             .AsNoTracking()
-            .Include(a => a.Reviews)
+            .Include(a => a.AnnotationTaskItem)
             .Where(a => a.AnnotatorId == annotatorId)
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Annotation>> GetApprovedByTaskIdAsync(Guid taskId)
+    public async Task<IEnumerable<Annotation>> GetByTaskItemIdAsync(Guid taskItemId)
     {
-        var annotations = await _context.Annotations
+        return await _context.Annotations
             .AsNoTracking()
-            .Include(a => a.Reviews)
-            .Where(a => a.TaskId == taskId && a.Reviews.Any())
+            .Include(a => a.AnnotationTaskItem)
+            .Where(a => a.TaskItemId == taskItemId)
             .ToListAsync();
-
-        return annotations.Where(a =>
-            a.Reviews
-                .OrderByDescending(r => r.ReviewedAt ?? DateTime.MinValue)
-                .First().Result == ReviewResult.Approved);
     }
 
     public async Task<Annotation?> GetByIdAsync(Guid annotationId)
     {
         return await _context.Annotations
-            .Include(a => a.Reviews)
+            .Include(a => a.AnnotationTaskItem)
             .FirstOrDefaultAsync(a => a.AnnotationId == annotationId);
+    }
+
+    public async Task<Annotation?> GetByTaskItemIdAndAnnotatorIdAsync(Guid taskItemId, Guid annotatorId)
+    {
+        return await _context.Annotations
+            .Include(a => a.AnnotationTaskItem)
+            .FirstOrDefaultAsync(a => a.TaskItemId == taskItemId && a.AnnotatorId == annotatorId);
     }
 
     public async Task AddAsync(Annotation annotation)
     {
         await _context.Annotations.AddAsync(annotation);
+    }
+
+    public Task UpdateAsync(Annotation annotation)
+    {
+        _context.Annotations.Update(annotation);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateRangeAsync(IEnumerable<Annotation> annotations)
+    {
+        _context.Annotations.UpdateRange(annotations);
+        return Task.CompletedTask;
     }
 
     public async Task SaveChangesAsync()
