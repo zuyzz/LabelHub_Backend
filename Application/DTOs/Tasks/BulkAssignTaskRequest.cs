@@ -12,4 +12,7 @@ public class BulkAssignTaskRequest
 
     [Required]
     public Guid DatasetId { get; set; }
+
+    [Required]
+    public double TimeLimitMinutes { get; set; }
 }
