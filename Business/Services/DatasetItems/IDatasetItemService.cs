@@ -7,7 +7,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
     {
         Task<PagedResponse<DatasetItemResponse>> GetDataItemsByDatasetId(Guid datasetId, DatasetItemQueryParameters @params);
         Task<DatasetItemResponse?> GetDataItemById(Guid id);
-        Task<DatasetItemResponse> CreateDataItem(Guid datasetId, string mediaType, string storageUri, string metadata);
-        Task<bool> DeleteDataItem(Guid id);
+        Task CreateDataItems(Guid datasetId, CreateDatasetItemRequest request);
+        Task DeleteDataItem(Guid id);
     }
 }

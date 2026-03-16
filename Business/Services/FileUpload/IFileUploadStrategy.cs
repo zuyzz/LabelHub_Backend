@@ -2,9 +2,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace DataLabelProject.Business.Services.FileUpload;
 
-public record FileItem(string Name, string ContentType, string StorageUri, string Metadata);
-
-public record FileProcessResult(IEnumerable<FileItem> Items, string StoragePrefix);
+public record FileItem(Guid FileId, string ContentType, string StorageUri, string Metadata);
 
 public interface IFileUploadStrategy
 {
@@ -13,6 +11,6 @@ public interface IFileUploadStrategy
 
     /// Process the uploaded file and upload individual items into storage; return list of uploaded items.
     /// Storage folder structure: [datasetId] datasetName/[random-uuid]/
-    Task<FileProcessResult> ProcessAsync(IFormFile file, Guid datasetId, string datasetName, string mediaType = "image");
+    Task<IEnumerable<FileItem>> ProcessAsync(IFormFile file, string storageDir);
 }
 

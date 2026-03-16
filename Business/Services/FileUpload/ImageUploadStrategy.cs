@@ -21,30 +21,22 @@ public class ImageUploadStrategy : IFileUploadStrategy
         return isImage && !IsArchive(file.FileName);
     }
 
-    public async Task<FileProcessResult> ProcessAsync(
+    public async Task<IEnumerable<FileItem>> ProcessAsync(
         IFormFile file,
-        Guid datasetId,
-        string datasetName,
-        string mediaType = "image")
+        string storageDir)
     {
-        var fileId = Guid.NewGuid().ToString();
-        var extension = Path.GetExtension(file.FileName);
-        var filename = $"{fileId}{extension}";
-
-        var baseFolder = $"datasets/{datasetId}";
-        var path = $"{baseFolder}/{filename}";
-
         using var stream = file.OpenReadStream();
         var contentType = file.ContentType ?? "application/octet-stream";
 
+        var fileId = Guid.NewGuid();
+        var storageKey = $"{storageDir}/{fileId}";
+
         var metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream, contentType);
-        var uri = await _storage.CreateFileAsync(stream, path, contentType);
+        var uri = await _storage.CreateFileAsync(stream, storageKey, contentType);
 
-        var item = new FileItem(filename, contentType, uri, metadata ?? "");
+        var item = new FileItem(fileId, contentType, uri, metadata ?? "{}");
 
-        return new FileProcessResult(
-            new[] { item },
-            $"[{datasetId}] {datasetName}");
+        return new[] { item };
     }
 
     private static bool IsArchive(string? fileName)

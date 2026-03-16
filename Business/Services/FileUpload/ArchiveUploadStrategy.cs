@@ -30,14 +30,13 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
     public bool CanHandle(IFormFile file)
     {
         var ext = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
+        Console.WriteLine($"Archive check: {file.FileName} ext={ext}");
         return MediaTypeConstants.Archive.SupportedExtensions.Contains(ext);
     }
 
-    public async Task<FileProcessResult> ProcessAsync(
+    public async Task<IEnumerable<FileItem>> ProcessAsync(
         IFormFile file,
-        Guid datasetId,
-        string datasetName,
-        string mediaType = "image")
+        string storageDir)
     {
         // Validate archive size upfront
         if (file.Length > MaxArchiveSize)
@@ -56,18 +55,17 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
             // Process archive from temp file with bounded parallelism
             var uploaded = new List<FileItem>();
-            var baseFolder = $"datasets/{datasetId}";
             
             // Read archive entries from temp file
             using (var fileStream = File.OpenRead(tempArchivePath))
             using (var archive = ArchiveFactory.Open(fileStream))
             {
                 var entries = archive.Entries
-                    .Where(e => !e.IsDirectory && IsValidExtForMediaType(Path.GetExtension(e.Key), mediaType))
+                    .Where(e => !e.IsDirectory && IsValidExtension(Path.GetExtension(e.Key)))
                     .ToList();
 
                 if (!entries.Any())
-                    throw new InvalidOperationException($"Archive contains no {mediaType} files");
+                    throw new InvalidOperationException($"Archive contains no allowed files");
 
                 // Enforce file count limit
                 if (entries.Count > MaxFileCount)
@@ -93,17 +91,13 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                     }
                     ms.Position = 0;
 
-                    var fileId = Guid.NewGuid().ToString();
-                    var extension = Path.GetExtension(entry.Key); // Extract from actual file in archive, not archive file
-                    var filename = $"{fileId}{extension}";
-
                     // Queue parallel upload task
                     uploadTasks.Add(Task.Run(async () =>
                     {
                         await semaphore.WaitAsync();
                         try
                         {
-                            return await ProcessBufferedEntryAsync(ms, filename, baseFolder);
+                            return await ProcessBufferedEntryAsync(ms, entry.Key, storageDir);
                         }
                         finally
                         {
@@ -115,9 +109,7 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
                 uploaded.AddRange(await Task.WhenAll(uploadTasks));
             }
 
-            return new FileProcessResult(
-                uploaded,
-                $"[{datasetId}] {datasetName}");
+            return uploaded;
         }
         finally
         {
@@ -132,28 +124,29 @@ public class ArchiveUploadStrategy : IFileUploadStrategy
 
     private async Task<FileItem> ProcessBufferedEntryAsync(
         MemoryStream stream,
-        string filename,
-        string baseFolder)
+        string entryName,
+        string storageKey)
     {
-        var path = $"{baseFolder}/{filename}";
-        var contentType = MediaTypeConstants.GetContentTypeByExtension(Path.GetExtension(filename));
+        var ext = Path.GetExtension(entryName).ToLowerInvariant();
+        var contentType = MediaTypeConstants.GetContentTypeByExtension(ext)
+            ?? "application/octet-stream";
+
+        var fileId = Guid.NewGuid();
+        storageKey = $"{storageKey}/{fileId}";
 
         var metadata = await _metadataExtractorFactory.ExtractMetadataAsync(stream, contentType);
-        var uri = await _storage.CreateFileAsync(stream, path, contentType);
+        var uri = await _storage.CreateFileAsync(stream, storageKey, contentType);
 
-        return new FileItem(filename, contentType, uri, metadata ?? "");
+        return new FileItem(fileId, contentType, uri, metadata ?? "{}");
     }
 
-    private static bool IsValidExtForMediaType(string ext, string mediaType)
+    private static bool IsValidExtension(string ext)
     {
         ext = ext.ToLowerInvariant();
-        return mediaType.ToLowerInvariant() switch
-        {
-            "image" => MediaTypeConstants.Image.SupportedExtensions.Contains(ext),
-            // "audio" => MediaTypeConstants.Audio.SupportedExtensions.Contains(ext),
-            // "video" => MediaTypeConstants.Video.SupportedExtensions.Contains(ext),
-            _ => false
-        };
+        return MediaTypeConstants.Image.SupportedExtensions.Contains(ext)
+        // || MediaTypeConstants.Audio.SupportedExtensions.Contains(ext)
+        // || MediaTypeConstants.Video.SupportedExtensions.Contains(ext)
+        ;
     }
 }
 
