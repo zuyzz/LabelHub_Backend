@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DataLabelProject.Application.DTOs.Datasets
 {
     public record DatasetItemResponse
@@ -12,8 +14,13 @@ namespace DataLabelProject.Application.DTOs.Datasets
 
     public class ImageMetadata
     {
+        [JsonPropertyName("width")]
         public int Width { get; set; }
+
+        [JsonPropertyName("height")]
         public int Height { get; set; }
+
+        [JsonPropertyName("sizeBytes")]
         public long SizeBytes { get; set; }
     }
 }
