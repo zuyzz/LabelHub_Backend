@@ -37,79 +37,97 @@ public class LabelingTaskService : ILabelingTaskService
         _taskItemRepo = taskItemRepo;
     }
 
-    public async Task<PagedResult<TaskAssignmentInfo>> GetTasksAsync(Guid userId, string userRole, TaskQueryParameters @params)
+    public async Task<PagedResult<TaskAssignmentInfo>> GetTasksAsync(
+        Guid userId, string userRole, TaskQueryParameters @params)
     {
         var now = DateTime.UtcNow;
+
         List<Assignment> assignments;
 
-        // Get assignments based on role
+        // Role-based assignment loading
         if (userRole == "reviewer" || userRole == "annotator")
-        {
             assignments = await _assignmentRepo.GetByAssignedToAsync(userId);
-        }
         else
-        {
             assignments = await _assignmentRepo.GetAllAsync();
+
+        // Filter assignments first
+        var filteredAssignments = assignments
+            .Where(a => a.StartedAt.HasValue)
+            .Select(a => new
+            {
+                Assignment = a,
+                DeadlineAt = a.StartedAt!.Value.AddMinutes(a.TimeLimitMinutes)
+            })
+            .Where(x =>
+            {
+                if (@params.IsExpired == null || @params.IsExpired == false)
+                    return now < x.DeadlineAt;
+                else
+                    return now > x.DeadlineAt;
+            })
+            .ToList();
+
+        if (!filteredAssignments.Any())
+        {
+            return new PagedResult<TaskAssignmentInfo>
+            {
+                Items = new List<TaskAssignmentInfo>(),
+                Page = @params.Page,
+                PageSize = @params.PageSize,
+                TotalItems = 0,
+                TotalPages = 0
+            };
         }
 
-        var tasks = new List<TaskAssignmentInfo>();
+        // Batch load tasks (same efficiency as function 1)
+        var taskIds = filteredAssignments
+            .Select(x => x.Assignment.TaskId)
+            .Distinct()
+            .ToList();
 
-        foreach (var assignment in assignments)
+        var tasks = await _taskRepo.GetByIdsAsync(taskIds);
+
+        // Optional status filtering
+        if (@params.Status.HasValue)
+            tasks = tasks.Where(t => t.Status == @params.Status.Value).ToList();
+
+        var taskDict = tasks.ToDictionary(t => t.TaskId);
+
+        var results = new List<TaskAssignmentInfo>();
+
+        foreach (var item in filteredAssignments)
         {
-            // Skip if assignment hasn't started
-            if (!assignment.StartedAt.HasValue)
+            if (!taskDict.TryGetValue(item.Assignment.TaskId, out var task))
                 continue;
 
-            var deadlineAt = assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
-
-            // Filter by IsExpired parameter
-            // Spec: IsExpired == null or false → exclude expired (skip if now >= deadlineAt)
-            //       IsExpired == true → only expired (skip if now <= deadlineAt)
-            if (@params.IsExpired == null || @params.IsExpired.Value == false)
-            {
-                if (now >= deadlineAt)
-                    continue;
-            }
-            else // IsExpired == true
-            {
-                if (now <= deadlineAt)
-                    continue;
-            }
-
-            // Get task details (need to load from repository if not included)
-            var task = assignment.AssignmentTask ?? await _taskRepo.GetByIdAsync(assignment.TaskId);
-            if (task == null)
-                continue;
-
-            // Filter by Status parameter
-            if (@params.Status.HasValue && task.Status != @params.Status.Value)
-                continue;
-
-            tasks.Add(new TaskAssignmentInfo
+            results.Add(new TaskAssignmentInfo
             {
                 TaskId = task.TaskId,
                 ProjectId = task.ProjectId,
                 Status = task.Status.ToString(),
-                AssignedTo = assignment.AssignedTo,
-                AssignedBy = assignment.AssignedBy,
-                AssignedAt = assignment.AssignedAt,
-                DeadlineAt = deadlineAt
+                AssignedTo = item.Assignment.AssignedTo,
+                AssignedBy = item.Assignment.AssignedBy,
+                AssignedAt = item.Assignment.AssignedAt,
+                DeadlineAt = item.DeadlineAt
             });
         }
 
-        // Sort by deadlineAt DESC
-        tasks = tasks.OrderByDescending(t => t.DeadlineAt).ToList();
+        // Sort by deadline DESC
+        results = results
+            .OrderByDescending(x => x.DeadlineAt)
+            .ToList();
 
         // Pagination
-        var totalCount = tasks.Count;
-        var paginatedTasks = tasks
+        var totalCount = results.Count;
+
+        var paginatedItems = results
             .Skip((@params.Page - 1) * @params.PageSize)
             .Take(@params.PageSize)
             .ToList();
 
         return new PagedResult<TaskAssignmentInfo>
         {
-            Items = paginatedTasks,
+            Items = paginatedItems,
             Page = @params.Page,
             PageSize = @params.PageSize,
             TotalItems = totalCount,
@@ -117,85 +135,29 @@ public class LabelingTaskService : ILabelingTaskService
         };
     }
 
-    public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForReviewerAsync(
-        Guid reviewerId, LabelingTaskStatus? status, int page, int pageSize)
+    public async Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId, string userRole)
     {
-        return await GetTasksForUserWithRoleAsync(reviewerId, status, page, pageSize);
-    }
-
-    public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForAnnotatorAsync(
-        Guid annotatorId, LabelingTaskStatus? status, int page, int pageSize)
-    {
-        return await GetTasksForUserWithRoleAsync(annotatorId, status, page, pageSize);
-    }
-
-    private async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForUserWithRoleAsync(
-        Guid userId, LabelingTaskStatus? status, int page, int pageSize)
-    {
-        var assignments = await _assignmentRepo.GetByAssignedToAsync(userId);
-        var now = DateTime.UtcNow;
-
-        // Filter: StartedAt != null AND currentTime < deadline
-        var activeAssignments = assignments
-            .Where(a => a.StartedAt.HasValue && now < a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes))
-            .ToList();
-
-        if (activeAssignments.Count == 0)
-            return (new List<LabelingTask>(), 0);
-
-        var taskIds = activeAssignments.Select(a => a.TaskId).Distinct().ToList();
-        var tasks = await _taskRepo.GetByIdsAsync(taskIds);
-
-        // Filter by status if provided
-        if (status.HasValue)
+        if (userRole == "admin" && userRole == "manager")
         {
-            tasks = tasks.Where(t => t.Status == status.Value).ToList();
+            return await _taskRepo.GetByIdAsync(taskId);
         }
-
-        // Sort by deadline DESC
-        var tasksWithDeadline = tasks
-            .Select(t => new
-            {
-                Task = t,
-                Deadline = activeAssignments
-                    .Where(a => a.TaskId == t.TaskId)
-                    .Select(a => a.StartedAt!.Value.AddMinutes(a.TimeLimitMinutes))
-                    .FirstOrDefault()
-            })
-            .OrderByDescending(x => x.Deadline)
-            .ToList();
-
-        var totalCount = tasksWithDeadline.Count;
-
-        // Pagination
-        var paginatedTasks = tasksWithDeadline
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(x => x.Task)
-            .ToList();
-
-        return (paginatedTasks, totalCount);
-    }
-
-    public async Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId)
-    {
-        var task = await _taskRepo.GetByIdAsync(taskId);
-        if (task == null)
-            return null;
 
         var assignment = await _assignmentRepo.GetByTaskIdAndUserAsync(taskId, userId);
         if (assignment == null)
             return null;
 
-        // Check if assignment is still active
         if (!assignment.StartedAt.HasValue)
             return null;
 
         var now = DateTime.UtcNow;
         var deadline = assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
+
+        // Ignore expired assignments
         if (now >= deadline)
             return null;
 
+        // Fetch task only after assignment validation
+        var task = await _taskRepo.GetByIdAsync(taskId);
         return task;
     }
 

@@ -8,9 +8,7 @@ namespace DataLabelProject.Business.Services.Tasks;
 public interface ILabelingTaskService
 {
     Task<PagedResult<TaskAssignmentInfo>> GetTasksAsync(Guid userId, string userRole, TaskQueryParameters @params);
-    Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForReviewerAsync(Guid reviewerId, LabelingTaskStatus? status, int page, int pageSize);
-    Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForAnnotatorAsync(Guid annotatorId, LabelingTaskStatus? status, int page, int pageSize);
-    Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId);
+    Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId, string userRole);
     Task<List<LabelingTaskItem>> AssignTaskItemsToTaskAsync(Guid taskId, IEnumerable<Guid> taskItemIds);
     Task<List<LabelingTaskItem>> GetTaskItemsByProjectIdAsync(Guid projectId);
     Task<List<Assignment>> UpdateAssignmentsByDatasetAsync(Guid assignmentId, Guid datasetId, double timeLimitMinutes);

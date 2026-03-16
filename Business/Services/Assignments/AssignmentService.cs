@@ -1,6 +1,7 @@
 using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
+using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data.Repositories.Abstractions;
 
 namespace DataLabelProject.Business.Services.Assignments;
@@ -16,6 +17,7 @@ public class AssignmentService : IAssignmentService
     private readonly IProjectMemberRepository _projectMemberRepo;
     private readonly IDatasetRepository _datasetRepo;
     private readonly IDatasetItemRepository _datasetItemRepo;
+    private readonly ICurrentUserService _currentUserService;
 
     public AssignmentService(
         ILabelingTaskRepository taskRepo,
@@ -26,7 +28,8 @@ public class AssignmentService : IAssignmentService
         IProjectRepository projectRepo,
         IProjectMemberRepository projectMemberRepo,
         IDatasetRepository datasetRepo,
-        IDatasetItemRepository datasetItemRepo)
+        IDatasetItemRepository datasetItemRepo,
+        ICurrentUserService currentUserService)
     {
         _taskRepo = taskRepo;
         _taskItemRepo = taskItemRepo;
@@ -37,6 +40,7 @@ public class AssignmentService : IAssignmentService
         _projectMemberRepo = projectMemberRepo;
         _datasetRepo = datasetRepo;
         _datasetItemRepo = datasetItemRepo;
+        _currentUserService = currentUserService;
     }
 
     public async Task<TaskAssignmentInfo> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy)
@@ -102,6 +106,12 @@ public class AssignmentService : IAssignmentService
         await _taskItemRepo.UpdateRangeAsync(unassignedTaskItems);
         await _taskItemRepo.SaveChangesAsync();
 
+        DateTime? startedAt = null;
+        if (role != null && role.RoleName == "annotator")
+        {
+            startedAt = DateTime.UtcNow;
+        }
+
         // Create assignment (starts immediately)
         var assignment = new Assignment
         {
@@ -110,8 +120,8 @@ public class AssignmentService : IAssignmentService
             AssignedTo = request.AssignedTo,
             AssignedBy = assignedBy,
             AssignedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow, // Task starts immediately after assignment
-            TimeLimitMinutes = 7 * 24 * 60 // Default 7 days
+            StartedAt = startedAt,
+            TimeLimitMinutes = request.TimeLimitMinutes
         };
 
         await _assignmentRepo.AddAsync(assignment);

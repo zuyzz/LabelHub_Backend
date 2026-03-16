@@ -58,6 +58,7 @@ public class TasksController : ControllerBase
 
     /// <summary>Get items of a task (filter by status/isExpired)</summary>
     [HttpGet("{taskId:guid}/items")]
+    [Authorize]
     public async Task<IActionResult> GetTaskItems(Guid taskId, [FromQuery] TaskItemQueryParameters @params)
     {
         try
@@ -92,167 +93,16 @@ public class TasksController : ControllerBase
         }
     }
 
-    /// <summary>Get active tasks for reviewer</summary>
-    [HttpGet("reviewer")]
-    [Authorize(Roles = "reviewer")]
-    public async Task<IActionResult> GetTasksForReviewer([FromQuery] TaskQueryParameters @params)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var (tasks, totalCount) = await _taskService.GetTasksForReviewerAsync(
-                userId, @params.Status, @params.Page, @params.PageSize);
-
-            var response = tasks.Select(t => new TaskResponse
-            {
-                TaskId = t.TaskId,
-                ProjectId = t.ProjectId,
-                Status = t.Status.ToString(),
-                TaskItems = t.TaskItems?.Select(i => new TaskItemResponse
-                {
-                    TaskItemId = i.TaskItemId,
-                    DatasetItemId = i.DatasetItemId,
-                    TaskId = i.TaskId,
-                    RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
-                }).ToList() ?? new List<TaskItemResponse>()
-            }).ToList();
-
-            return Ok(new
-            {
-                data = response,
-                totalCount,
-                page = @params.Page,
-                pageSize = @params.PageSize
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>Get active tasks for annotator</summary>
-    [HttpGet("annotator")]
-    [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> GetTasksForAnnotator([FromQuery] TaskQueryParameters @params)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var (tasks, totalCount) = await _taskService.GetTasksForAnnotatorAsync(
-                userId, @params.Status, @params.Page, @params.PageSize);
-
-            var response = tasks.Select(t => new TaskResponse
-            {
-                TaskId = t.TaskId,
-                ProjectId = t.ProjectId,
-                Status = t.Status.ToString(),
-                TaskItems = t.TaskItems?.Select(i => new TaskItemResponse
-                {
-                    TaskItemId = i.TaskItemId,
-                    DatasetItemId = i.DatasetItemId,
-                    TaskId = i.TaskId,
-                    RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
-                }).ToList() ?? new List<TaskItemResponse>()
-            }).ToList();
-
-            return Ok(new
-            {
-                data = response,
-                totalCount,
-                page = @params.Page,
-                pageSize = @params.PageSize
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>Get task by ID (reviewer)</summary>
-    [HttpGet("{id}/reviewer")]
-    [Authorize(Roles = "reviewer")]
-    public async Task<IActionResult> GetTaskByIdForReviewer(Guid id)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
-
-            if (task == null)
-                return NotFound(new { message = "Task not found or not accessible" });
-
-            var response = new TaskResponse
-            {
-                TaskId = task.TaskId,
-                ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
-                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
-                {
-                    TaskItemId = i.TaskItemId,
-                    DatasetItemId = i.DatasetItemId,
-                    TaskId = i.TaskId,
-                    RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
-                }).ToList() ?? new List<TaskItemResponse>()
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>Get task by ID (annotator)</summary>
-    [HttpGet("{id}/annotator")]
-    [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> GetTaskByIdForAnnotator(Guid id)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
-
-            if (task == null)
-                return NotFound(new { message = "Task not found or not accessible" });
-
-            var response = new TaskResponse
-            {
-                TaskId = task.TaskId,
-                ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
-                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
-                {
-                    TaskItemId = i.TaskItemId,
-                    DatasetItemId = i.DatasetItemId,
-                    TaskId = i.TaskId,
-                    RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
-                }).ToList() ?? new List<TaskItemResponse>()
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     /// <summary>Get task by ID</summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "reviewer,annotator")]
+    [Authorize]
     public async Task<IActionResult> GetTaskById(Guid id)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var task = await _taskService.GetTaskByIdForUserAsync(id, userId);
+            var userRole = GetCurrentUserRole();
+            var task = await _taskService.GetTaskByIdForUserAsync(id, userId, userRole);
 
             if (task == null)
                 return NotFound(new { message = "Task not found or not accessible" });
