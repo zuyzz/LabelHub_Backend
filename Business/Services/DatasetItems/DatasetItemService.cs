@@ -116,13 +116,27 @@ namespace DataLabelProject.Business.Services.DatasetItems
 
         private DatasetItemResponse MapToResponse(DatasetItem item)
         {
+            ImageMetadata? metadata = null;
+
+            if (!string.IsNullOrWhiteSpace(item.Metadata))
+            {
+                try
+                {
+                    metadata = JsonSerializer.Deserialize<ImageMetadata>(item.Metadata);
+                }
+                catch (JsonException)
+                {
+                    // log invalid metadata if needed
+                }
+            }
+
             return new DatasetItemResponse 
             {
                 ItemId = item.DatasetItemId,
                 DatasetId = item.DatasetId,
                 MediaType = item.MediaType,
                 StorageUri = item.StorageUri,
-                Metadata = item.Metadata,
+                Metadata = metadata,
                 CreatedAt = item.CreatedAt
             };
         }
