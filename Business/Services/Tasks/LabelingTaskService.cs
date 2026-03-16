@@ -1,3 +1,4 @@
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
@@ -34,6 +35,86 @@ public class LabelingTaskService : ILabelingTaskService
         _projectMemberRepo = projectMemberRepo;
         _datasetItemRepo = datasetItemRepo;
         _taskItemRepo = taskItemRepo;
+    }
+
+    public async Task<PagedResult<TaskAssignmentInfo>> GetTasksAsync(Guid userId, string userRole, TaskQueryParameters @params)
+    {
+        var now = DateTime.UtcNow;
+        List<Assignment> assignments;
+
+        // Get assignments based on role
+        if (userRole == "reviewer" || userRole == "annotator")
+        {
+            assignments = await _assignmentRepo.GetByAssignedToAsync(userId);
+        }
+        else
+        {
+            assignments = await _assignmentRepo.GetAllAsync();
+        }
+
+        var tasks = new List<TaskAssignmentInfo>();
+
+        foreach (var assignment in assignments)
+        {
+            // Skip if assignment hasn't started
+            if (!assignment.StartedAt.HasValue)
+                continue;
+
+            var deadlineAt = assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
+
+            // Filter by IsExpired parameter
+            // Spec: IsExpired == null or false → exclude expired (skip if now >= deadlineAt)
+            //       IsExpired == true → only expired (skip if now <= deadlineAt)
+            if (@params.IsExpired == null || @params.IsExpired.Value == false)
+            {
+                if (now >= deadlineAt)
+                    continue;
+            }
+            else // IsExpired == true
+            {
+                if (now <= deadlineAt)
+                    continue;
+            }
+
+            // Get task details (need to load from repository if not included)
+            var task = assignment.AssignmentTask ?? await _taskRepo.GetByIdAsync(assignment.TaskId);
+            if (task == null)
+                continue;
+
+            // Filter by Status parameter
+            if (@params.Status.HasValue && task.Status != @params.Status.Value)
+                continue;
+
+            tasks.Add(new TaskAssignmentInfo
+            {
+                TaskId = task.TaskId,
+                ProjectId = task.ProjectId,
+                Status = task.Status.ToString(),
+                AssignedTo = assignment.AssignedTo,
+                AssignedBy = assignment.AssignedBy,
+                AssignedAt = assignment.AssignedAt,
+                DeadlineAt = deadlineAt
+            });
+        }
+
+        // Sort by deadlineAt DESC
+        tasks = tasks.OrderByDescending(t => t.DeadlineAt).ToList();
+
+        // Pagination
+        var totalCount = tasks.Count;
+        var paginatedTasks = tasks
+            .Skip((@params.Page - 1) * @params.PageSize)
+            .Take(@params.PageSize)
+            .ToList();
+
+        return new PagedResult<TaskAssignmentInfo>
+        {
+            Items = paginatedTasks,
+            Page = @params.Page,
+            PageSize = @params.PageSize,
+            TotalItems = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+        };
     }
 
     public async Task<(List<LabelingTask> Tasks, int TotalCount)> GetTasksForReviewerAsync(
@@ -116,66 +197,6 @@ public class LabelingTaskService : ILabelingTaskService
             return null;
 
         return task;
-    }
-
-    public async Task<List<Assignment>> BulkAssignTasksAsync(
-        Guid datasetId, Guid projectId, Guid assignedTo, Guid assignedBy)
-    {
-        // Validate project exists and is active
-        var project = await _projectRepo.GetByIdAsync(projectId);
-        if (project == null)
-            throw new Exception("Project not found");
-        if (!project.IsActive)
-            throw new Exception("Project is not active");
-
-        // Validate assignee exists
-        var user = await _userRepo.GetByIdAsync(assignedTo);
-        if (user == null)
-            throw new Exception("User not found");
-
-        // Validate assignee is a member of the project
-        var existedMember = await _projectMemberRepo.GetByIdAsync(projectId, assignedTo);
-        if (existedMember == null)
-            throw new Exception("User is not a member of this project");
-
-        // Validate assignee role is reviewer or annotator
-        var role = await _roleRepo.GetByIdAsync(user.RoleId);
-        if (role == null || (role.RoleName != "reviewer" && role.RoleName != "annotator"))
-            throw new Exception("User must have role 'reviewer' or 'annotator' to be assigned a task");
-
-        // Get dataset items
-        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
-        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
-
-        if (datasetItemIds.Count == 0)
-            throw new Exception("No dataset items found for this dataset");
-
-        // Get tasks by dataset item IDs
-        var tasks = await _taskRepo.GetByDatasetItemIdsAsync(datasetItemIds);
-
-        if (tasks.Count == 0)
-            throw new Exception("No tasks found for dataset items");
-
-        // Validate all tasks belong to the project
-        if (tasks.Any(t => t.ProjectId != projectId))
-            throw new Exception("Some tasks do not belong to the specified project");
-
-        // Create assignments (StartedAt = DateTime.UtcNow - tasks are immediately active)
-        var assignments = tasks.Select(t => new Assignment
-        {
-            AssignmentId = Guid.NewGuid(),
-            TaskId = t.TaskId,
-            AssignedTo = assignedTo,
-            AssignedBy = assignedBy,
-            AssignedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow,
-            TimeLimitMinutes = 7 * 24 * 60, // Default 7 days
-        }).ToList();
-
-        await _assignmentRepo.AddRangeAsync(assignments);
-        await _assignmentRepo.SaveChangesAsync();
-
-        return assignments;
     }
 
     public async Task<List<Assignment>> UpdateAssignmentsByDatasetAsync(

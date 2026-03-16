@@ -50,6 +50,15 @@ public class LabelingTaskItemRepository : ILabelingTaskItemRepository
             .ToListAsync();
     }
 
+    public async Task<List<LabelingTaskItem>> GetUnassignedByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds)
+    {
+        return await _context.LabelingTaskItems
+            .Where(ti => datasetItemIds.Contains(ti.DatasetItemId) && ti.TaskId == null)
+            .Include(ti => ti.DatasetItem)
+            .Include(ti => ti.Project)
+            .ToListAsync();
+    }
+
     public async Task<List<LabelingTaskItem>> GetByProjectIdAsync(Guid projectId)
     {
         return await _context.LabelingTaskItems

@@ -15,12 +15,25 @@ public class AssignmentRepository : IAssignmentRepository
 
     public async Task<List<Assignment>> GetAllAsync()
     {
-        return await _db.Assignments.AsNoTracking().ToListAsync();
+        return await _db.Assignments
+            .Include(a => a.AssignmentTask)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public async Task<List<Assignment>> GetExpiredAsync()
+    {
+        var now = DateTime.UtcNow;
+        return await _db.Assignments
+            .Where(a => a.StartedAt != null &&
+                        a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes) < now)
+            .ToListAsync();
     }
 
     public async Task<List<Assignment>> GetByAssignedToAsync(Guid userId)
     {
         return await _db.Assignments
+            .Include(a => a.AssignmentTask)
             .Where(a => a.AssignedTo == userId)
             .AsNoTracking()
             .ToListAsync();

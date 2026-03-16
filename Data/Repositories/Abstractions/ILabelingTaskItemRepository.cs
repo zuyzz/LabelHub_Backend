@@ -8,6 +8,7 @@ public interface ILabelingTaskItemRepository
     Task<LabelingTaskItem?> GetByIdAsync(Guid id);
     Task<List<LabelingTaskItem>> GetByIdsAsync(IEnumerable<Guid> ids);
     Task<List<LabelingTaskItem>> GetByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds);
+    Task<List<LabelingTaskItem>> GetUnassignedByDatasetItemIdsAsync(IEnumerable<Guid> datasetItemIds);
     Task<List<LabelingTaskItem>> GetByProjectIdAsync(Guid projectId);
     Task<List<LabelingTaskItem>> GetByTaskIdAsync(Guid taskId);
     Task AddAsync(LabelingTaskItem taskItem);

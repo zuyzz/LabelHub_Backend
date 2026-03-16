@@ -27,6 +27,8 @@ using DataLabelProject.Business.Services.ProjectTemplates;
 using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
 using DataLabelProject.Business.Services.Annotations;
 using DataLabelProject.Business.Services.Tasks;
+using DataLabelProject.Business.Services.Assignments;
+using DataLabelProject.Business.Services.TaskItems;
 using DataLabelProject.Business.Services.Exports;
 using DataLabelProject.Data.Repositories.Implementations.ExportJobs;
 using DataLabelProject.Data.Repositories.Implementations.Reviews;
@@ -81,6 +83,8 @@ public static class ServiceExtensions
         services.AddScoped<IDatasetService, DatasetService>();
         services.AddScoped<IDatasetItemService, DatasetItemService>();
         services.AddScoped<ILabelingTaskService, LabelingTaskService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<ITaskItemService, TaskItemService>();
         services.AddScoped<IAnnotationService, AnnotationService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IConsensusService, ConsensusService>();
