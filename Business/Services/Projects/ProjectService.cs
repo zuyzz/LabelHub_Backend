@@ -67,6 +67,10 @@ public class ProjectService : IProjectService
 
         var currentUserId = _currentUserService.UserId!.Value;
 
+        var exists = _projectRepository.GetByNameAndCreatorAsync(request.Name, currentUserId);
+        if (exists != null)
+            throw new InvalidOperationException("You already have a project with the same name");
+
         var project = new Project
         {
             ProjectId = Guid.NewGuid(),
@@ -103,9 +107,25 @@ public class ProjectService : IProjectService
         var project = await _projectRepository.GetByIdAsync(id);
         if (project == null) return null;
 
-        project.Name = request.Name ?? project.Name;
-        project.Description = request.Description ?? project.Description;
-        project.IsActive = request.IsActive ?? project.IsActive;
+        var currentUserId = _currentUserService.UserId!.Value;
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var exists = _projectRepository.GetByNameAndCreatorAsync(request.Name, currentUserId);
+            if (exists != null)
+                throw new InvalidOperationException("You already have a project with the same name");
+            project.Name = request.Name;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Description))
+        {
+            project.Description = request.Description;
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            project.IsActive = request.IsActive.Value;
+        }
 
         await _projectRepository.UpdateAsync(project);
         await _projectRepository.SaveChangesAsync();
