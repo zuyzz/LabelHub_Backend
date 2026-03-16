@@ -112,26 +112,8 @@ public class DatasetsController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadDatasetItems([FromRoute] Guid datasetId, [FromForm] CreateDatasetItemRequest request)
     {
-        var file = request.File;
-
-        var dataset = await _datasetService.GetDatasetById(datasetId);
-        if (dataset == null) return NotFound();
-
-        var strategy = _fileUploadstrategies.FirstOrDefault(s => s.CanHandle(file));
-        if (strategy == null)
-            return BadRequest(new { message = "File type not supported" });
-
-        var process = await strategy.ProcessAsync(file, datasetId, dataset.Name);
-
-        var created = new List<object>();
-        foreach (var item in process.Items)
-        {
-            // Use metadata extracted by the strategy
-            var createdItem = await _itemService.CreateDataItem(datasetId, item.ContentType, item.StorageUri, item.Metadata);
-            created.Add(createdItem);
-        }
-
-        return Ok(created);
+        await _itemService.CreateDataItems(datasetId, request);
+        return Ok();
     }
 
     /// <summary>

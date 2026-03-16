@@ -9,6 +9,7 @@ public interface IDatasetItemRepository
     Task<IEnumerable<DatasetItem>> GetAllByDatasetIdAsync(Guid datasetId);
     Task<DatasetItem?> GetByIdAsync(Guid id);
     Task CreateAsync(DatasetItem item);
+    Task CreateRangeAsync(IEnumerable<DatasetItem> items);
     Task DeleteAsync(DatasetItem item);
     Task SaveChangesAsync();
 }

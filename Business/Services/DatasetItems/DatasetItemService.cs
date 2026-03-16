@@ -2,6 +2,7 @@ using System.Text.Json;
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Data.Repositories.Abstractions;
 
@@ -13,17 +14,20 @@ namespace DataLabelProject.Business.Services.DatasetItems
         private readonly IDatasetRepository _datasetRepository;
         private readonly ILabelingTaskItemRepository _taskItemRepository;
         private readonly IFileStorage _fileStorage;
+        private readonly IEnumerable<IFileUploadStrategy> _uploadStrategies;
 
         public DatasetItemService(
             IDatasetItemRepository datasetItemRepository, 
             IDatasetRepository datasetRepository,
             ILabelingTaskItemRepository taskItemRepository,
-            IFileStorage fileStorage)
+            IFileStorage fileStorage,
+            IEnumerable<IFileUploadStrategy> uploadStrategies)
         {
             _datasetItemRepository = datasetItemRepository;
             _datasetRepository = datasetRepository;
             _taskItemRepository = taskItemRepository;
             _fileStorage = fileStorage;
+            _uploadStrategies = uploadStrategies;
         }
 
         public async Task<PagedResponse<DatasetItemResponse>> GetDataItemsByDatasetId(Guid datasetId, DatasetItemQueryParameters @params)
@@ -48,49 +52,55 @@ namespace DataLabelProject.Business.Services.DatasetItems
             return MapToResponse(item);
         }
 
-        public async Task<DatasetItemResponse> CreateDataItem(Guid datasetId, string mediaType, string storageUri, string metadata)
+        public async Task CreateDataItems(Guid datasetId, CreateDatasetItemRequest request)
         {
             var dataset = await _datasetRepository.GetByIdAsync(datasetId);
             if (dataset == null) 
                 throw new InvalidOperationException("Dataset not found");
 
-            var item = new DatasetItem
-            {
-                DatasetItemId = Guid.NewGuid(),
-                DatasetId = datasetId,
-                MediaType = mediaType,
-                StorageUri = storageUri,
-                Metadata = metadata,
-                CreatedAt = DateTime.UtcNow
-            };
+            var storageKey = $"datasets/{datasetId}";
 
-            await _datasetItemRepository.CreateAsync(item);
+            var fileUpload = _uploadStrategies.FirstOrDefault(s => s.CanHandle(request.File))
+                ?? throw new InvalidOperationException("No strategy found");
+
+            var uploaded = await fileUpload.ProcessAsync(request.File, storageKey);
+
+            var items = uploaded.Select(u => new DatasetItem
+            {
+                DatasetItemId = u.FileId,
+                DatasetId = datasetId,
+                MediaType = u.ContentType,
+                StorageUri = u.StorageUri,
+                Metadata = u.Metadata,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _datasetItemRepository.CreateRangeAsync(items);
 
             if (dataset.ProjectId.HasValue)
             {
-                var taskItem = new LabelingTaskItem
+                var taskItems = items.Select(i => new LabelingTaskItem
                 {
                     TaskItemId = Guid.NewGuid(),
                     TaskId = null,
                     ProjectId = dataset.ProjectId.Value,
-                    DatasetItemId = item.DatasetItemId,
+                    DatasetItemId = i.DatasetItemId,
                     RevisionCount = 0,
                     Status = Models.Enums.LabelingTaskItemStatus.Unassigned
-                };
+                });
 
-                await _taskItemRepository.AddAsync(taskItem);
+                await _taskItemRepository.AddRangeAsync(taskItems);
             }
 
             await _datasetItemRepository.SaveChangesAsync();
             await _taskItemRepository.SaveChangesAsync();
-
-            return MapToResponse(item);
         }
 
-        public async Task<bool> DeleteDataItem(Guid id)
+        public async Task DeleteDataItem(Guid id)
         {
             var item = await _datasetItemRepository.GetByIdAsync(id);
-            if (item == null) return false;
+            if (item == null)
+                throw new InvalidOperationException("Dataset item not found");
 
             // delete storage object if exists
             if (!string.IsNullOrWhiteSpace(item.StorageUri))
@@ -108,8 +118,6 @@ namespace DataLabelProject.Business.Services.DatasetItems
 
             await _datasetItemRepository.DeleteAsync(item);
             await _datasetItemRepository.SaveChangesAsync();
-
-            return true;
         }
 
         private DatasetItemResponse MapToResponse(DatasetItem item)

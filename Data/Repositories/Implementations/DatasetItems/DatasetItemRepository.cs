@@ -50,6 +50,11 @@ public class DatasetItemRepository : IDatasetItemRepository
         await _context.DatasetItems.AddAsync(item);
     }
 
+    public async Task CreateRangeAsync(IEnumerable<DatasetItem> items)
+    {
+        await _context.DatasetItems.AddRangeAsync(items);
+    }
+
     public async Task DeleteAsync(DatasetItem item)
     {
         _context.DatasetItems.Remove(item);
