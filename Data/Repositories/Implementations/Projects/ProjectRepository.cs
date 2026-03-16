@@ -81,6 +81,14 @@ public class ProjectRepository : IProjectRepository
             .FirstOrDefaultAsync(p => p.ProjectId == id);
     }
 
+    public async Task<Project?> GetByNameAndCreatorAsync(string name, Guid userId)
+    {
+        return await _context.Projects
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate)
+            .FirstOrDefaultAsync(p => p.Name.ToLower() == name.Trim().ToLower() && p.CreatedBy == userId);
+    }
+
     public async Task CreateAsync(Project project)
     {
         await _context.Projects.AddAsync(project);
