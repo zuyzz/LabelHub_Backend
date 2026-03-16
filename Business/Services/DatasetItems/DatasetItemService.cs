@@ -53,8 +53,6 @@ namespace DataLabelProject.Business.Services.DatasetItems
             var dataset = await _datasetRepository.GetByIdAsync(datasetId);
             if (dataset == null) 
                 throw new InvalidOperationException("Dataset not found");
-                
-            var jsonMetadata = JsonSerializer.Serialize(metadata);
 
             var item = new DatasetItem
             {
@@ -62,7 +60,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
                 DatasetId = datasetId,
                 MediaType = mediaType,
                 StorageUri = storageUri,
-                Metadata = jsonMetadata,
+                Metadata = metadata,
                 CreatedAt = DateTime.UtcNow
             };
 
