@@ -3,6 +3,8 @@ using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Business.Services.Users;
+using DataLabelProject.Business.Events.Abstraction;
+using DataLabelProject.Business.Events.DomainEvents.Project;
 
 namespace DataLabelProject.Business.Services.Projects;
 
@@ -14,6 +16,7 @@ public class ProjectService : IProjectService
     private readonly IProjectTemplateRepository _templateRepository;
     private readonly IProjectConfigRepository _configRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IEventDispatcher _eventDispatcher;
 
     public ProjectService (
         IProjectRepository projectRepository,
@@ -21,7 +24,8 @@ public class ProjectService : IProjectService
         ICategoryRepository categoryRepository,
         IProjectTemplateRepository templateRepository,
         IProjectConfigRepository configRepository,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IEventDispatcher eventDispatcher)
     {
         _projectRepository = projectRepository;
         _projectMemberRepository = projectMemberRepository;
@@ -29,6 +33,7 @@ public class ProjectService : IProjectService
         _templateRepository = templateRepository;
         _configRepository = configRepository;
         _currentUserService = currentUserService;
+        _eventDispatcher = eventDispatcher;
     }
 
     public async Task<PagedResponse<ProjectResponse>> GetProjects(ProjectQueryParameters @params)
@@ -88,24 +93,7 @@ public class ProjectService : IProjectService
         await _projectRepository.CreateAsync(project);
         await _projectRepository.SaveChangesAsync();
 
-        var member = new ProjectMember
-        {
-            ProjectId = project.ProjectId,
-            MemberId = currentUserId,
-            JoinedAt = DateTime.UtcNow
-        };
-
-        // add manager as a member
-        await _projectMemberRepository.CreateAsync(member);
-        await _projectMemberRepository.SaveChangesAsync();
-
-        var config = new ProjectConfig
-        {
-            ProjectId = project.ProjectId
-        };
-
-        await _configRepository.CreateAsync(config);
-        await _configRepository.SaveChangesAsync();
+        await _eventDispatcher.DispatchAsync(new ProjectCreatedEvent(project.ProjectId));
 
         project = await _projectRepository.GetByIdAsync(project.ProjectId);
 
@@ -143,21 +131,16 @@ public class ProjectService : IProjectService
         return MapToResponse(project);
     }
 
-    public async Task<bool> DeleteProject(Guid id)
+    public async Task DeleteProject(Guid id)
     {
         var project = await _projectRepository.GetByIdAsync(id);
-        if (project == null) return false;
+        if (project == null)
+            throw new KeyNotFoundException("Project not found");
 
         await _projectRepository.DeleteAsync(project);
         await _projectRepository.SaveChangesAsync();
 
-        var config = await _configRepository.GetByProjectIdAsync(id);
-        if (config == null) return false;
-
-        await _configRepository.DeleteAsync(config);
-        await _configRepository.SaveChangesAsync();
-
-        return true;
+        await _eventDispatcher.DispatchAsync(new ProjectDeletedEvent(id));
     }
 
     private static ProjectResponse MapToResponse(Project p) =>

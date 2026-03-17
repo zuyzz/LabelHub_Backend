@@ -9,6 +9,6 @@ namespace DataLabelProject.Business.Services.Projects
         Task<ProjectResponse?> GetProjectById(Guid id);
         Task<ProjectResponse> CreateProject(CreateProjectRequest request);
         Task<ProjectResponse?> UpdateProject(Guid id, UpdateProjectRequest request);
-        Task<bool> DeleteProject(Guid id);
+        Task DeleteProject(Guid id);
     }
 }

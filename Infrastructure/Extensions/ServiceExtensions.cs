@@ -37,6 +37,10 @@ using DataLabelProject.Data.Repositories.Implementations.Consensus;
 using DataLabelProject.Business.Services.Consensus;
 using DataLabelProject.Business.Services.Statistics;
 using DataLabelProject.Data.Repositories.Implementations.ProjectConfigs;
+using DataLabelProject.Business.Events.Abstraction;
+using DataLabelProject.Business.Events.Dispatcher;
+using DataLabelProject.Business.Events.DomainEvents.Project;
+using DataLabelProject.Business.Events.Handlers.ProjectConfigs;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -101,6 +105,15 @@ public static class ServiceExtensions
         // Metadata extractors
         services.AddScoped<IMetadataExtractor, ImageMetadataExtractor>();
         services.AddScoped<MetadataExtractorFactory>();
+
+        // Event Dispatcher
+        services.AddScoped<IEventDispatcher, EventDispatcher>();
+
+        // Event Handlers
+        // --- Project ---
+        services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateMemberHandler>();
+        services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateConfigHandler>();
+        services.AddScoped<IEventHandler<ProjectDeletedEvent>, DeleteConfigHandler>();
 
         return services;
     }
