@@ -12,6 +12,7 @@ public class ProjectService : IProjectService
     private readonly IProjectMemberRepository _projectMemberRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IProjectTemplateRepository _templateRepository;
+    private readonly IProjectConfigRepository _configRepository;
     private readonly ICurrentUserService _currentUserService;
 
     public ProjectService (
@@ -19,12 +20,14 @@ public class ProjectService : IProjectService
         IProjectMemberRepository projectMemberRepository,
         ICategoryRepository categoryRepository,
         IProjectTemplateRepository templateRepository,
+        IProjectConfigRepository configRepository,
         ICurrentUserService currentUserService)
     {
         _projectRepository = projectRepository;
         _projectMemberRepository = projectMemberRepository;
         _categoryRepository = categoryRepository;
         _templateRepository = templateRepository;
+        _configRepository = configRepository;
         _currentUserService = currentUserService;
     }
 
@@ -96,6 +99,14 @@ public class ProjectService : IProjectService
         await _projectMemberRepository.CreateAsync(member);
         await _projectMemberRepository.SaveChangesAsync();
 
+        var config = new ProjectConfig
+        {
+            ProjectId = project.ProjectId
+        };
+
+        await _configRepository.CreateAsync(config);
+        await _configRepository.SaveChangesAsync();
+
         project = await _projectRepository.GetByIdAsync(project.ProjectId);
 
         return MapToResponse(project!);
@@ -139,6 +150,12 @@ public class ProjectService : IProjectService
 
         await _projectRepository.DeleteAsync(project);
         await _projectRepository.SaveChangesAsync();
+
+        var config = await _configRepository.GetByProjectIdAsync(id);
+        if (config == null) return false;
+
+        await _configRepository.DeleteAsync(config);
+        await _configRepository.SaveChangesAsync();
 
         return true;
     }
