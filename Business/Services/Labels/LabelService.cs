@@ -36,7 +36,6 @@ public class LabelService : ILabelService
             TotalItems = totalCount,
             Page = @params.Offset,
             PageSize = @params.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / @params.PageSize)
         };
     }
 

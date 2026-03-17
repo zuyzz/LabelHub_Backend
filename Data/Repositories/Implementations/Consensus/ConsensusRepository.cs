@@ -50,7 +50,7 @@ public class ConsensusRepository : IConsensusRepository
 			.ToListAsync();
 	}
 
-	public async Task<PagedResult<ConsensusEntity>> GetConsensusesAsync(ConsensusQueryParameters @params)
+	public async Task<PagedResponse<ConsensusEntity>> GetConsensusesAsync(ConsensusQueryParameters @params)
 	{
 		var query = _context.Set<ConsensusEntity>()
 			.AsNoTracking()
@@ -74,7 +74,7 @@ public class ConsensusRepository : IConsensusRepository
 			.Take(@params.PageSize)
 			.ToListAsync();
 
-		return new PagedResult<ConsensusEntity>
+		return new PagedResponse<ConsensusEntity>
 		{
 			Items = items,
 			TotalItems = total

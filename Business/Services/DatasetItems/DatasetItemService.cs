@@ -39,8 +39,7 @@ namespace DataLabelProject.Business.Services.DatasetItems
                 Items = items.Select(MapToResponse).ToList(),
                 TotalItems = totalCount,
                 Page = @params.Page,
-                PageSize = @params.PageSize,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
+                PageSize = @params.PageSize
             };
         }
 

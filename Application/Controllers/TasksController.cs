@@ -111,14 +111,14 @@ public class TasksController : ControllerBase
             {
                 TaskId = task.TaskId,
                 ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
+                Status = task.Status,
                 TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
                 {
                     TaskItemId = i.TaskItemId,
                     DatasetItemId = i.DatasetItemId,
                     TaskId = i.TaskId,
                     RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
+                    Status = i.Status
                 }).ToList() ?? new List<TaskItemResponse>()
             };
 
@@ -148,14 +148,14 @@ public class TasksController : ControllerBase
             {
                 TaskId = task.TaskId,
                 ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
+                Status = task.Status,
                 TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
                 {
                     TaskItemId = i.TaskItemId,
                     DatasetItemId = i.DatasetItemId,
                     TaskId = i.TaskId,
                     RevisionCount = i.RevisionCount,
-                    Status = i.Status.ToString()
+                    Status = i.Status
                 }).ToList() ?? new List<TaskItemResponse>()
             };
 
@@ -185,7 +185,7 @@ public class TasksController : ControllerBase
                 DatasetItemId = i.DatasetItemId,
                 TaskId = i.TaskId,
                 RevisionCount = i.RevisionCount,
-                Status = i.Status.ToString()
+                Status = i.Status
             }).ToList();
 
             return Ok(new { message = "Task items assigned successfully", data = response });

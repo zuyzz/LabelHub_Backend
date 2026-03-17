@@ -60,7 +60,6 @@ public class ProjectMemberService : IProjectMemberService
             TotalItems = totalCount,
             Page = @params.Page,
             PageSize = @params.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / @params.PageSize)
         };
     }
 

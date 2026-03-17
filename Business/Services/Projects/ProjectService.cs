@@ -45,7 +45,6 @@ public class ProjectService : IProjectService
             TotalItems = totalCount,
             Page = @params.Page,
             PageSize = @params.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / @params.PageSize)
         };
     }
 

@@ -18,7 +18,7 @@ public partial class Review
 
     public string? Feedback { get; set; }
 
-    public DateTime? ReviewedAt { get; set; }
+    public DateTime ReviewedAt { get; set; }
 
     public virtual LabelingTaskItem ReviewTaskItem { get; set; } = null!;
 

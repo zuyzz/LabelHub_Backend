@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using DataLabelProject.Application.DTOs.Annotations;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -14,33 +16,25 @@ public class ReviewRepository : IReviewRepository
         _context = context;
     }
 
+    public IQueryable<Review> Query()
+    {
+        return _context.Reviews;
+    }
+
     public async Task<Review?> GetByIdAsync(Guid reviewId)
     {
         return await _context.Reviews
-            .AsNoTracking()
             .FirstOrDefaultAsync(r => r.ReviewId == reviewId);
-    }
-
-    public async Task<IEnumerable<Review>> GetByTaskItemIdAsync(Guid taskItemId)
-    {
-        return await _context.Reviews
-            .AsNoTracking()
-            .Where(r => r.TaskItemId == taskItemId)
-            .ToListAsync();
-    }
-
-    public async Task<IEnumerable<Review>> GetApprovedByTaskItemIdAsync(Guid taskItemId)
-    {
-        return await _context.Reviews
-            .Where(r => r.TaskItemId == taskItemId && r.Result == ReviewResult.Approved)
-            .Include(r => r.ReviewTaskItem)
-                .ThenInclude(t => t.Annotations)
-            .ToListAsync();
     }
 
     public async Task CreateAsync(Review review)
     {
         await _context.Reviews.AddAsync(review);
+    }
+
+    public async Task CreateRangeAsync(IEnumerable<Review> reviews)
+    {
+        await _context.Reviews.AddRangeAsync(reviews);
     }
 
     public async Task SaveChangesAsync()

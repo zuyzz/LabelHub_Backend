@@ -6,5 +6,5 @@ namespace DataLabelProject.Business.Services.TaskItems;
 
 public interface ITaskItemService
 {
-    Task<PagedResult<TaskItemDetailResponse>> GetTaskItemsByTaskAsync(Guid taskId, TaskItemQueryParameters @params);
+    Task<PagedResponse<TaskItemDetailResponse>> GetTaskItemsByTaskAsync(Guid taskId, TaskItemQueryParameters @params);
 }

@@ -130,7 +130,6 @@ public class DatasetService : IDatasetService
             TotalItems = totalCount,
             Page = @params.Page,
             PageSize = @params.PageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
         };
     }
 

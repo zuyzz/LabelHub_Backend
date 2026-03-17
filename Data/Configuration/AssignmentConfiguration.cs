@@ -21,7 +21,7 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
         entity.Property(e => e.StartedAt).HasColumnName("startedAt").HasColumnType("timestamp with time zone");
         entity.Property(e => e.TimeLimitMinutes).HasColumnName("timeLimitMinutes");
 
-        entity.HasOne(d => d.AssignedByUser).WithMany(p => p.AssignmentAssignedByUsers)
+        entity.HasOne(d => d.AssignedByUser).WithMany(p => p.Assignments)
             .HasForeignKey(d => d.AssignedBy)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("Assignment_assignedBy_fkey");

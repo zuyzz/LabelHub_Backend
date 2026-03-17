@@ -34,7 +34,6 @@ public class UserService : IUserService
             TotalItems = totalCount,
             Page = @params.Page,
             PageSize = @params.PageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
         };
     }
 

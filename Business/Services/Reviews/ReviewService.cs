@@ -1,141 +1,146 @@
+using DataLabelProject.Application.DTOs.Annotations;
+using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Consensus;
 using DataLabelProject.Application.DTOs.Reviews;
+using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Business.Services.Users;
-using DataLabelProject.Data;
 using DataLabelProject.Data.Repositories.Abstractions;
+using DataLabelProject.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
-using ConsensusModel = DataLabelProject.Business.Models.Consensus;
 
 namespace DataLabelProject.Business.Services.Reviews
 {
     public class ReviewService : IReviewService
     {
-        private readonly AppDbContext _context;
         private readonly IReviewRepository _reviewRepository;
-        private readonly ILabelingTaskRepository _taskRepository;
         private readonly ILabelingTaskItemRepository _taskItemRepository;
-        private readonly IAssignmentRepository _assignmentRepository;
-        private readonly IProjectConfigRepository _projectConfigRepository;
         private readonly IConsensusRepository _consensusRepository;
         private readonly ICurrentUserService _currentUserService;
 
         public ReviewService(
-            AppDbContext context,
             IReviewRepository reviewRepository,
-            ILabelingTaskRepository taskRepository,
             ILabelingTaskItemRepository taskItemRepository,
-            IAssignmentRepository assignmentRepository,
-            IProjectConfigRepository projectConfigRepository,
             IConsensusRepository consensusRepository,
             ICurrentUserService currentUserService)
         {
-            _context = context;
             _reviewRepository = reviewRepository;
-            _taskRepository = taskRepository;
             _taskItemRepository = taskItemRepository;
-            _assignmentRepository = assignmentRepository;
-            _projectConfigRepository = projectConfigRepository;
             _consensusRepository = consensusRepository;
             _currentUserService = currentUserService;
         }
 
-        public async Task<ReviewResponse[]> BatchReviewConsensusesAsync(BatchReviewRequest request)
+        public async Task<PagedResponse<ReviewResponse>> GetReviewsAsync(
+            ReviewQueryParameters @params)
         {
-            // var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId);
-            // if (taskItem == null)
-            //     throw new KeyNotFoundException("Task not found");
+            IQueryable<Review> query = _reviewRepository.Query()
+                .OrderByDescending(r => r.ReviewedAt)
+                .Include(r => r.ReviewTaskItem)
+                .Include(r => r.ReviewConsensus);
 
-            // var reviewerId = _currentUserService.UserId ?? throw new InvalidOperationException("User not authenticated");
+            query = ApplyUserFilter(query);
+            query = ApplyParamFilters(query, @params);
 
-            // var reviews = new List<Review>();
-            // foreach (var reviewItem in request.Reviews)
-            // {
-            //     var consensus = await _consensusRepository.GetByIdAsync(reviewItem.ConsensusId);
-            //     if (consensus == null || consensus.ConsensusId != reviewItem.ConsensusId)
-            //         throw new KeyNotFoundException($"Consensus {reviewItem.ConsensusId} not found for task");
-
-            //     var review = new Review
-            //     {
-            //         ReviewId = Guid.NewGuid(),
-            //         ConsensusId = consensus.ConsensusId,
-            //         TaskItemId = request.TaskItemId,
-            //         ReviewerId = reviewerId,
-            //         Result = reviewItem.Result,
-            //         Feedback = reviewItem.Feedback,
-            //         ReviewedAt = DateTime.UtcNow
-            //     };
-            //     reviews.Add(review);
-            // }
-
-            // // Save all reviews
-            // foreach (var review in reviews)
-            // {
-            //     await _reviewRepository.CreateAsync(review);
-            // }
-            // await _reviewRepository.SaveChangesAsync();
-
-            // // Check if all annotations are rejected
-            // bool allRejected = reviews.All(r => r.Result == ReviewResult.Rejected);
-
-            // if (allRejected)
-            // {
-            //     // Increment revision count
-            //     taskItem.RevisionCount++;
-            //     if (taskItem.RevisionCount >= 3)
-            //     {
-            //         taskItem.Status = LabelingTaskItemStatus.Locked;
-            //     }
-            //     else
-            //     {
-            //         // Reopen task: set assignments back to incompleted
-            //         var assignments = await _assignmentRepository.GetAllByTaskIdAsync(request.TaskItemId);
-            //         foreach (var assignment in assignments.Where(a => a.Status == AssignmentStatus.Completed))
-            //         {
-            //             assignment.Status = AssignmentStatus.Incompleted;
-            //             await _assignmentRepository.UpdateAsync(assignment);
-            //         }
-            //         await _assignmentRepository.SaveChangesAsync();
-            //     }
-            //     await _taskRepository.SaveChangesAsync();
-            // }
-            // else
-            // {
-            //     // Create consensus from approved annotations
-            //     await CreateConsensusFromApproved(request.TaskItemId);
-            // }
-
-            // return reviews.Select(MapToResponse).ToArray();
-            return null;
+            return await query.ToPagedResponseAsync(@params, MapToResponse);
         }
 
-        public async Task<IEnumerable<ReviewResponse>> GetReviewsForTaskAsync(Guid taskId)
+        public async Task<PagedResponse<ReviewResponse>> GetReviewsByTaskAsync(
+            Guid taskId, 
+            ReviewQueryParameters @params)
         {
-            var reviews = await _reviewRepository.GetByTaskItemIdAsync(taskId);
-            return reviews.Select(MapToResponse);
+            IQueryable<Review> query = _reviewRepository.Query()
+                .Where(r => r.ReviewTaskItem.TaskId == taskId)
+                .OrderByDescending(r => r.ReviewedAt)
+                .Include(r => r.ReviewTaskItem)
+                .Include(r => r.ReviewConsensus);
+
+            query = ApplyUserFilter(query);
+            query = ApplyParamFilters(query, @params);
+
+            return await query.ToPagedResponseAsync(@params, MapToResponse);
         }
 
-        public async Task<(IEnumerable<ReviewResponse> Reviews, int TotalCount)> GetReviewsAsync(string? status, int page = 1, int pageSize = 10)
+        public async Task<PagedResponse<ReviewResponse>> GetReviewsByTaskItemAsync(
+            Guid taskItemId, 
+            ReviewQueryParameters @params)
         {
-            var query = _context.Reviews.AsQueryable();
+            IQueryable<Review> query = _reviewRepository.Query()
+                .Where(r => r.TaskItemId == taskItemId)
+                .OrderByDescending(r => r.ReviewedAt)
+                .Include(r => r.ReviewTaskItem)
+                .Include(r => r.ReviewConsensus);
 
-            if (!string.IsNullOrEmpty(status))
+            query = ApplyUserFilter(query);
+            query = ApplyParamFilters(query, @params);
+
+            return await query.ToPagedResponseAsync(@params, MapToResponse);
+        }
+
+        private IQueryable<Review> ApplyUserFilter(
+            IQueryable<Review> query)
+        {
+            var currentUserId = _currentUserService.UserId;
+            var currentUserRoles = _currentUserService.Roles;
+
+            if (currentUserRoles.Contains("reviewer") && currentUserId.HasValue)
             {
-                if (Enum.TryParse<ReviewResult>(status, out var result))
-                {
-                    query = query.Where(r => r.Result == result);
-                }
+                query = query.Where(r => r.ReviewerId == currentUserId.Value);
             }
 
-            var totalCount = await query.CountAsync();
-            var reviews = await query
-                .OrderByDescending(r => r.ReviewedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            return query;
+        }
 
-            return (reviews.Select(MapToResponse), totalCount);
+        private IQueryable<Review> ApplyParamFilters(
+            IQueryable<Review> query,
+            ReviewQueryParameters @params)
+        {
+            if (@params.Result.HasValue)
+            {
+                query = query.Where(r => r.Result == @params.Result.Value);
+            }
+
+            return query;
+        }
+
+        public async Task<ReviewResponse> CreateReviewAsync(CreateReviewRequest request)
+        {
+            var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId) 
+                ?? throw new KeyNotFoundException("Task not found");
+
+            var consensus = await _consensusRepository.GetByIdAsync(request.ConsensusId)
+                ?? throw new KeyNotFoundException($"Consensus not found");
+
+            var reviewerId = _currentUserService.UserId!.Value;
+
+            var review = new Review
+            {
+                ReviewId = Guid.NewGuid(),
+                ConsensusId = consensus.ConsensusId,
+                TaskItemId = taskItem.TaskItemId,
+                ReviewerId = reviewerId,
+                Result = request.Result,
+                Feedback = request.Feedback,
+                ReviewedAt = DateTime.UtcNow,
+            };
+
+            await _reviewRepository.CreateAsync(review);
+
+            // can using event handler here
+            switch (review.Result)
+            {
+                case ReviewResult.Approved:
+                    taskItem.Status = LabelingTaskItemStatus.Completed;
+                    break;
+                case ReviewResult.Rejected:
+                    // do nothing for now
+                    break;
+            }
+
+            await _reviewRepository.SaveChangesAsync();
+            await _taskItemRepository.SaveChangesAsync();
+
+            return MapToResponse(review);
         }
 
         private ReviewResponse MapToResponse(Review review)
@@ -143,70 +148,26 @@ namespace DataLabelProject.Business.Services.Reviews
             return new ReviewResponse
             {
                 ReviewId = review.ReviewId,
-                AnnotationId = Guid.Empty, // Not stored in model
                 ReviewerId = review.ReviewerId,
-                Result = review.Result.ToString(),
+                Result = review.Result,
                 Feedback = review.Feedback,
                 ReviewedAt = review.ReviewedAt,
-                TaskId = review.TaskItemId
+                TaskItem = new TaskItemResponse
+                {
+                    TaskItemId = review.TaskItemId,
+                    TaskId = review.ReviewTaskItem.TaskId,
+                    DatasetItemId = review.ReviewTaskItem.DatasetItemId,
+                    RevisionCount = review.ReviewTaskItem.RevisionCount,
+                    Status = review.ReviewTaskItem.Status,
+                },
+                Consensus = new ConsensusResponse
+                {
+                    ConsensusId = review.ReviewConsensus.ConsensusId,
+                    DatasetItemId = review.ReviewConsensus.DatasetItemId,
+                    Payload = review.ReviewConsensus.Payload,
+                    CreatedAt = review.ReviewConsensus.CreatedAt
+                }
             };
-        }
-
-        private async Task CreateConsensusFromApproved(Guid taskItemId)
-        {
-        //     // Retrieve task and project configuration
-        //     var taskItem = await _taskItemRepository.GetByIdAsync(taskItemId);
-        //     if (taskItem == null)
-        //         return;
-
-        //     var config = await _projectConfigRepository.GetLatestByProjectIdAsync(taskItem.ProjectId);
-        //     if (config == null)
-        //         return;
-
-        //     // gather approved annotations (distinct by annotation id)
-        //     var approvedReviews = (await _reviewRepository.GetApprovedByTaskItemIdAsync(taskItemId)).ToList();
-
-        //     var uniqueAnnotations = approvedReviews
-        //         .GroupBy(r => r.ReviewTaskItem.Annotation.AnnotationId)
-        //         .Select(g => g.First().ReviewTaskItem.Annotation)
-        //         .ToList();
-
-        //     if (uniqueAnnotations.Count < config.AnnotationsPerSample)
-        //         return;
-
-        //     // compute majority agreement score based on payload string equality
-        //     var payloadGroups = uniqueAnnotations
-        //         .GroupBy(a => a.Payload)
-        //         .Select(g => new { Payload = g.Key, Count = g.Count() });
-
-        //     var best = payloadGroups.OrderByDescending(g => g.Count).First();
-        //     double score = (double)best.Count / uniqueAnnotations.Count;
-
-        //     if (score < config.AgreementThreshold)
-        //         return;
-
-        //     var consensusPayload = best.Payload;
-
-        //     var existingConsensuses = await _consensusRepository.GetByDatasetItemIdAsync(taskItemId);
-        //     var existing = existingConsensuses.FirstOrDefault();
-
-        //     if (existing == null)
-        //     {
-        //         existing = new ConsensusModel
-        //         {
-        //             ConsensusId = Guid.NewGuid(),
-        //             DatasetItemId = taskItemId,
-        //             Payload = JsonSerializer.Serialize(new { originalPayload = consensusPayload, agreementScore = score }),
-        //             CreatedAt = DateTime.UtcNow
-        //         };
-
-        //         await _consensusRepository.CreateAsync(existing);
-        //     }
-        //     else
-        //     {
-        //         existing.Payload = JsonSerializer.Serialize(new { originalPayload = consensusPayload, agreementScore = score });
-        //         await _consensusRepository.UpdateAsync(existing);
-        //     }
         }
     }
 }
