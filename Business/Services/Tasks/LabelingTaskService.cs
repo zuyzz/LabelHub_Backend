@@ -91,6 +91,9 @@ public class LabelingTaskService : ILabelingTaskService
         if (@params.Status.HasValue)
             tasks = tasks.Where(t => t.Status == @params.Status.Value).ToList();
 
+        if (@params.ProjectId.HasValue)
+            tasks = tasks.Where(t => t.ProjectId == @params.ProjectId).ToList();
+
         var taskDict = tasks.ToDictionary(t => t.TaskId);
 
         var results = new List<TaskAssignmentInfo>();

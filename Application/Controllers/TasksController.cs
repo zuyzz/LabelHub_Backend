@@ -63,7 +63,7 @@ public class TasksController : ControllerBase
     {
         try
         {
-            var result = await _taskItemService.GetTaskItemsAsync(taskId, @params);
+            var result = await _taskItemService.GetTaskItemsByTaskAsync(taskId, @params);
             return Ok(result);
         }
         catch (Exception ex)
@@ -103,6 +103,43 @@ public class TasksController : ControllerBase
             var userId = GetCurrentUserId();
             var userRole = GetCurrentUserRole();
             var task = await _taskService.GetTaskByIdForUserAsync(id, userId, userRole);
+
+            if (task == null)
+                return NotFound(new { message = "Task not found or not accessible" });
+
+            var response = new TaskResponse
+            {
+                TaskId = task.TaskId,
+                ProjectId = task.ProjectId,
+                Status = task.Status.ToString(),
+                TaskItems = task.TaskItems?.Select(i => new TaskItemResponse
+                {
+                    TaskItemId = i.TaskItemId,
+                    DatasetItemId = i.DatasetItemId,
+                    TaskId = i.TaskId,
+                    RevisionCount = i.RevisionCount,
+                    Status = i.Status.ToString()
+                }).ToList() ?? new List<TaskItemResponse>()
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>Get task by project ID</summary>
+    [HttpGet("/projects/{projectId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> GetTaskByProjectId(Guid projectId)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var userRole = GetCurrentUserRole();
+            var task = await _taskService.GetTaskByIdForUserAsync(projectId, userId, userRole);
 
             if (task == null)
                 return NotFound(new { message = "Task not found or not accessible" });

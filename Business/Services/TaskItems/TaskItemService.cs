@@ -24,7 +24,7 @@ public class TaskItemService : ITaskItemService
         _assignmentService = assignmentService;
     }
 
-    public async Task<PagedResult<TaskItemDetailResponse>> GetTaskItemsAsync(Guid taskId, TaskItemQueryParameters @params)
+    public async Task<PagedResult<TaskItemDetailResponse>> GetTaskItemsByTaskAsync(Guid taskId, TaskItemQueryParameters @params)
     {
         // Validate task exists
         var task = await _taskRepo.GetByIdAsync(taskId);
