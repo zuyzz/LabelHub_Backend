@@ -64,7 +64,6 @@ public class AnnotationService : IAnnotationService
             TotalItems = totalItems,
             Page = parameters.Page,
             PageSize = parameters.PageSize,
-            TotalPages = (int)Math.Ceiling(totalItems / (double)parameters.PageSize)
         };
     }
 
@@ -104,7 +103,6 @@ public class AnnotationService : IAnnotationService
             TotalItems = totalItems,
             Page = parameters.Page,
             PageSize = parameters.PageSize,
-            TotalPages = (int)Math.Ceiling(totalItems / (double)parameters.PageSize)
         };
     }
 
@@ -325,7 +323,7 @@ public class AnnotationService : IAnnotationService
             TaskItemId = annotation.TaskItemId,
             AnnotatorId = annotation.AnnotatorId,
             Payload = parsedPayload,
-            Status = annotation.Status.ToString(),
+            Status = annotation.Status,
             Note = annotation.Note,
             SubmittedAt = annotation.SubmittedAt
         };

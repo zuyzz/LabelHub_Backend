@@ -11,5 +11,5 @@ public interface IConsensusRepository
 	Task<Consensus?> GetByIdAsync(Guid consensusId);
 	Task<Consensus?> GetByReviewIdAsync(Guid reviewId);
 	Task<IEnumerable<Consensus>> GetByDatasetItemIdAsync(Guid taskId);
-	Task<PagedResult<Consensus>> GetConsensusesAsync(ConsensusQueryParameters @params);
+	Task<PagedResponse<Consensus>> GetConsensusesAsync(ConsensusQueryParameters @params);
 }

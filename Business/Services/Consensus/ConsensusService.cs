@@ -36,7 +36,7 @@ public class ConsensusService : IConsensusService
 		_context = context;
 	}
 
-	public async Task<ConsensusDto> CreateConsensusAsync(Guid taskId, ConsensusCreateRequest request)
+	public async Task<ConsensusResponse> CreateConsensusAsync(Guid taskId, ConsensusCreateRequest request)
 	{
 		var task = await _taskRepository.GetByIdAsync(taskId)
 			?? throw new KeyNotFoundException("Task not found");
@@ -92,23 +92,22 @@ public class ConsensusService : IConsensusService
 		return MapToDto(created);
 	}
 
-	public async Task<ConsensusDto?> GetConsensusByIdAsync(Guid consensusId)
+	public async Task<ConsensusResponse?> GetConsensusByIdAsync(Guid consensusId)
 	{
 		var consensus = await _consensusRepository.GetByIdAsync(consensusId);
 		return consensus == null ? null : MapToDto(consensus);
 	}
 
-	public async Task<PagedResponse<ConsensusDto>> GetConsensusesAsync(ConsensusQueryParameters @params)
+	public async Task<PagedResponse<ConsensusResponse>> GetConsensusesAsync(ConsensusQueryParameters @params)
 	{
 		var paged = await _consensusRepository.GetConsensusesAsync(@params);
 
-		return new PagedResponse<ConsensusDto>
+		return new PagedResponse<ConsensusResponse>
 		{
 			Items = paged.Items.Select(MapToDto).ToList(),
 			TotalItems = paged.TotalItems,
 			Page = @params.Page,
 			PageSize = @params.PageSize,
-			TotalPages = (int)Math.Ceiling(paged.TotalItems / (double)@params.PageSize)
 		};
 	}
 
@@ -155,7 +154,7 @@ public class ConsensusService : IConsensusService
 		return output;
 	}
 
-	private static ConsensusDto MapToDto(Business.Models.Consensus consensus)
+	private static ConsensusResponse MapToDto(Business.Models.Consensus consensus)
 	{
 		object parsedPayload;
 		double agreementScore = 0;
@@ -181,12 +180,11 @@ public class ConsensusService : IConsensusService
 			parsedPayload = consensus.Payload;
 		}
 
-		return new ConsensusDto
+		return new ConsensusResponse
 		{
 			ConsensusId = consensus.ConsensusId,
-			TaskId = consensus.DatasetItemId,
+			DatasetItemId = consensus.DatasetItemId,
 			Payload = parsedPayload,
-			AgreementScore = agreementScore,
 			CreatedAt = consensus.CreatedAt
 		};
 	}

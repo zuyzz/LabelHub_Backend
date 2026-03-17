@@ -37,7 +37,7 @@ public class LabelingTaskService : ILabelingTaskService
         _taskItemRepo = taskItemRepo;
     }
 
-    public async Task<PagedResult<TaskAssignmentInfo>> GetTasksAsync(
+    public async Task<PagedResponse<TaskAssignmentInfo>> GetTasksAsync(
         Guid userId, string userRole, TaskQueryParameters @params)
     {
         var now = DateTime.UtcNow;
@@ -69,13 +69,12 @@ public class LabelingTaskService : ILabelingTaskService
 
         if (!filteredAssignments.Any())
         {
-            return new PagedResult<TaskAssignmentInfo>
+            return new PagedResponse<TaskAssignmentInfo>
             {
                 Items = new List<TaskAssignmentInfo>(),
                 Page = @params.Page,
                 PageSize = @params.PageSize,
                 TotalItems = 0,
-                TotalPages = 0
             };
         }
 
@@ -128,13 +127,12 @@ public class LabelingTaskService : ILabelingTaskService
             .Take(@params.PageSize)
             .ToList();
 
-        return new PagedResult<TaskAssignmentInfo>
+        return new PagedResponse<TaskAssignmentInfo>
         {
             Items = paginatedItems,
             Page = @params.Page,
             PageSize = @params.PageSize,
             TotalItems = totalCount,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
         };
     }
 

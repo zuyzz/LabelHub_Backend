@@ -12,7 +12,7 @@ public partial class Consensus
 
     public string Payload { get; set; } = null!;
 
-    public virtual LabelingTask DatasetItem { get; set; } = null!;
+    public virtual DatasetItem DatasetItem { get; set; } = null!;
 
     public virtual Review Review { get; set; } = null!;
 }

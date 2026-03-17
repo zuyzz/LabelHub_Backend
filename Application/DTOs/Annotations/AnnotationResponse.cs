@@ -1,3 +1,5 @@
+using DataLabelProject.Business.Models.Enums;
+
 namespace DataLabelProject.Application.DTOs.Annotations;
 
 public class AnnotationResponse
@@ -6,7 +8,7 @@ public class AnnotationResponse
     public Guid TaskItemId { get; set; }
     public Guid AnnotatorId { get; set; }
     public object? Payload { get; set; } = null!;
-    public string Status { get; set; } = string.Empty;
+    public AnnotationStatus Status { get; set; }
     public string? Note { get; set; }
     public DateTime? SubmittedAt { get; set; }
 }

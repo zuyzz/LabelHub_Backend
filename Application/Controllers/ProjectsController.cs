@@ -61,7 +61,7 @@ public class ProjectsController : ControllerBase
             DatasetItemId = i.DatasetItemId,
             TaskId = i.TaskId,
             RevisionCount = i.RevisionCount,
-            Status = i.Status.ToString()
+            Status = i.Status
         }).ToList();
 
         return Ok(response);

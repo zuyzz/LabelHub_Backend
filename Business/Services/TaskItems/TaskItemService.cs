@@ -24,7 +24,7 @@ public class TaskItemService : ITaskItemService
         _assignmentService = assignmentService;
     }
 
-    public async Task<PagedResult<TaskItemDetailResponse>> GetTaskItemsByTaskAsync(Guid taskId, TaskItemQueryParameters @params)
+    public async Task<PagedResponse<TaskItemDetailResponse>> GetTaskItemsByTaskAsync(Guid taskId, TaskItemQueryParameters @params)
     {
         // Validate task exists
         var task = await _taskRepo.GetByIdAsync(taskId);
@@ -97,13 +97,12 @@ public class TaskItemService : ITaskItemService
             .Take(@params.PageSize)
             .ToList();
 
-        return new PagedResult<TaskItemDetailResponse>
+        return new PagedResponse<TaskItemDetailResponse>
         {
             Items = paginatedItems,
             Page = @params.Page,
             PageSize = @params.PageSize,
             TotalItems = totalCount,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)@params.PageSize)
         };
     }
 }

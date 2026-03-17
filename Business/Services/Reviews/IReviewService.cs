@@ -1,11 +1,14 @@
+using DataLabelProject.Application.DTOs.Annotations;
+using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Reviews;
 
 namespace DataLabelProject.Business.Services.Reviews
 {
     public interface IReviewService
     {
-        Task<ReviewResponse[]> BatchReviewConsensusesAsync(BatchReviewRequest request);
-        Task<IEnumerable<ReviewResponse>> GetReviewsForTaskAsync(Guid taskId);
-        Task<(IEnumerable<ReviewResponse> Reviews, int TotalCount)> GetReviewsAsync(string? status, int page = 1, int pageSize = 10);
+        Task<PagedResponse<ReviewResponse>> GetReviewsAsync(ReviewQueryParameters @params);
+        Task<PagedResponse<ReviewResponse>> GetReviewsByTaskAsync(Guid taskId, ReviewQueryParameters @params);
+        Task<PagedResponse<ReviewResponse>> GetReviewsByTaskItemAsync(Guid taskItemId, ReviewQueryParameters @params);
+        Task<ReviewResponse> CreateReviewAsync(CreateReviewRequest request);
     }
 }
