@@ -20,7 +20,7 @@ namespace DataLabelProject.Application.DTOs.Datasets
         [JsonPropertyName("height")]
         public int Height { get; set; }
 
-        [JsonPropertyName("sizeBytes")]
-        public long SizeBytes { get; set; }
+        [JsonPropertyName("fileSize")]
+        public long FileSize { get; set; }
     }
 }

@@ -67,7 +67,7 @@ public class ProjectService : IProjectService
 
         var currentUserId = _currentUserService.UserId!.Value;
 
-        var exists = _projectRepository.GetByNameAndCreatorAsync(request.Name, currentUserId);
+        var exists = await _projectRepository.GetByNameAndCreatorAsync(request.Name, currentUserId);
         if (exists != null)
             throw new InvalidOperationException("You already have a project with the same name");
 
