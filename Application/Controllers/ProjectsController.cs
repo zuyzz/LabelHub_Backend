@@ -71,7 +71,7 @@ public class ProjectsController : ControllerBase
     /// Add member to project
     /// </summary>
     [HttpPost("{id}/members/{memberId}")]
-    [Authorize(Roles = "manager")]
+    [Authorize]
     public async Task<IActionResult> AddMember([FromRoute] Guid id, [FromRoute] Guid memberId)
     {
         await _projectMemberService.AddUserToProject(memberId, id);
@@ -90,7 +90,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = "admin,manager")]
+    [Authorize]
     public async Task<IActionResult> GetProject(Guid id)
     {
         var project = await _projectService.GetProjectById(id);
