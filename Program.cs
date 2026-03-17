@@ -1,4 +1,5 @@
 using DataLabelProject.Infrastructure.Extensions;
+using DataLabelProject.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,9 @@ var app = builder.Build();
 app.UseSwaggerWithUI();
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseMiddleware<ExceptionMiddleware>();
+
 app.UseCorsPolicy();
 app.UseAuthentication();
 app.UseAuthorization();
