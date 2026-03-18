@@ -1,4 +1,3 @@
-using DataLabelProject.Application.DTOs.ProjectTemplate;
 using DataLabelProject.Application.DTOs.Categories;
 
 namespace DataLabelProject.Application.DTOs.Projects
@@ -12,6 +11,5 @@ namespace DataLabelProject.Application.DTOs.Projects
         public DateTime CreatedAt { get; set; }
         public Guid? CreatedBy { get; set; }
         public CategoryResponse Category { get; set; } = null!;
-        public ProjectTemplateResponse Template { get; set; }  = null!;
     }
 }
