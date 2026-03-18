@@ -56,6 +56,8 @@ namespace DataLabelProject.Business.Services.DatasetItems
             var dataset = await _datasetRepository.GetByIdAsync(datasetId);
             if (dataset == null) 
                 throw new InvalidOperationException("Dataset not found");
+            if (!dataset.IsActive)
+                throw new InvalidOperationException("Cannot add sample to inactive dataset");
 
             var storageKey = $"datasets/{datasetId}";
 
@@ -100,6 +102,8 @@ namespace DataLabelProject.Business.Services.DatasetItems
             var item = await _datasetItemRepository.GetByIdAsync(id);
             if (item == null)
                 throw new InvalidOperationException("Dataset item not found");
+            if (!item.ItemDataset.IsActive)
+                throw new InvalidOperationException("Cannot remove sample to inactive dataset");
 
             // delete storage object if exists
             if (!string.IsNullOrWhiteSpace(item.StorageUri))

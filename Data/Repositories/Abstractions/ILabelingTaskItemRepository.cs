@@ -4,6 +4,7 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 
 public interface ILabelingTaskItemRepository
 {
+    IQueryable<LabelingTaskItem> Query();
     Task<IEnumerable<LabelingTaskItem>> GetAllAsync();
     Task<LabelingTaskItem?> GetByIdAsync(Guid id);
     Task<List<LabelingTaskItem>> GetByIdsAsync(IEnumerable<Guid> ids);

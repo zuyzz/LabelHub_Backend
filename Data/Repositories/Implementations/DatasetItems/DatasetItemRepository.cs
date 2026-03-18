@@ -42,6 +42,7 @@ public class DatasetItemRepository : IDatasetItemRepository
     public async Task<DatasetItem?> GetByIdAsync(Guid id)
     {
         return await _context.DatasetItems
+            .Include(i => i.ItemDataset)
             .FirstOrDefaultAsync(i => i.DatasetItemId == id);
     }
 

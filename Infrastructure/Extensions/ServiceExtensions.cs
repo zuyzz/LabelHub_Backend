@@ -110,7 +110,6 @@ public static class ServiceExtensions
         // --- Project ---
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateMemberHandler>();
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateConfigHandler>();
-        services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateGuidelineHandler>();
         services.AddScoped<IEventHandler<ProjectDeletedEvent>, DeleteConfigHandler>();
 
         return services;
