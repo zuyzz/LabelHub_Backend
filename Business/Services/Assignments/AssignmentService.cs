@@ -45,19 +45,6 @@ public class AssignmentService : IAssignmentService
 
     public async Task<TaskAssignmentResponse> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy)
     {
-        // Get dataset items
-        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(request.DatasetId);
-        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
-
-        if (datasetItemIds.Count == 0)
-            throw new Exception("No dataset items found for this dataset");
-
-        // Get unassigned task items
-        var unassignedTaskItems = await _taskItemRepo.GetUnassignedByDatasetItemIdsAsync(datasetItemIds);
-
-        if (unassignedTaskItems.Count == 0)
-            throw new Exception("No unassigned task items found for this dataset");
-
         // Validate user exists
         var user = await _userRepo.GetByIdAsync(request.AssignedTo);
         if (user == null)
@@ -84,6 +71,19 @@ public class AssignmentService : IAssignmentService
         var role = await _roleRepo.GetByIdAsync(user.RoleId);
         if (role == null || (role.RoleName != "reviewer" && role.RoleName != "annotator"))
             throw new Exception("User must have role 'reviewer' or 'annotator'");
+
+        // Get dataset items
+        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(request.DatasetId);
+        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
+
+        if (datasetItemIds.Count == 0)
+            throw new Exception("No dataset items found for this dataset");
+
+        // Get unassigned task items
+        var unassignedTaskItems = await _taskItemRepo.GetUnassignedByDatasetItemIdsAsync(datasetItemIds);
+
+        if (unassignedTaskItems.Count == 0)
+            throw new Exception("No unassigned task items found for this dataset");
 
         // Create new task
         var newTask = new LabelingTask
@@ -126,6 +126,11 @@ public class AssignmentService : IAssignmentService
 
         await _assignmentRepo.AddAsync(assignment);
         await _assignmentRepo.SaveChangesAsync();
+
+        dataset.IsActive = false;
+
+        await _datasetRepo.UpdateAsync(dataset);
+        await _datasetRepo.SaveChangesAsync();
 
         return new TaskAssignmentResponse
         {
