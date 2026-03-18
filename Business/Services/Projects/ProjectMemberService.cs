@@ -51,10 +51,11 @@ public class ProjectMemberService : IProjectMemberService
         await _projectMemberRepository.SaveChangesAsync();
     }
 
-    public async Task<PagedResponse<ProjectMemberResponse>?> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params)
+    public async Task<PagedResponse<ProjectMemberResponse>> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params)
     {
         var project = await _projectRepository.GetByIdAsync(projectId);
-        if (project == null) return null;
+        if (project == null)
+            throw new InvalidOperationException("Project not found");
 
         IQueryable<ProjectMember> members = _projectMemberRepository.Query()
             .AsNoTracking()
