@@ -39,6 +39,7 @@ using DataLabelProject.Business.Events.Abstraction;
 using DataLabelProject.Business.Events.Dispatcher;
 using DataLabelProject.Business.Events.DomainEvents.Project;
 using DataLabelProject.Business.Events.Handlers.ProjectConfigs;
+using DataLabelProject.Business.Events.Handlers.Guidelines;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -109,6 +110,7 @@ public static class ServiceExtensions
         // --- Project ---
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateMemberHandler>();
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateConfigHandler>();
+        services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateGuidelineHandler>();
         services.AddScoped<IEventHandler<ProjectDeletedEvent>, DeleteConfigHandler>();
 
         return services;
