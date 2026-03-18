@@ -17,8 +17,6 @@ public partial class Project
 
     public Guid? CreatedBy { get; set; }
 
-    public Guid TemplateId { get; set; }
-
     public bool IsActive { get; set; } = true;
 
     public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
@@ -40,6 +38,4 @@ public partial class Project
     public virtual Category ProjectCategory { get; set; } = null!;
 
     public virtual User? CreatedByUser { get; set; }
-
-    public virtual ProjectTemplate ProjectTemplate { get; set; } = null!;
 }

@@ -13,6 +13,11 @@ public class AssignmentRepository : IAssignmentRepository
         _db = db;
     }
 
+    public IQueryable<Assignment> Query()
+    {
+        return _db.Assignments;
+    }
+
     public async Task<List<Assignment>> GetAllAsync()
     {
         return await _db.Assignments
@@ -21,12 +26,11 @@ public class AssignmentRepository : IAssignmentRepository
             .ToListAsync();
     }
 
-    public async Task<List<Assignment>> GetExpiredAsync()
+    public async Task<List<Assignment>> GetAvailableAsync()
     {
         var now = DateTime.UtcNow;
         return await _db.Assignments
-            .Where(a => a.StartedAt != null &&
-                        a.StartedAt.Value.AddMinutes(a.TimeLimitMinutes) < now)
+            .Where(a => a.DeadlineAt > now && a.StartedAt < now)
             .ToListAsync();
     }
 

@@ -14,30 +14,17 @@ public class ProjectMemberRepository : IProjectMemberRepository
         _context = context;
     }
 
+    public IQueryable<ProjectMember> Query()
+    {
+        return _context.ProjectMembers;
+    }
+
     public async Task<ProjectMember?> GetByIdAsync(Guid projectId, Guid userId)
     {
         return await _context.ProjectMembers
             .Include(pm => pm.Project)
             .Include(pm => pm.ProjectMemberUser)
             .FirstOrDefaultAsync(pm => pm.ProjectId == projectId && pm.MemberId == userId);
-    }
-
-    public async Task<(IEnumerable<ProjectMember> Items, int TotalCount)> GetActiveMembersAsync(Guid projectId, UserQueryParameters @params)
-    {
-        var query = _context.ProjectMembers
-            .Where(pm => pm.ProjectId == projectId && pm.ProjectMemberUser.IsActive)
-            .Include(pm => pm.ProjectMemberUser)
-            .ThenInclude(u => u.UserRole)
-            .AsQueryable();
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
     }
 
     public async Task<ProjectMember> CreateAsync(ProjectMember projectMember)

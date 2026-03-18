@@ -50,9 +50,9 @@ public class AssignmentExpirationService : BackgroundService
         var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
         var roleRepo = scope.ServiceProvider.GetRequiredService<IRoleRepository>();
 
-        var expiredAssignments = await assignmentRepo.GetExpiredAsync();
+        var availableAssignments = await assignmentRepo.GetAvailableAsync();
 
-        foreach (var assignment in expiredAssignments)
+        foreach (var assignment in availableAssignments)
         {
             // Get user to check role
             var user = await userRepo.GetByIdAsync(assignment.AssignedTo);

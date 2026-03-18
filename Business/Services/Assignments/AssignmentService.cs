@@ -43,7 +43,7 @@ public class AssignmentService : IAssignmentService
         _currentUserService = currentUserService;
     }
 
-    public async Task<TaskAssignmentInfo> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy)
+    public async Task<TaskAssignmentResponse> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy)
     {
         // Get dataset items
         var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(request.DatasetId);
@@ -120,33 +120,21 @@ public class AssignmentService : IAssignmentService
             AssignedTo = request.AssignedTo,
             AssignedBy = assignedBy,
             AssignedAt = DateTime.UtcNow,
-            StartedAt = startedAt,
-            TimeLimitMinutes = request.TimeLimitMinutes
+            StartedAt = request.StartedAt,
+            DeadlineAt = request.DeadlineAt
         };
 
         await _assignmentRepo.AddAsync(assignment);
         await _assignmentRepo.SaveChangesAsync();
 
-        // Compute deadline
-        var deadlineAt = ComputeDeadline(assignment);
-
-        return new TaskAssignmentInfo
+        return new TaskAssignmentResponse
         {
             TaskId = newTask.TaskId,
             ProjectId = newTask.ProjectId,
-            Status = newTask.Status.ToString(),
             AssignedTo = assignment.AssignedTo,
             AssignedBy = assignment.AssignedBy,
             AssignedAt = assignment.AssignedAt,
-            DeadlineAt = deadlineAt
+            DeadlineAt = assignment.DeadlineAt
         };
-    }
-
-    public DateTime ComputeDeadline(Assignment assignment)
-    {
-        if (!assignment.StartedAt.HasValue)
-            throw new InvalidOperationException("Cannot compute deadline: assignment has not started");
-
-        return assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
     }
 }

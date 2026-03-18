@@ -37,7 +37,7 @@ public class LabelingTaskService : ILabelingTaskService
         _taskItemRepo = taskItemRepo;
     }
 
-    public async Task<PagedResponse<TaskAssignmentInfo>> GetTasksAsync(
+    public async Task<PagedResponse<TaskAssignmentResponse>> GetTasksAsync(
         Guid userId, string userRole, TaskQueryParameters @params)
     {
         var now = DateTime.UtcNow;
@@ -52,26 +52,22 @@ public class LabelingTaskService : ILabelingTaskService
 
         // Filter assignments first
         var filteredAssignments = assignments
-            .Where(a => a.StartedAt.HasValue)
-            .Select(a => new
-            {
-                Assignment = a,
-                DeadlineAt = a.StartedAt!.Value.AddMinutes(a.TimeLimitMinutes)
-            })
             .Where(x =>
             {
-                if (@params.IsExpired == null || @params.IsExpired == false)
-                    return now < x.DeadlineAt;
+                if (@params.IsAvailable == true)
+                    return now > x.StartedAt && now < x.DeadlineAt;
+                else if (@params.IsAvailable == false)
+                    return now < x.DeadlineAt || now > x.DeadlineAt;
                 else
-                    return now > x.DeadlineAt;
+                    return true;
             })
             .ToList();
 
         if (!filteredAssignments.Any())
         {
-            return new PagedResponse<TaskAssignmentInfo>
+            return new PagedResponse<TaskAssignmentResponse>
             {
-                Items = new List<TaskAssignmentInfo>(),
+                Items = new List<TaskAssignmentResponse>(),
                 Page = @params.Page,
                 PageSize = @params.PageSize,
                 TotalItems = 0,
@@ -80,7 +76,7 @@ public class LabelingTaskService : ILabelingTaskService
 
         // Batch load tasks (same efficiency as function 1)
         var taskIds = filteredAssignments
-            .Select(x => x.Assignment.TaskId)
+            .Select(x => x.TaskId)
             .Distinct()
             .ToList();
 
@@ -90,26 +86,22 @@ public class LabelingTaskService : ILabelingTaskService
         if (@params.Status.HasValue)
             tasks = tasks.Where(t => t.Status == @params.Status.Value).ToList();
 
-        if (@params.ProjectId.HasValue)
-            tasks = tasks.Where(t => t.ProjectId == @params.ProjectId).ToList();
-
         var taskDict = tasks.ToDictionary(t => t.TaskId);
 
-        var results = new List<TaskAssignmentInfo>();
+        var results = new List<TaskAssignmentResponse>();
 
         foreach (var item in filteredAssignments)
         {
-            if (!taskDict.TryGetValue(item.Assignment.TaskId, out var task))
+            if (!taskDict.TryGetValue(item.TaskId, out var task))
                 continue;
 
-            results.Add(new TaskAssignmentInfo
+            results.Add(new TaskAssignmentResponse
             {
                 TaskId = task.TaskId,
                 ProjectId = task.ProjectId,
-                Status = task.Status.ToString(),
-                AssignedTo = item.Assignment.AssignedTo,
-                AssignedBy = item.Assignment.AssignedBy,
-                AssignedAt = item.Assignment.AssignedAt,
+                AssignedTo = item.AssignedTo,
+                AssignedBy = item.AssignedBy,
+                AssignedAt = item.AssignedAt,
                 DeadlineAt = item.DeadlineAt
             });
         }
@@ -127,7 +119,7 @@ public class LabelingTaskService : ILabelingTaskService
             .Take(@params.PageSize)
             .ToList();
 
-        return new PagedResponse<TaskAssignmentInfo>
+        return new PagedResponse<TaskAssignmentResponse>
         {
             Items = paginatedItems,
             Page = @params.Page,
@@ -147,70 +139,15 @@ public class LabelingTaskService : ILabelingTaskService
         if (assignment == null)
             return null;
 
-        if (!assignment.StartedAt.HasValue)
-            return null;
-
         var now = DateTime.UtcNow;
-        var deadline = assignment.StartedAt.Value.AddMinutes(assignment.TimeLimitMinutes);
 
-        // Ignore expired assignments
-        if (now >= deadline)
+        // Ignore unavailable assignments
+        if (now > assignment.DeadlineAt || now < assignment.StartedAt)
             return null;
 
         // Fetch task only after assignment validation
         var task = await _taskRepo.GetByIdAsync(taskId);
         return task;
-    }
-
-    public async Task<List<Assignment>> UpdateAssignmentsByDatasetAsync(
-        Guid assignmentId, Guid datasetId, double timeLimitMinutes)
-    {
-        if (timeLimitMinutes <= 0)
-            throw new Exception("Time limit must be positive");
-
-        // Get the assignment
-        var assignment = await _assignmentRepo.GetByIdAsync(assignmentId);
-        if (assignment == null)
-            throw new Exception("Assignment not found");
-
-        // Cannot update if assignment is already finished
-        // if (assignment.Status == AssignmentStatus.Expired || assignment.Status == AssignmentStatus.Completed)
-        //     throw new Exception("Cannot update time limit: assignment is already finished");
-
-        // Get dataset items
-        var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(datasetId);
-        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
-
-        if (datasetItemIds.Count == 0)
-            throw new Exception("No dataset items found for this dataset");
-
-        // Get tasks by dataset item IDs
-        var tasks = await _taskRepo.GetByDatasetItemIdsAsync(datasetItemIds);
-        var taskIds = tasks.Select(t => t.TaskId).ToList();
-
-        // Get assignments for these tasks and the same user
-        var allAssignments = await _assignmentRepo.GetByAssignedToAsync(assignment.AssignedTo);
-        var assignmentsToUpdate = allAssignments
-            .Where(a => taskIds.Contains(a.TaskId))
-            .ToList();
-
-        if (assignmentsToUpdate.Count == 0)
-            throw new Exception("No assignments found for the specified dataset");
-
-        // Cannot update finished assignments
-        // if (assignmentsToUpdate.Any(a => a.Status == AssignmentStatus.Expired || a.Status == AssignmentStatus.Completed))
-        //     throw new Exception("Cannot update time limit: some assignments are already finished");
-
-        // Update time limits
-        foreach (var a in assignmentsToUpdate)
-        {
-            a.TimeLimitMinutes = timeLimitMinutes;
-        }
-
-        await _assignmentRepo.UpdateRangeAsync(assignmentsToUpdate);
-        await _assignmentRepo.SaveChangesAsync();
-
-        return assignmentsToUpdate;
     }
 
     public async Task<List<LabelingTaskItem>> AssignTaskItemsToTaskAsync(Guid taskId, IEnumerable<Guid> taskItemIds)

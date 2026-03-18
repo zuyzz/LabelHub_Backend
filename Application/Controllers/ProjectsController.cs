@@ -65,7 +65,7 @@ public class ProjectsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetMembers(
         [FromRoute] Guid id, 
-        [FromQuery] UserQueryParameters @params)
+        [FromQuery] ProjectMemberQueryParameters @params)
     {
         var result = _projectMemberService.GetUserFromProject(id, @params);
         if (result == null) return NotFound();

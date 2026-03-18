@@ -15,7 +15,6 @@ public class ProjectService : IProjectService
     private readonly IProjectRepository _projectRepository;
     private readonly IProjectMemberRepository _memberRepository;
     private readonly ICategoryRepository _categoryRepository;
-    private readonly IProjectTemplateRepository _templateRepository;
     private readonly IProjectConfigRepository _configRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IEventDispatcher _eventDispatcher;
@@ -24,7 +23,6 @@ public class ProjectService : IProjectService
         IProjectRepository projectRepository,
         IProjectMemberRepository memberRepository,
         ICategoryRepository categoryRepository,
-        IProjectTemplateRepository templateRepository,
         IProjectConfigRepository configRepository,
         ICurrentUserService currentUserService,
         IEventDispatcher eventDispatcher)
@@ -32,7 +30,6 @@ public class ProjectService : IProjectService
         _projectRepository = projectRepository;
         _memberRepository = memberRepository;
         _categoryRepository = categoryRepository;
-        _templateRepository = templateRepository;
         _configRepository = configRepository;
         _currentUserService = currentUserService;
         _eventDispatcher = eventDispatcher;
@@ -44,8 +41,7 @@ public class ProjectService : IProjectService
         IQueryable<Project> query = _projectRepository.Query()
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAt)
-            .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate);
+            .Include(p => p.ProjectCategory);
 
         query = ApplyUserFilter(query);
         query = ApplyParamFilters(query, @params);
@@ -61,8 +57,7 @@ public class ProjectService : IProjectService
             .AsNoTracking()
             .Where(p => p.CategoryId == categoryId)
             .OrderByDescending(p => p.CreatedAt)
-            .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate);
+            .Include(p => p.ProjectCategory);
 
         query = ApplyParamFilters(query, @params);
 
@@ -107,11 +102,7 @@ public class ProjectService : IProjectService
         var currentUserId = _currentUserService.UserId;
         var currentUserRoles = _currentUserService.Roles;
 
-        var project = await _projectRepository.Query()
-            .Where(p => p.ProjectId == id)
-            .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate)
-            .FirstOrDefaultAsync();
+        var project = await _projectRepository.GetByIdAsync(id);
 
         if (project == null)
             return null;
@@ -133,10 +124,6 @@ public class ProjectService : IProjectService
         if (category == null)
             throw new InvalidOperationException("Category not found");
 
-        var template = await _templateRepository.GetByIdAsync(request.TemplateId);
-        if (template == null)
-            throw new InvalidOperationException("Template not found");
-
         var currentUserId = _currentUserService.UserId!.Value;
 
         var exists = await _projectRepository.GetByNameAndCreatorAsync(request.Name, currentUserId);
@@ -149,7 +136,6 @@ public class ProjectService : IProjectService
             Name = request.Name,
             Description = request.Description,
             CategoryId = request.CategoryId,
-            TemplateId = request.TemplateId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = currentUserId
@@ -224,12 +210,6 @@ public class ProjectService : IProjectService
                 Description = p.ProjectCategory.Description,
                 CreatedAt = p.ProjectCategory.CreatedAt,
                 IsActive = p.ProjectCategory.IsActive
-            },
-            Template = new()
-            {
-                TemplateId = p.TemplateId,
-                Name = p.ProjectTemplate.Name,
-                MediaType = p.ProjectTemplate.MediaType.ToString()
             }
         };
 }

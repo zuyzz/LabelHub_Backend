@@ -23,8 +23,6 @@ using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Business.Services.DatasetItems;
 using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.FileUpload.Metadata;
-using DataLabelProject.Business.Services.ProjectTemplates;
-using DataLabelProject.Data.Repositories.Implementations.ProjectTemplates;
 using DataLabelProject.Business.Services.Annotations;
 using DataLabelProject.Business.Services.Tasks;
 using DataLabelProject.Business.Services.Assignments;
@@ -41,6 +39,7 @@ using DataLabelProject.Business.Events.Abstraction;
 using DataLabelProject.Business.Events.Dispatcher;
 using DataLabelProject.Business.Events.DomainEvents.Project;
 using DataLabelProject.Business.Events.Handlers.ProjectConfigs;
+using DataLabelProject.Business.Events.Handlers.Guidelines;
 
 namespace DataLabelProject.Infrastructure.Extensions;
 
@@ -58,7 +57,6 @@ public static class ServiceExtensions
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
-        services.AddScoped<IProjectTemplateRepository, ProjectTemplateRepository>();
         services.AddScoped<IProjectLabelRepository, ProjectLabelRepository>();
         services.AddScoped<ILabelRepository, LabelRepository>();
         services.AddScoped<IGuidelineRepository, GuidelineRepository>();
@@ -81,7 +79,6 @@ public static class ServiceExtensions
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectMemberService, ProjectMemberService>();
-        services.AddScoped<IProjectTemplateService, ProjectTemplateService>();
         services.AddScoped<ILabelService, LabelService>();
         services.AddScoped<IGuidelineService, GuidelineService>();
         services.AddScoped<IDatasetService, DatasetService>();
@@ -113,6 +110,7 @@ public static class ServiceExtensions
         // --- Project ---
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateMemberHandler>();
         services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateConfigHandler>();
+        services.AddScoped<IEventHandler<ProjectCreatedEvent>, CreateGuidelineHandler>();
         services.AddScoped<IEventHandler<ProjectDeletedEvent>, DeleteConfigHandler>();
 
         return services;

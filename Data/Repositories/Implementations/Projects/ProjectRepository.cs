@@ -22,7 +22,6 @@ public class ProjectRepository : IProjectRepository
     {
         return await _context.Projects
             .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate)
             .FirstOrDefaultAsync(p => p.ProjectId == id);
     }
 
@@ -30,7 +29,6 @@ public class ProjectRepository : IProjectRepository
     {
         return await _context.Projects
             .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate)
             .FirstOrDefaultAsync(p => p.Name.ToLower() == name.Trim().ToLower() && p.CreatedBy == userId);
     }
 

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using DataLabelProject.Application.DTOs.Common;
+using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Services.Assignments;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -40,50 +42,56 @@ public class TaskItemService : ITaskItemService
             throw new Exception("Assignment not found for this task");
 
         var now = DateTime.UtcNow;
-        DateTime? deadlineAt = null;
-
-        if (assignment.StartedAt.HasValue)
-        {
-            deadlineAt = _assignmentService.ComputeDeadline(assignment);
-        }
 
         var result = new List<TaskItemDetailResponse>();
 
         foreach (var item in taskItems)
         {
             // Filter by expiration status
-            // Spec: IsExpired == null or false → exclude expired (skip if now >= deadlineAt)
-            //       IsExpired == true → only expired (skip if now <= deadlineAt)
-            if (@params.IsExpired == null || @params.IsExpired.Value == false)
+            if (@params.IsAvailable.HasValue)
             {
-                if (!deadlineAt.HasValue)
-                    continue; // Skip if no deadline (can't determine expiration)
-
-                if (now >= deadlineAt.Value)
-                    continue;
-            }
-            else // IsExpired == true
-            {
-                if (!deadlineAt.HasValue)
-                    continue; // Skip if no deadline
-
-                if (now <= deadlineAt.Value)
-                    continue;
+                if (@params.IsAvailable.Value == true)
+                {
+                    if (now > assignment.DeadlineAt && now < assignment.StartedAt)
+                        continue;
+                }
+                else
+                {
+                    if (now < assignment.DeadlineAt && now > assignment.StartedAt)
+                        continue;
+                }
             }
 
             // Filter by status
             if (@params.Status.HasValue && item.Status != @params.Status.Value)
                 continue;
 
+            ImageMetadata? metadata = null;
+
+            if (!string.IsNullOrWhiteSpace(item.DatasetItem.Metadata))
+            {
+                try
+                {
+                    metadata = JsonSerializer.Deserialize<ImageMetadata>(item.DatasetItem.Metadata);
+                }
+                catch (JsonException)
+                {
+                    // log invalid metadata if needed
+                }
+            }
+
             result.Add(new TaskItemDetailResponse
             {
                 TaskItemId = item.TaskItemId,
                 ProjectId = item.ProjectId,
-                DatasetItem = new DatasetItemInfo
+                DatasetItem = new DatasetItemResponse
                 {
                     ItemId = item.DatasetItem.DatasetItemId,
                     StorageUri = item.DatasetItem.StorageUri,
-                    Metadata = item.DatasetItem.Metadata
+                    Metadata = metadata,
+                    DatasetId = item.DatasetItem.DatasetId,
+                    MediaType = item.DatasetItem.MediaType,
+                    CreatedAt = item.DatasetItem.CreatedAt
                 },
                 RevisionCount = item.RevisionCount,
                 Status = item.Status.ToString()
