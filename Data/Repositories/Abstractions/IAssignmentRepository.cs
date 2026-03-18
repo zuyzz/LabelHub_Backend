@@ -4,6 +4,7 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 
 public interface IAssignmentRepository
 {
+    IQueryable<Assignment> Query();
     Task<List<Assignment>> GetAllAsync();
     Task<List<Assignment>> GetAvailableAsync();
     Task<List<Assignment>> GetByAssignedToAsync(Guid userId);

@@ -2,8 +2,9 @@ using DataLabelProject.Application.DTOs.Projects;
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
-using DataLabelProject.Business.Services.Users;
-using DataLabelProject.Application.DTOs.Users;
+using DataLabelProject.Shared.Extensions;
+using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Business.Models.Enums;
 
 namespace DataLabelProject.Business.Services.Projects;
 
@@ -11,13 +12,16 @@ public class ProjectMemberService : IProjectMemberService
 {
     private readonly IProjectRepository _projectRepository;
     private readonly IProjectMemberRepository _projectMemberRepository;
+    private readonly IAssignmentRepository _assignmentRepository;
 
     public ProjectMemberService(
         IProjectRepository projectRepository,
-        IProjectMemberRepository projectMemberRepository)
+        IProjectMemberRepository projectMemberRepository,
+        IAssignmentRepository assignmentRepository)
     {
         _projectRepository = projectRepository;
         _projectMemberRepository = projectMemberRepository;
+        _assignmentRepository = assignmentRepository;
     }
 
     public async Task AddUserToProject(Guid userId, Guid projectId)
@@ -47,20 +51,43 @@ public class ProjectMemberService : IProjectMemberService
         await _projectMemberRepository.SaveChangesAsync();
     }
 
-    public async Task<PagedResponse<ProjectMemberResponse>?> GetUserFromProject(Guid projectId, UserQueryParameters @params)
+    public async Task<PagedResponse<ProjectMemberResponse>?> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params)
     {
         var project = await _projectRepository.GetByIdAsync(projectId);
         if (project == null) return null;
 
-        var (items, totalCount) = await _projectMemberRepository.GetActiveMembersAsync(projectId, @params);
+        IQueryable<ProjectMember> members = _projectMemberRepository.Query()
+            .AsNoTracking()
+            .Where(pm => pm.ProjectId == projectId)
+            .OrderByDescending(pm => pm.JoinedAt);
+        
+        IQueryable<Assignment> assignments = _assignmentRepository.Query();
 
-        return new PagedResponse<ProjectMemberResponse>
+        if (@params.IsAvailable.HasValue)
         {
-            Items = items.Select(MapToResponse).ToList(),
-            TotalItems = totalCount,
-            Page = @params.Page,
-            PageSize = @params.PageSize,
-        };
+            members = members.Where(pm =>
+                assignments.Any(a =>
+                    a.AssignedTo == pm.MemberId &&
+                    a.AssignmentTask.ProjectId == projectId &&
+                    a.AssignmentTask.Status == LabelingTaskStatus.Opened) != @params.IsAvailable.Value);
+        }           // HasOpenedTask                                      != IsAvailable
+
+        if (!string.IsNullOrEmpty(@params.Username))
+            members = members.Where(pm => EF.Functions.ILike(pm.ProjectMemberUser.Username, $"%{@params.Username.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.DisplayName))
+            members = members.Where(pm => EF.Functions.ILike(pm.ProjectMemberUser.DisplayName, $"%{@params.DisplayName.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.Email))
+            members = members.Where(pm => EF.Functions.ILike(pm.ProjectMemberUser.Email ?? "", $"%{@params.Email.Trim()}%"));
+
+        if (!string.IsNullOrEmpty(@params.PhoneNumber))
+            members = members.Where(pm => EF.Functions.ILike(pm.ProjectMemberUser.PhoneNumber ?? "", $"%{@params.PhoneNumber.Trim()}%"));
+
+        if (@params.IsActive.HasValue)
+            members = members.Where(pm => pm.ProjectMemberUser.IsActive == @params.IsActive.Value);
+
+        return await members.ToPagedResponseAsync(@params, MapToResponse);
     }
 
     private static ProjectMemberResponse MapToResponse(ProjectMember p) =>

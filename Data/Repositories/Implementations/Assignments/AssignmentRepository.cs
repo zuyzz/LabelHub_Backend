@@ -13,6 +13,11 @@ public class AssignmentRepository : IAssignmentRepository
         _db = db;
     }
 
+    public IQueryable<Assignment> Query()
+    {
+        return _db.Assignments;
+    }
+
     public async Task<List<Assignment>> GetAllAsync()
     {
         return await _db.Assignments
