@@ -15,6 +15,7 @@ public class DatasetService : IDatasetService
     private readonly IDatasetRepository _datasetRepository;
     private readonly IDatasetItemRepository _datasetItemRepository;
     private readonly IProjectRepository _projectRepository;
+    private readonly IProjectMemberRepository _memberRepository;
     private readonly ILabelingTaskItemRepository _taskItemRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorage _fileStorage;
@@ -23,6 +24,7 @@ public class DatasetService : IDatasetService
         IDatasetRepository datasetRepository,
         IDatasetItemRepository datasetItemRepository,
         IProjectRepository projectRepository,
+        IProjectMemberRepository memberRepository,
         ILabelingTaskItemRepository taskItemRepository,
         ICurrentUserService currentUserService,
         IFileStorage fileStorage)
@@ -30,6 +32,7 @@ public class DatasetService : IDatasetService
         _datasetRepository = datasetRepository;
         _datasetItemRepository = datasetItemRepository;
         _projectRepository = projectRepository;
+        _memberRepository = memberRepository;
         _taskItemRepository = taskItemRepository;
         _currentUserService = currentUserService;
         _fileStorage = fileStorage;
@@ -123,7 +126,6 @@ public class DatasetService : IDatasetService
             .OrderByDescending(d => d.CreatedAt)
             .Include(d => d.DatasetItems);
 
-        query = ApplyUserFilter(query);
         query = ApplyParamFilters(query, @params);
 
         return await query.ToPagedResponseAsync(@params, MapToResponse);
@@ -153,7 +155,10 @@ public class DatasetService : IDatasetService
 
         if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
         {
-            query = query.Where(d => d.CreatedBy == currentUserId.Value);
+            query = query.Where(d =>
+                d.DatasetProject != null &&
+                d.DatasetProject.ProjectMembers.Any(pm =>
+                    pm.MemberId == currentUserId.Value));
         }
 
         return query;

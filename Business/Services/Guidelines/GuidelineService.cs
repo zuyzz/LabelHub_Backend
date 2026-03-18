@@ -1,6 +1,7 @@
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Guidelines;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,16 +9,23 @@ namespace DataLabelProject.Business.Services.Guidelines;
 
 public class GuidelineService : IGuidelineService
 {
-    private readonly IGuidelineRepository _repository;
+    private readonly IGuidelineRepository _guidelineRepository;
+    private readonly IProjectMemberRepository _memberRepository;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GuidelineService(IGuidelineRepository repository)
+    public GuidelineService(
+        IGuidelineRepository guidelineRepository,
+        IProjectMemberRepository memberRepository,
+        ICurrentUserService currentUserService)
     {
-        _repository = repository;
+        _guidelineRepository = guidelineRepository;
+        _memberRepository = memberRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PagedResponse<GuidelineResponse>> GetGuidelines(GuidelineQueryParameters @params)
     {
-        var (items, totalCount) = await _repository.GetAllAsync(@params);
+        var (items, totalCount) = await _guidelineRepository.GetAllAsync(@params);
 
         return new PagedResponse<GuidelineResponse>
         {
@@ -30,7 +38,12 @@ public class GuidelineService : IGuidelineService
 
     public async Task<GuidelineResponse?> GetProjectGuideline(Guid projectId)
     {
-        var guideline = await _repository.GetByProjectIdAsync(projectId);
+        var currentUserId = _currentUserService.UserId!.Value;
+        var member = await _memberRepository.GetByIdAsync(projectId, currentUserId);
+        if (member == null) 
+            throw new InvalidOperationException("Current user is not a member of this project");
+
+        var guideline = await _guidelineRepository.GetByProjectIdAsync(projectId);
         if (guideline == null) return null;
 
         return MapToResponse(guideline);
@@ -38,7 +51,7 @@ public class GuidelineService : IGuidelineService
 
     public async Task<GuidelineResponse?> GetGuidelineById(Guid id)
     {
-        var guideline = await _repository.GetByIdAsync(id);
+        var guideline = await _guidelineRepository.GetByIdAsync(id);
         if (guideline == null) return null;
 
         return MapToResponse(guideline);
@@ -54,33 +67,33 @@ public class GuidelineService : IGuidelineService
             ProjectId = request.ProjectId
         };
 
-        await _repository.CreateAsync(guideline);
-        await _repository.SaveChangesAsync();
+        await _guidelineRepository.CreateAsync(guideline);
+        await _guidelineRepository.SaveChangesAsync();
 
         return MapToResponse(guideline);
     }
 
     public async Task<GuidelineResponse?> UpdateGuideline(Guid id, UpdateGuidelineRequest request)
     {
-        var guideline = await _repository.GetByIdAsync(id);
+        var guideline = await _guidelineRepository.GetByIdAsync(id);
         if (guideline == null) return null;
 
         if (!string.IsNullOrWhiteSpace(request.Content))
             guideline.Content = request.Content;
 
-        await _repository.UpdateAsync(guideline);
-        await _repository.SaveChangesAsync();
+        await _guidelineRepository.UpdateAsync(guideline);
+        await _guidelineRepository.SaveChangesAsync();
 
         return MapToResponse(guideline);
     }
 
     public async Task<bool> DeleteGuideline(Guid id)
     {
-        var guideline = await _repository.GetByIdAsync(id);
+        var guideline = await _guidelineRepository.GetByIdAsync(id);
         if (guideline == null) return false;
 
-        await _repository.DeleteAsync(guideline);
-        await _repository.SaveChangesAsync();
+        await _guidelineRepository.DeleteAsync(guideline);
+        await _guidelineRepository.SaveChangesAsync();
 
         return true;
     }

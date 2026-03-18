@@ -7,6 +7,7 @@ public interface ILabelService
 {
     Task<PagedResponse<LabelResponse>> GetLabels(LabelQueryParameters @params);
     Task<PagedResponse<LabelResponse>> GetProjectLabels(Guid projectId, LabelQueryParameters @params);
+    Task<PagedResponse<LabelResponse>> GetCategoryLabels(Guid categoryId, LabelQueryParameters @params);
     Task<LabelResponse?> GetLabelById(Guid id);
     Task<LabelResponse> CreateLabel(CreateLabelRequest request);
     Task<LabelResponse?> UpdateLabel(Guid id, UpdateLabelRequest request);

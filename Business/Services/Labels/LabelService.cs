@@ -38,15 +38,44 @@ public class LabelService : ILabelService
         return await query.ToPagedResponseAsync(@params, MapToResponse);
     }
 
-    public async Task<PagedResponse<LabelResponse>> GetProjectLabels(Guid projectId,LabelQueryParameters @params)
+    public async Task<PagedResponse<LabelResponse>> GetProjectLabels(Guid projectId, LabelQueryParameters @params)
     {
         IQueryable<Label> query = _labelRepository.Query()
             .Where(l => l.ProjectLabels.Any(pl => pl.ProjectId == projectId))
             .Include(l => l.LabelCategory);
 
+        query = ApplyUserFilter(query);
         query = ApplyParamFilters(query, @params);
 
         return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    public async Task<PagedResponse<LabelResponse>> GetCategoryLabels(Guid categoryId, LabelQueryParameters @params)
+    {
+        IQueryable<Label> query = _labelRepository.Query()
+            .Where(l => l.CategoryId == categoryId)
+            .Include(l => l.LabelCategory);
+
+        query = ApplyParamFilters(query, @params);
+
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    private IQueryable<Label> ApplyUserFilter(
+        IQueryable<Label> query)
+    {
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
+        {
+            query = query.Where(l =>
+                l.ProjectLabels.Any(pl => 
+                    pl.Project.ProjectMembers.Any(pm =>
+                        pm.MemberId == currentUserId.Value)));
+        }
+
+        return query;
     }
 
     private IQueryable<Label> ApplyParamFilters(

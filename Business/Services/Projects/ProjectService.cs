@@ -5,13 +5,15 @@ using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Business.Events.Abstraction;
 using DataLabelProject.Business.Events.DomainEvents.Project;
+using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Shared.Extensions;
 
 namespace DataLabelProject.Business.Services.Projects;
 
 public class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projectRepository;
-    private readonly IProjectMemberRepository _projectMemberRepository;
+    private readonly IProjectMemberRepository _memberRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IProjectTemplateRepository _templateRepository;
     private readonly IProjectConfigRepository _configRepository;
@@ -20,7 +22,7 @@ public class ProjectService : IProjectService
 
     public ProjectService (
         IProjectRepository projectRepository,
-        IProjectMemberRepository projectMemberRepository,
+        IProjectMemberRepository memberRepository,
         ICategoryRepository categoryRepository,
         IProjectTemplateRepository templateRepository,
         IProjectConfigRepository configRepository,
@@ -28,7 +30,7 @@ public class ProjectService : IProjectService
         IEventDispatcher eventDispatcher)
     {
         _projectRepository = projectRepository;
-        _projectMemberRepository = projectMemberRepository;
+        _memberRepository = memberRepository;
         _categoryRepository = categoryRepository;
         _templateRepository = templateRepository;
         _configRepository = configRepository;
@@ -36,30 +38,93 @@ public class ProjectService : IProjectService
         _eventDispatcher = eventDispatcher;
     }
 
-    public async Task<PagedResponse<ProjectResponse>> GetProjects(ProjectQueryParameters @params)
+    public async Task<PagedResponse<ProjectResponse>> GetProjects(
+        ProjectQueryParameters @params)
     {
-        var currentUserId = _currentUserService.UserId!.Value;
-        var currentUserRole = _currentUserService.Roles;
+        IQueryable<Project> query = _projectRepository.Query()
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate);
 
-        var (items, totalCount) = currentUserRole.Contains("admin") 
-            ? await _projectRepository.GetAllAsync(@params)
-            : await _projectRepository.GetAllByUserAsync(currentUserId, @params);
+        query = ApplyUserFilter(query);
+        query = ApplyParamFilters(query, @params);
 
-        var mapped = items.Select(MapToResponse).ToList();
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
 
-        return new PagedResponse<ProjectResponse>
+    public async Task<PagedResponse<ProjectResponse>> GetCategoryProjects(
+        Guid categoryId,
+        ProjectQueryParameters @params)
+    {
+        IQueryable<Project> query = _projectRepository.Query()
+            .AsNoTracking()
+            .Where(p => p.CategoryId == categoryId)
+            .OrderByDescending(p => p.CreatedAt)
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate);
+
+        query = ApplyParamFilters(query, @params);
+
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    private IQueryable<Project> ApplyUserFilter(
+        IQueryable<Project> query)
+    {
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
         {
-            Items = mapped,
-            TotalItems = totalCount,
-            Page = @params.Page,
-            PageSize = @params.PageSize,
-        };
+            query = query.Where(p => 
+                p.ProjectMembers.Any(pm => 
+                    pm.MemberId == currentUserId.Value));
+        }
+
+        return query;
+    }
+
+    private IQueryable<Project> ApplyParamFilters(
+        IQueryable<Project> query,
+        ProjectQueryParameters @params)
+    {
+        if (!string.IsNullOrWhiteSpace(@params.Name))
+        {
+            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{@params.Name}%"));
+        }
+
+        if (@params.IsActive.HasValue)
+        {
+            query = query.Where(p => p.IsActive == @params.IsActive);
+        }
+
+        return query;
     }
 
     public async Task<ProjectResponse?> GetProjectById(Guid id)
     {
-        var project = await _projectRepository.GetByIdAsync(id);
-        return project == null ? null : MapToResponse(project);
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        var project = await _projectRepository.Query()
+            .Where(p => p.ProjectId == id)
+            .Include(p => p.ProjectCategory)
+            .Include(p => p.ProjectTemplate)
+            .FirstOrDefaultAsync();
+
+        if (project == null)
+            return null;
+
+        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
+        {
+            var member = await _memberRepository.GetByIdAsync(id, currentUserId.Value);
+
+            if (member == null)
+                throw new UnauthorizedAccessException("You are not allowed to access this project");
+        }
+
+        return MapToResponse(project);
     }
 
     public async Task<ProjectResponse> CreateProject(CreateProjectRequest request)
