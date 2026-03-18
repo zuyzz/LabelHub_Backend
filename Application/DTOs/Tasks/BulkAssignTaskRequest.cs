@@ -14,5 +14,8 @@ public class BulkAssignTaskRequest
     public Guid DatasetId { get; set; }
 
     [Required]
-    public double TimeLimitMinutes { get; set; }
+    public DateTime StartedAt { get; set; }
+
+    [Required]
+    public DateTime DeadlineAt { get; set; }
 }

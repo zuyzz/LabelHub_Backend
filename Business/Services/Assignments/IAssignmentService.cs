@@ -5,6 +5,5 @@ namespace DataLabelProject.Business.Services.Assignments;
 
 public interface IAssignmentService
 {
-    Task<TaskAssignmentInfo> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy);
-    DateTime ComputeDeadline(Assignment assignment);
+    Task<TaskAssignmentResponse> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy);
 }

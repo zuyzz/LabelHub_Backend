@@ -195,41 +195,4 @@ public class TasksController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
-
-    /// <summary>Update assignment time limit (manager only)</summary>
-    [HttpPut("assign/{id}")]
-    [Authorize(Roles = "manager")]
-    public async Task<IActionResult> UpdateAssignmentByDataset(Guid id, [FromBody] UpdateAssignmentByIdRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(new { message = "Invalid input data", errors = ModelState });
-
-        try
-        {
-            var assignments = await _taskService.UpdateAssignmentsByDatasetAsync(
-                id, request.DatasetId, request.TimeLimitMinutes);
-
-            var response = assignments.Select(a => new AssignmentResponse
-            {
-                AssignmentId = a.AssignmentId,
-                TaskId = a.TaskId,
-                AssignedTo = a.AssignedTo,
-                AssignedBy = a.AssignedBy,
-                AssignedAt = a.AssignedAt,
-                StartedAt = a.StartedAt,
-                TimeLimitMinutes = a.TimeLimitMinutes,
-                // Status = a.Status.ToString()
-            }).ToList();
-
-            return Ok(new
-            {
-                message = $"Successfully updated {assignments.Count} assignments",
-                data = response
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
 }
