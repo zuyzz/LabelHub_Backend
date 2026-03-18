@@ -7,4 +7,5 @@ public interface IExportService
     Task<IEnumerable<ExportJobResponse>> GetExports();
     Task<ExportJobResponse?> GetExportById(Guid exportId);
     Task<ExportJobResponse> CreateExport(Guid projectId, CreateExportRequest request);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadExport(Guid exportId);
 }

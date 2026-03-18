@@ -13,64 +13,9 @@ public class ProjectRepository : IProjectRepository
         _context = context;
     }
 
-    public async Task<(IEnumerable<Project> Items, int TotalCount)> GetAllAsync(ProjectQueryParameters @params)
+    public IQueryable<Project> Query()
     {
-        var query = _context.Projects
-            .AsNoTracking()
-            .OrderByDescending(p => p.CreatedAt)
-            .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate)
-            .AsQueryable();
-        
-        if (!string.IsNullOrWhiteSpace(@params.Name))
-            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{@params.Name.Trim()}%"));
-
-        if (@params.CategoryId.HasValue)
-            query = query.Where(p => p.CategoryId == @params.CategoryId.Value);
-
-        if (@params.IsActive.HasValue)
-            query = query.Where(p => p.IsActive == @params.IsActive.Value);
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
-    }
-
-    public async Task<(IEnumerable<Project> Items, int TotalCount)> GetAllByUserAsync(Guid userId, ProjectQueryParameters @params)
-    {
-        var query = _context.Projects
-            .AsNoTracking()
-            .OrderByDescending(p => p.CreatedAt)
-            .Include(p => p.ProjectCategory)
-            .Include(p => p.ProjectTemplate)
-            .AsQueryable();
-
-        query = query.Where(p => 
-            _context.ProjectMembers.Any(pm => 
-                pm.MemberId == userId && pm.ProjectId == p.ProjectId));
-        
-        if (!string.IsNullOrWhiteSpace(@params.Name))
-            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{@params.Name.Trim()}%"));
-
-        if (@params.CategoryId.HasValue)
-            query = query.Where(p => p.CategoryId == @params.CategoryId.Value);
-
-        if (@params.IsActive.HasValue)
-            query = query.Where(p => p.IsActive == @params.IsActive.Value);
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
+        return _context.Projects;
     }
 
     public async Task<Project?> GetByIdAsync(Guid id)

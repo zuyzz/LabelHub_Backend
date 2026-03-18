@@ -4,6 +4,9 @@ namespace DataLabelProject.Data.Repositories.Abstractions
 {
     public interface IProjectConfigRepository
     {
-        Task<ProjectConfig?> GetLatestByProjectIdAsync(Guid projectId);
+        Task<ProjectConfig?> GetByProjectIdAsync(Guid projectId);
+        Task CreateAsync(ProjectConfig config);
+        Task DeleteAsync(ProjectConfig config);
+        Task SaveChangesAsync();
     }
 }

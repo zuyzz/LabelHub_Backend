@@ -1,4 +1,3 @@
-using DataLabelProject.Application.DTOs.Datasets;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -14,54 +13,9 @@ public class DatasetRepository : IDatasetRepository
         _context = context;
     }
 
-    public async Task<(IEnumerable<Dataset> Items, int TotalCount)> GetAllAsync(DatasetQueryParameters @params)
+    public IQueryable<Dataset> Query()
     {
-        var query = _context.Datasets
-            .AsNoTracking()
-            .Include(d => d.DatasetItems)
-            .OrderByDescending(d => d.CreatedAt)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(@params.Name))
-            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{@params.Name.Trim()}%"));
-            
-        if (!string.IsNullOrWhiteSpace(@params.Description))
-            query = query.Where(d => EF.Functions.ILike(d.Description ?? "", $"%{@params.Description}%"));
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
-    }
-
-    public async Task<(IEnumerable<Dataset> Items, int TotalCount)> GetAllByCreatorAsync(Guid creatorId, DatasetQueryParameters @params)
-    {
-        var query = _context.Datasets
-            .AsNoTracking()
-            .Where(d => d.CreatedBy == creatorId)
-            .Include(d => d.DatasetItems)
-            .Include(d => d.DatasetProject)
-            .OrderByDescending(d => d.CreatedAt)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(@params.Name))
-            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{@params.Name.Trim()}%"));
-
-        if (!string.IsNullOrWhiteSpace(@params.Description))
-            query = query.Where(d => EF.Functions.ILike(d.Description ?? "", $"%{@params.Description.Trim()}%"));
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
+        return _context.Datasets;
     }
 
     public async Task<Dataset?> GetByIdAsync(Guid id)

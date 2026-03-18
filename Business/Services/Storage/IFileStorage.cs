@@ -16,4 +16,10 @@ public interface IFileStorage
     /// Delete all objects under a folder/prefix.
     /// </summary>
     Task DeleteFolderAsync(string folderPrefix);
+
+    /// <summary>
+    /// Download a file from storage and return its stream and content type.
+    /// </summary>
+    /// <returns>Tuple of (Stream, ContentType, FileName)</returns>
+    Task<(Stream Stream, string ContentType, string FileName)> GetFileStreamAsync(string storageUri);
 }
