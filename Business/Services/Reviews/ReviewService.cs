@@ -45,15 +45,14 @@ namespace DataLabelProject.Business.Services.Reviews
             return await query.ToPagedResponseAsync(@params, MapToResponse);
         }
 
-        public async Task<PagedResponse<ReviewResponse>> GetReviewsByTaskAsync(
+        public async Task<PagedResponse<TaskItemReviewsResponse>> GetReviewsByTaskAsync(
             Guid taskId, 
             ReviewQueryParameters @params)
         {
-            IQueryable<Review> query = _reviewRepository.Query()
-                .Where(r => r.ReviewTaskItem.TaskId == taskId)
-                .OrderByDescending(r => r.ReviewedAt)
-                .Include(r => r.ReviewTaskItem)
-                .Include(r => r.ReviewConsensus);
+            IQueryable<LabelingTaskItem> query = _taskItemRepository.Query()
+                .Where(ti => ti.TaskId == taskId)
+                .Include(ti => ti.Reviews)
+                    .ThenInclude(r => r.ReviewConsensus);
 
             query = ApplyUserFilter(query);
             query = ApplyParamFilters(query, @params);
@@ -91,6 +90,21 @@ namespace DataLabelProject.Business.Services.Reviews
             return query;
         }
 
+        private IQueryable<LabelingTaskItem> ApplyUserFilter(
+            IQueryable<LabelingTaskItem> query)
+        {
+            var currentUserId = _currentUserService.UserId;
+            var roles = _currentUserService.Roles;
+
+            if (roles.Contains("reviewer") && currentUserId.HasValue)
+            {
+                query = query.Where(ti =>
+                    ti.Reviews.Any(r => r.ReviewerId == currentUserId.Value));
+            }
+
+            return query;
+        }
+
         private IQueryable<Review> ApplyParamFilters(
             IQueryable<Review> query,
             ReviewQueryParameters @params)
@@ -98,6 +112,19 @@ namespace DataLabelProject.Business.Services.Reviews
             if (@params.Result.HasValue)
             {
                 query = query.Where(r => r.Result == @params.Result.Value);
+            }
+
+            return query;
+        }
+
+        private IQueryable<LabelingTaskItem> ApplyParamFilters(
+            IQueryable<LabelingTaskItem> query,
+            ReviewQueryParameters @params)
+        {
+            if (@params.Result.HasValue)
+            {
+                query = query.Where(ti =>
+                    ti.Reviews.Any(r => r.Result == @params.Result.Value));
             }
 
             return query;
@@ -152,14 +179,6 @@ namespace DataLabelProject.Business.Services.Reviews
                 Result = review.Result,
                 Feedback = review.Feedback,
                 ReviewedAt = review.ReviewedAt,
-                TaskItem = new TaskItemResponse
-                {
-                    TaskItemId = review.TaskItemId,
-                    TaskId = review.ReviewTaskItem.TaskId,
-                    DatasetItemId = review.ReviewTaskItem.DatasetItemId,
-                    RevisionCount = review.ReviewTaskItem.RevisionCount,
-                    Status = review.ReviewTaskItem.Status,
-                },
                 Consensus = new ConsensusResponse
                 {
                     ConsensusId = review.ReviewConsensus.ConsensusId,
@@ -167,6 +186,20 @@ namespace DataLabelProject.Business.Services.Reviews
                     Payload = review.ReviewConsensus.Payload,
                     CreatedAt = review.ReviewConsensus.CreatedAt
                 }
+            };
+        }
+
+        private TaskItemReviewsResponse MapToResponse(LabelingTaskItem tItem)
+        {
+            return new TaskItemReviewsResponse
+            {
+                TaskItemId = tItem.TaskItemId,
+                DatasetItemId = tItem.DatasetItemId,
+                RevisionCount = tItem.RevisionCount,
+                Status = tItem.Status,
+                Reviews = tItem.Reviews
+                    .Select(MapToResponse)
+                    .ToList()
             };
         }
     }

@@ -7,7 +7,7 @@ namespace DataLabelProject.Business.Services.Reviews
     public interface IReviewService
     {
         Task<PagedResponse<ReviewResponse>> GetReviewsAsync(ReviewQueryParameters @params);
-        Task<PagedResponse<ReviewResponse>> GetReviewsByTaskAsync(Guid taskId, ReviewQueryParameters @params);
+        Task<PagedResponse<TaskItemReviewsResponse>> GetReviewsByTaskAsync(Guid taskId, ReviewQueryParameters @params);
         Task<PagedResponse<ReviewResponse>> GetReviewsByTaskItemAsync(Guid taskItemId, ReviewQueryParameters @params);
         Task<ReviewResponse> CreateReviewAsync(CreateReviewRequest request);
     }

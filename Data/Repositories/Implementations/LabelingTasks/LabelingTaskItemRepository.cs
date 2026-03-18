@@ -13,6 +13,11 @@ public class LabelingTaskItemRepository : ILabelingTaskItemRepository
         _context = context;
     }
 
+    public IQueryable<LabelingTaskItem> Query()
+    {
+        return _context.LabelingTaskItems;
+    }
+
     public async Task<IEnumerable<LabelingTaskItem>> GetAllAsync()
     {
         return await _context.LabelingTaskItems
