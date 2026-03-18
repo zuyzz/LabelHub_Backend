@@ -24,8 +24,6 @@ public class GuidelineRepository : IGuidelineRepository
 
         if (!string.IsNullOrEmpty(@params.Content))
             query = query.Where(g => EF.Functions.ILike(g.Content, $"%{@params.Content}%"));
-        if (@params.ProjectId.HasValue)
-            query = query.Where(g => g.ProjectId == @params.ProjectId.Value);
         
         var totalCount = await query.CountAsync();
 
@@ -41,6 +39,12 @@ public class GuidelineRepository : IGuidelineRepository
     {
         return await _context.Guidelines
             .FirstOrDefaultAsync(g => g.GuidelineId == id);
+    }
+
+    public async Task<Guideline?> GetByProjectIdAsync(Guid projectId)
+    {
+        return await _context.Guidelines
+            .FirstOrDefaultAsync(g => g.ProjectId == projectId);
     }
 
     public async Task CreateAsync(Guideline guideline)

@@ -5,6 +5,8 @@ using DataLabelProject.Business.Services.FileUpload;
 using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Application.DTOs.Common;
+using Microsoft.EntityFrameworkCore;
+using DataLabelProject.Shared.Extensions;
 
 namespace DataLabelProject.Business.Services.Datasets;
 
@@ -85,7 +87,7 @@ public class DatasetService : IDatasetService
         return MapToResponse(dataset);
     }
 
-    public async Task<bool> DeleteDataset(Guid id)
+    public async Task DeleteDataset(Guid id)
     {
         var currentUserId = _currentUserService.UserId!.Value;
         var currentUserRole = _currentUserService.Roles;
@@ -103,8 +105,6 @@ public class DatasetService : IDatasetService
 
         await _datasetRepository.DeleteAsync(dataset);
         await _datasetRepository.SaveChangesAsync();
-
-        return true;
     }
 
     public async Task<DatasetResponse?> GetDatasetById(Guid id)
@@ -115,22 +115,70 @@ public class DatasetService : IDatasetService
         return MapToResponse(dataset);
     }
 
-    public async Task<PagedResponse<DatasetResponse>> GetDatasets(DatasetQueryParameters @params)
+    public async Task<PagedResponse<DatasetResponse>> GetDatasets(
+        DatasetQueryParameters @params)
     {
-        var currentUserId = _currentUserService.UserId!.Value;
-        var currentUserRole = _currentUserService.Roles;
+        IQueryable<Dataset> query = _datasetRepository.Query()
+            .AsNoTracking()
+            .OrderByDescending(d => d.CreatedAt)
+            .Include(d => d.DatasetItems);
 
-        var (items, totalCount) = currentUserRole.Contains("admin") 
-            ? await _datasetRepository.GetAllAsync(@params) 
-            : await _datasetRepository.GetAllByCreatorAsync(currentUserId, @params);
+        query = ApplyUserFilter(query);
+        query = ApplyParamFilters(query, @params);
 
-        return new PagedResponse<DatasetResponse>
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    public async Task<PagedResponse<DatasetResponse>> GetProjectDatasets(
+        Guid projectId, 
+        DatasetQueryParameters @params)
+    {
+        IQueryable<Dataset> query = _datasetRepository.Query()
+            .AsNoTracking()
+            .Where(d => d.ProjectId == projectId)
+            .OrderByDescending(d => d.CreatedAt)
+            .Include(d => d.DatasetItems);
+
+        query = ApplyUserFilter(query);
+        query = ApplyParamFilters(query, @params);
+
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    private IQueryable<Dataset> ApplyUserFilter(
+        IQueryable<Dataset> query)
+    {
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
         {
-            Items = items.Select(MapToResponse).ToList(),
-            TotalItems = totalCount,
-            Page = @params.Page,
-            PageSize = @params.PageSize,
-        };
+            query = query.Where(d => d.CreatedBy == currentUserId.Value);
+        }
+
+        return query;
+    }
+
+    private IQueryable<Dataset> ApplyParamFilters(
+        IQueryable<Dataset> query,
+        DatasetQueryParameters @params)
+    {
+        if (!string.IsNullOrWhiteSpace(@params.Name))
+        {
+            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{@params.Name.Trim()}%"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(@params.Description))
+        {
+            query = query.Where(d => EF.Functions.ILike(d.Description ?? "", $"%{@params.Description.Trim()}%"));
+        }
+
+        if (@params.IsActive.HasValue)
+        {
+            query = query.Where(d => d.IsActive == @params.IsActive);
+        }
+
+        return query;
     }
 
     public async Task AddDatasetToProject(Guid datasetId, Guid projectId)

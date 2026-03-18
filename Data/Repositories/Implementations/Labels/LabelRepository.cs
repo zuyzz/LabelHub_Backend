@@ -15,30 +15,9 @@ public class LabelRepository : ILabelRepository
         _context = context;
     }
 
-    public async Task<(IEnumerable<Label> Items, int TotalCount)> GetAllAsync(LabelQueryParameters @params)
+    public IQueryable<Label> Query()
     {
-        var query = _context.Labels
-            .AsNoTracking()
-            .Include(l => l.LabelCategory)
-            .Include(l => l.ProjectLabels)
-            .AsQueryable();
-        
-        if (!string.IsNullOrWhiteSpace(@params.Name))
-            query = query.Where(l => EF.Functions.ILike(l.Name, $"%{@params.Name.Trim()}%"));
-        if (@params.CategoryId.HasValue) 
-            query = query.Where(l => l.CategoryId == @params.CategoryId.Value);
-        if (@params.ProjectId.HasValue)
-            query = query.Where(l =>l.ProjectLabels
-                .Any(pl => pl.ProjectId == @params.ProjectId.Value));
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip(@params.Offset)
-            .Take(@params.PageSize)
-            .ToListAsync();
-
-        return (items, totalCount);
+        return _context.Labels;
     }
 
     public async Task<Label?> GetByIdAsync(Guid labelId)

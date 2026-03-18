@@ -2,6 +2,7 @@ using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Guidelines;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Guidelines;
 
@@ -25,6 +26,14 @@ public class GuidelineService : IGuidelineService
             Page = @params.Page,
             PageSize = @params.PageSize,
         };
+    }
+
+    public async Task<GuidelineResponse?> GetProjectGuideline(Guid projectId)
+    {
+        var guideline = await _repository.GetByProjectIdAsync(projectId);
+        if (guideline == null) return null;
+
+        return MapToResponse(guideline);
     }
 
     public async Task<GuidelineResponse?> GetGuidelineById(Guid id)

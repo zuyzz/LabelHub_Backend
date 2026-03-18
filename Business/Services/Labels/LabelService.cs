@@ -4,6 +4,8 @@ using DataLabelProject.Application.DTOs.Labels;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data.Repositories.Abstractions;
+using DataLabelProject.Shared.Extensions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Labels;
 
@@ -28,15 +30,40 @@ public class LabelService : ILabelService
 
     public async Task<PagedResponse<LabelResponse>> GetLabels(LabelQueryParameters @params)
     {
-        var (items, totalCount) = await _labelRepository.GetAllAsync(@params);
+        IQueryable<Label> query = _labelRepository.Query()
+            .Include(l => l.LabelCategory);
 
-        return new PagedResponse<LabelResponse>
+        query = ApplyParamFilters(query, @params);
+
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    public async Task<PagedResponse<LabelResponse>> GetProjectLabels(Guid projectId,LabelQueryParameters @params)
+    {
+        IQueryable<Label> query = _labelRepository.Query()
+            .Where(l => l.ProjectLabels.Any(pl => pl.ProjectId == projectId))
+            .Include(l => l.LabelCategory);
+
+        query = ApplyParamFilters(query, @params);
+
+        return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    private IQueryable<Label> ApplyParamFilters(
+        IQueryable<Label> query,
+        LabelQueryParameters @params)
+    {
+        if (!string.IsNullOrWhiteSpace(@params.Name))
         {
-            Items = items.Select(MapToResponse),
-            TotalItems = totalCount,
-            Page = @params.Offset,
-            PageSize = @params.PageSize,
-        };
+            query = query.Where(l => l.Name.ToLower() == @params.Name.ToLower());
+        }
+
+        if (@params.IsActive.HasValue)
+        {
+            query = query.Where(l => l.IsActive == @params.IsActive.Value);
+        }
+
+        return query;
     }
 
     public async Task<LabelResponse?> GetLabelById(Guid id)
@@ -51,13 +78,13 @@ public class LabelService : ILabelService
     {
         var name = request.Name.Trim();
 
-        var (items, _) = await _labelRepository.GetAllAsync(new LabelQueryParameters
-        {
-            Name = name,
-            CategoryId = request.CategoryId,
-        });
+        var duplicateExists = await _labelRepository.Query()
+            .AnyAsync(l => 
+                l.CategoryId == request.CategoryId &&
+                l.Name.ToLower() == name.ToLower()
+            );
 
-        if (items.Any())
+        if (duplicateExists)
             throw new InvalidOperationException(
                 "A label with the same name already exists in this category.");
 
@@ -73,9 +100,12 @@ public class LabelService : ILabelService
         await _labelRepository.CreateAsync(label);
         await _labelRepository.SaveChangesAsync();
 
-        label = await _labelRepository.GetByIdAsync(label.LabelId);
+        var createdLabel = await _labelRepository.Query()
+            .Where(l => l.LabelId == label.LabelId)
+            .Include(l => l.LabelCategory)
+            .FirstAsync();
 
-        return MapToResponse(label!);
+        return MapToResponse(createdLabel);
     }
 
     public async Task<LabelResponse?> UpdateLabel(Guid id, UpdateLabelRequest request)
@@ -87,15 +117,14 @@ public class LabelService : ILabelService
         {
             var name = request.Name.Trim();
 
-            var (items, _) = await _labelRepository.GetAllAsync(new LabelQueryParameters
-            {
-                Name = name,
-                CategoryId = label.CategoryId
-            });
+            var duplicateExists = await _labelRepository.Query()
+                .AnyAsync(l =>
+                    l.LabelId != id &&
+                    l.CategoryId == label.CategoryId &&
+                    l.Name.ToLower() == name.ToLower()
+                );
 
-            var duplicate = items.Any(l => l.LabelId != id);
-
-            if (duplicate)
+            if (duplicateExists)
                 throw new InvalidOperationException(
                     "A label with the same name already exists in this category.");
 
@@ -103,12 +132,19 @@ public class LabelService : ILabelService
         }
 
         if (request.IsActive.HasValue)
+        {
             label.IsActive = request.IsActive.Value;
+        }
 
         await _labelRepository.UpdateAsync(label);
         await _labelRepository.SaveChangesAsync();
 
-        return MapToResponse(label);
+        var updatedLabel = await _labelRepository.Query()
+            .Where(l => l.LabelId == id)
+            .Include(l => l.LabelCategory)
+            .FirstAsync();
+
+        return MapToResponse(updatedLabel);
     }
 
     public async Task AddLabelToProject(Guid labelId, Guid projectId)
