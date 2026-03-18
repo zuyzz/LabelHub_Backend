@@ -186,4 +186,50 @@ public class SupabaseFileStorage : IFileStorage
 
         return files;
     }
+
+    public async Task<(Stream Stream, string ContentType, string FileName)> GetFileStreamAsync(string storageUri)
+    {
+        // Determine if the storageUri is already a public URL or just a path
+        string downloadUrl;
+
+        var basePublic = $"{_options.Url.TrimEnd('/')}/storage/v1/object/public/{_options.Bucket}/";
+        if (storageUri.StartsWith(basePublic, StringComparison.OrdinalIgnoreCase))
+        {
+            // Already a full public URL
+            downloadUrl = storageUri;
+        }
+        else
+        {
+            // It's just a path, construct the public URL
+            var escapedPath = string.Join("/",
+                storageUri.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(Uri.EscapeDataString));
+            downloadUrl = $"{basePublic}{escapedPath}";
+        }
+
+        _logger.LogInformation("Downloading from Supabase: {Uri}", downloadUrl);
+
+        var response = await _http.GetAsync(downloadUrl);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Supabase download failed {Status}: {Body}",
+                response.StatusCode, errorBody);
+            throw new InvalidOperationException($"Failed to download file: {errorBody}");
+        }
+
+        // Get content type from response headers
+        var contentType = response.Content.Headers.ContentType?.ToString()
+            ?? "application/octet-stream";
+
+        // Extract filename from URL
+        var uri = new Uri(downloadUrl);
+        var fileName = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
+
+        // Read the stream
+        var stream = await response.Content.ReadAsStreamAsync();
+
+        return (stream, contentType, fileName);
+    }
 }

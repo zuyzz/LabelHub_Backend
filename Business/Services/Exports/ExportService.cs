@@ -122,6 +122,43 @@ public class ExportService : IExportService
         }
     }
 
+    public async Task<(Stream Stream, string ContentType, string FileName)> DownloadExport(Guid exportId)
+    {
+        var export = await _exportJobRepository.GetByIdAsync(exportId);
+        if (export == null)
+            throw new InvalidOperationException("Export not found");
+
+        if (export.Status != ExportJobStatus.Completed)
+            throw new InvalidOperationException($"Export is not completed. Current status: {export.Status}");
+
+        if (string.IsNullOrEmpty(export.FileUri))
+            throw new InvalidOperationException("Export file URI is missing");
+
+        // Verify user has access to this export
+        var userId = _currentUserService.UserId
+            ?? throw new InvalidOperationException("User not authenticated");
+
+        // Check if user is the initiator or a manager of the project
+        var project = await _context.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProjectId == export.ProjectId);
+
+        if (project == null)
+            throw new InvalidOperationException("Project not found");
+
+        // Check if user is initiator or manager of the project
+        if (export.InitiatorId != userId)
+        {
+            var isMember = await _context.ProjectMembers
+                .AnyAsync(pm => pm.ProjectId == export.ProjectId && pm.MemberId == userId);
+
+            if (!isMember)
+                throw new UnauthorizedAccessException("You do not have permission to download this export");
+        }
+
+        // Download file from storage
+        return await _fileStorage.GetFileStreamAsync(export.FileUri);
+    }
+
     // ─── Dataset Building ─────────────────────────────────────────────
 
     private async Task<ExportDataset> BuildDatasetFromConsensus(Guid projectId)

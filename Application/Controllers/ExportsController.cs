@@ -42,4 +42,23 @@ public class ExportsController : ControllerBase
         var export = await _exportService.CreateExport(projectId, request);
         return CreatedAtAction(nameof(GetExportById), new { id = export.ExportId }, export);
     }
+
+    [HttpGet("{id}/download")]
+    [Authorize(Roles = "manager")]
+    public async Task<IActionResult> DownloadExport(Guid id)
+    {
+        try
+        {
+            var (stream, contentType, fileName) = await _exportService.DownloadExport(id);
+            return File(stream, contentType, fileName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 }
