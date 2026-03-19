@@ -105,6 +105,18 @@ public class ConsensusService : IConsensusService
 		return consensus == null ? null : MapToDto(consensus);
 	}
 
+	public async Task<ConsensusResponse?> GetConsensusByTaskItemIdAsync(Guid taskItemId)
+	{
+		var taskItem = await _taskRepository.GetByIdAsync(taskItemId);
+		if (taskItem == null)
+			return null;
+
+		var consensuses = await _consensusRepository.GetByDatasetItemIdAsync(taskItem.DatasetItemId);
+		var consensus = consensuses.FirstOrDefault();
+
+		return consensus == null ? null : MapToDto(consensus);
+	}
+
 	public async Task<PagedResponse<ConsensusResponse>> GetConsensusesAsync(ConsensusQueryParameters @params)
 	{
 		var paged = await _consensusRepository.GetConsensusesAsync(@params);
