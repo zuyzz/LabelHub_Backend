@@ -67,7 +67,7 @@ public class ProjectsController : ControllerBase
         [FromRoute] Guid id, 
         [FromQuery] ProjectMemberQueryParameters @params)
     {
-        var result = _projectMemberService.GetUserFromProject(id, @params);
+        var result = await _projectMemberService.GetUserFromProject(id, @params);
         if (result == null) return NotFound();
         return Ok(result);
     }
@@ -135,7 +135,7 @@ public class ProjectsController : ControllerBase
         [FromRoute] Guid id, 
         [FromQuery] LabelQueryParameters @params)
     {
-        var result = _labelService.GetProjectLabels(id, @params);
+        var result = await _labelService.GetProjectLabels(id, @params);
         return Ok(result);
     }
 
@@ -148,7 +148,7 @@ public class ProjectsController : ControllerBase
         [FromRoute] Guid id, 
         [FromQuery] DatasetQueryParameters @params)
     {
-        var result = _datasetService.GetProjectDatasets(id, @params);
+        var result = await _datasetService.GetProjectDatasets(id, @params);
         return Ok(result);
     }
 
@@ -160,7 +160,7 @@ public class ProjectsController : ControllerBase
     public async Task<IActionResult> GetProjectGuideline(
         [FromRoute] Guid id)
     {
-        var result = _guidelineService.GetProjectGuideline(id);
+        var result = await _guidelineService.GetProjectGuideline(id);
         return Ok(result);
     }
 
