@@ -131,7 +131,7 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>Get task by project ID</summary>
-    [HttpGet("/projects/{projectId:guid}")]
+    [HttpGet("projects/{projectId:guid}")]
     [Authorize]
     public async Task<IActionResult> GetTaskByProjectId(Guid projectId)
     {
