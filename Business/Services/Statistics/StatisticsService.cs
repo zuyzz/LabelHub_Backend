@@ -36,14 +36,10 @@ public class StatisticsService : IStatisticsService
             .Select(p => new { p.ProjectId, p.Name })
             .FirstAsync();
 
-        // Count dataset items via task items belonging to this project
-        var datasetItems = await _context.LabelingTaskItems
-            .AsNoTracking()
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.DatasetItemId)
-            .Distinct()
-            .CountAsync();
+        var projectTaskItemIds = await GetProjectTaskItemIdsAsync(projectId);
+        var datasetItems = projectTaskItemIds.Distinct().Count();
 
+        // Get task counts by status
         var taskCounts = await _context.LabelingTasks
             .AsNoTracking()
             .Where(t => t.ProjectId == projectId)
@@ -51,28 +47,9 @@ public class StatisticsService : IStatisticsService
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync();
 
-        // Get task item IDs for this project to query annotations and consensus
-        var projectTaskItemIds = _context.LabelingTaskItems
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.TaskItemId);
-
-        var annotationsTotal = await _context.Annotations
-            .AsNoTracking()
-            .CountAsync(a => projectTaskItemIds.Contains(a.TaskItemId));
-
-        var consensusCount = await _context.Consensuses
-            .AsNoTracking()
-            .CountAsync(c => projectTaskItemIds.Contains(c.DatasetItemId));
-
-        // Parse agreement scores from consensus payloads
-        var consensusPayloads = await _context.Consensuses
-            .AsNoTracking()
-            .Where(c => projectTaskItemIds.Contains(c.DatasetItemId))
-            .Select(c => c.Payload)
-            .ToListAsync();
-
-        var agreementScores = ExtractAgreementScores(consensusPayloads);
-        var avgAgreement = agreementScores.Count > 0 ? agreementScores.Average() : 0;
+        var annotationsTotal = await CountAnnotationsAsync(projectTaskItemIds);
+        var consensusCount = await CountConsensusAsync(projectTaskItemIds);
+        var averageAgreement = await GetAverageAgreementAsync(projectTaskItemIds);
 
         return new ProjectOverviewResponse
         {
@@ -85,21 +62,15 @@ public class StatisticsService : IStatisticsService
             TasksRemoved = 0,
             AnnotationsTotal = annotationsTotal,
             ConsensusGenerated = consensusCount,
-            AgreementAverage = Math.Round(avgAgreement, 4)
+            AgreementAverage = Math.Round(averageAgreement, 4)
         };
     }
 
     public async Task<DatasetCoverageResponse> GetDatasetCoverageAsync(Guid projectId)
     {
-        // Total distinct dataset items in this project
-        var datasetItems = await _context.LabelingTaskItems
-            .AsNoTracking()
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.DatasetItemId)
-            .Distinct()
-            .CountAsync();
+        var datasetItems = await GetProjectTaskItemIdsAsync(projectId);
+        var totalDatasetItems = datasetItems.Count();
 
-        // Dataset items that have at least one annotation
         var itemsAnnotated = await _context.LabelingTaskItems
             .AsNoTracking()
             .Where(ti => ti.ProjectId == projectId && ti.Annotations.Any())
@@ -107,87 +78,31 @@ public class StatisticsService : IStatisticsService
             .Distinct()
             .CountAsync();
 
-        // Dataset items that have a consensus
-        var consensusTaskItemIds = _context.Consensuses.Select(c => c.DatasetItemId);
-        var itemsConsensus = await _context.LabelingTaskItems
-            .AsNoTracking()
-            .Where(ti => ti.ProjectId == projectId && consensusTaskItemIds.Contains(ti.TaskItemId))
-            .Select(ti => ti.DatasetItemId)
-            .Distinct()
-            .CountAsync();
+        var itemsWithConsensus = await GetConsensusCountAsync(projectId);
 
         return new DatasetCoverageResponse
         {
-            DatasetItems = datasetItems,
+            DatasetItems = totalDatasetItems,
             ItemsAnnotated = itemsAnnotated,
-            ItemsConsensus = itemsConsensus,
-            CoveragePercent = datasetItems > 0
-                ? Math.Round((double)itemsAnnotated / datasetItems * 100, 2)
+            ItemsConsensus = itemsWithConsensus,
+            CoveragePercent = totalDatasetItems > 0
+                ? Math.Round((double)itemsAnnotated / totalDatasetItems * 100, 2)
                 : 0
         };
     }
 
     public async Task<List<AnnotatorProductivityResponse>> GetAnnotatorProductivityAsync(Guid projectId)
     {
-        // var projectTaskItemIds = _context.LabelingTaskItems
-        //     .Where(ti => ti.ProjectId == projectId)
-        //     .Select(ti => ti.TaskItemId);
-
-        // var annotatorStats = await (
-        //     from a in _context.Annotations.AsNoTracking()
-        //     join u in _context.Users on a.AnnotatorId equals u.UserId
-        //     where projectTaskItemIds.Contains(a.TaskItemId)
-        //     group a by new { u.UserId, u.DisplayName } into g
-        //     select new
-        //     {
-        //         UserId = g.Key.UserId,
-        //         DisplayName = g.Key.DisplayName,
-        //         Annotations = g.Count()
-        //     }
-        // ).ToListAsync();
-
-        // // Get task IDs for this project
-        // var projectTaskIds = _context.LabelingTasks
-        //     .Where(t => t.ProjectId == projectId)
-        //     .Select(t => t.TaskId);
-
-        // var assignmentStats = await (
-        //     from asgn in _context.Assignments.AsNoTracking()
-        //     where projectTaskIds.Contains(asgn.TaskId) && asgn.Status == AssignmentStatus.Completed
-        //     group asgn by asgn.AssignedTo into g
-        //     select new
-        //     {
-        //         UserId = g.Key,
-        //         CompletedAssignments = g.Count()
-        //     }
-        // ).ToListAsync();
-
-        // var assignmentLookup = assignmentStats.ToDictionary(a => a.UserId, a => a.CompletedAssignments);
-
-        // return annotatorStats.Select(a => new AnnotatorProductivityResponse
-        // {
-        //     UserId = a.UserId,
-        //     DisplayName = a.DisplayName,
-        //     Annotations = a.Annotations,
-        //     CompletedAssignments = assignmentLookup.GetValueOrDefault(a.UserId, 0),
-        //     AvgTimePerTaskMinutes = null
-        // }).ToList();
-        return null;
+        // TODO: Implement annotator productivity report
+        // Should aggregate annotation count and assignment completion per user
+        await Task.CompletedTask;
+        return new List<AnnotatorProductivityResponse>();
     }
 
     public async Task<AgreementDistributionResponse> GetAgreementDistributionAsync(Guid projectId)
     {
-        var projectTaskItemIds = _context.LabelingTaskItems
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.TaskItemId);
-
-        var consensusPayloads = await _context.Consensuses
-            .AsNoTracking()
-            .Where(c => projectTaskItemIds.Contains(c.DatasetItemId))
-            .Select(c => c.Payload)
-            .ToListAsync();
-
-        var scores = ExtractAgreementScores(consensusPayloads);
+        var projectTaskItemIds = await GetProjectTaskItemIdsAsync(projectId);
+        var scores = await GetAgreementScoresAsync(projectTaskItemIds);
 
         if (scores.Count == 0)
             return new AgreementDistributionResponse();
@@ -203,9 +118,7 @@ public class StatisticsService : IStatisticsService
 
     public async Task<List<ReviewerPerformanceResponse>> GetReviewerPerformanceAsync(Guid projectId)
     {
-        var projectTaskItemIds = _context.LabelingTaskItems
-            .Where(ti => ti.ProjectId == projectId)
-            .Select(ti => ti.TaskItemId);
+        var projectTaskItemIds = await GetProjectTaskItemIdsAsync(projectId);
 
         return await (
             from r in _context.Reviews.AsNoTracking()
@@ -322,8 +235,59 @@ public class StatisticsService : IStatisticsService
         }).ToList();
     }
 
-    // =============== Helpers ===============
+    // =============== Query Helpers ===============
 
+    /// <summary>
+    /// Get all task item IDs for a project (materialized).
+    /// </summary>
+    private async Task<IEnumerable<Guid>> GetProjectTaskItemIdsAsync(Guid projectId) =>
+        await _context.LabelingTaskItems
+            .AsNoTracking()
+            .Where(ti => ti.ProjectId == projectId)
+            .Select(ti => ti.TaskItemId)
+            .ToListAsync();
+
+    private async Task<int> CountAnnotationsAsync(IEnumerable<Guid> taskItemIds) =>
+        await _context.Annotations
+            .AsNoTracking()
+            .CountAsync(a => taskItemIds.Contains(a.TaskItemId));
+
+    private async Task<int> CountConsensusAsync(IEnumerable<Guid> taskItemIds) =>
+        await _context.Consensuses
+            .AsNoTracking()
+            .CountAsync(c => taskItemIds.Contains(c.DatasetItemId));
+
+    private async Task<double> GetAverageAgreementAsync(IEnumerable<Guid> taskItemIds)
+    {
+        var scores = await GetAgreementScoresAsync(taskItemIds);
+        return scores.Count > 0 ? scores.Average() : 0;
+    }
+
+    private async Task<int> GetConsensusCountAsync(Guid projectId)
+    {
+        var consensusTaskItemIds = _context.Consensuses.Select(c => c.DatasetItemId);
+        return await _context.LabelingTaskItems
+            .AsNoTracking()
+            .Where(ti => ti.ProjectId == projectId && consensusTaskItemIds.Contains(ti.TaskItemId))
+            .Select(ti => ti.DatasetItemId)
+            .Distinct()
+            .CountAsync();
+    }
+
+    private async Task<List<double>> GetAgreementScoresAsync(IEnumerable<Guid> taskItemIds)
+    {
+        var payloads = await _context.Consensuses
+            .AsNoTracking()
+            .Where(c => taskItemIds.Contains(c.DatasetItemId))
+            .Select(c => c.Payload)
+            .ToListAsync();
+
+        return ExtractAgreementScores(payloads);
+    }
+
+    /// <summary>
+    /// Extracts agreement scores from consensus JSON payloads.
+    /// </summary>
     private static List<double> ExtractAgreementScores(List<string> payloads)
     {
         var scores = new List<double>();

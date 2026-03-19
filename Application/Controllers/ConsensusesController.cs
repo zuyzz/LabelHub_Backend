@@ -51,6 +51,17 @@ public class ConsensusesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("task-items/{taskItemId:guid}")]
+    [Authorize(Roles = "admin,manager,reviewer")]
+    public async Task<IActionResult> GetConsensusByTaskItemId([FromRoute] Guid taskItemId)
+    {
+        var result = await _consensusService.GetConsensusByTaskItemIdAsync(taskItemId);
+        if (result == null)
+            return NotFound(new { message = "Consensus not found for task item" });
+
+        return Ok(result);
+    }
+
     [HttpGet]
     [Authorize(Roles = "admin,manager,reviewer")]
     public async Task<IActionResult> GetConsensuses([FromQuery] ConsensusQueryParameters @params)

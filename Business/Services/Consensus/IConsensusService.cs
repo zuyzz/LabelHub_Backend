@@ -7,5 +7,6 @@ public interface IConsensusService
 {
 	Task<ConsensusResponse> CreateConsensusAsync(Guid taskId, ConsensusCreateRequest request);
 	Task<ConsensusResponse?> GetConsensusByIdAsync(Guid consensusId);
+	Task<ConsensusResponse?> GetConsensusByTaskItemIdAsync(Guid taskItemId);
 	Task<PagedResponse<ConsensusResponse>> GetConsensusesAsync(ConsensusQueryParameters @params);
 }

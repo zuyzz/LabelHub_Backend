@@ -3,6 +3,7 @@ using DataLabelProject.Application.DTOs.Annotations;
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Consensus;
 using DataLabelProject.Business.Models;
+using DataLabelProject.Business.Services.Shared;
 using DataLabelProject.Data;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,13 @@ public class ConsensusService : IConsensusService
 			?? throw new KeyNotFoundException("Task not found");
 
 		var annotations = (await _annotationRepository.GetByTaskItemIdAsync(taskId)).ToList();
-		var distinctAnnotatorCount = annotations.Select(a => a.AnnotatorId).Distinct().Count();
+		
+		// Filter out skipped annotations (payload = null) - only count annotations with actual data
+		var annotationsWithPayload = annotations
+			.Where(a => !string.IsNullOrWhiteSpace(a.Payload))
+			.ToList();
+		
+		var distinctAnnotatorCount = annotationsWithPayload.Select(a => a.AnnotatorId).Distinct().Count();
 
 		var projectConfig = await _context.ProjectConfigs
 			.AsNoTracking()
@@ -57,7 +64,7 @@ public class ConsensusService : IConsensusService
 			throw new InvalidOperationException(
 				$"At least {minimumAnnotations} approved annotations are required to evaluate consensus");
 
-		var allBoxes = FlattenBoxes(annotations);
+		var allBoxes = BoxConversionHelper.FlattenBoxes(annotationsWithPayload);
 		if (allBoxes.Count == 0)
 			throw new InvalidOperationException("No bounding boxes found in approved annotations");
 
@@ -98,6 +105,18 @@ public class ConsensusService : IConsensusService
 		return consensus == null ? null : MapToDto(consensus);
 	}
 
+	public async Task<ConsensusResponse?> GetConsensusByTaskItemIdAsync(Guid taskItemId)
+	{
+		var taskItem = await _taskRepository.GetByIdAsync(taskItemId);
+		if (taskItem == null)
+			return null;
+
+		var consensuses = await _consensusRepository.GetByDatasetItemIdAsync(taskItem.DatasetItemId);
+		var consensus = consensuses.FirstOrDefault();
+
+		return consensus == null ? null : MapToDto(consensus);
+	}
+
 	public async Task<PagedResponse<ConsensusResponse>> GetConsensusesAsync(ConsensusQueryParameters @params)
 	{
 		var paged = await _consensusRepository.GetConsensusesAsync(@params);
@@ -109,49 +128,6 @@ public class ConsensusService : IConsensusService
 			Page = @params.Page,
 			PageSize = @params.PageSize,
 		};
-	}
-
-	private static List<BoxCandidate> FlattenBoxes(IEnumerable<Annotation> annotations)
-	{
-		var output = new List<BoxCandidate>();
-
-		foreach (var annotation in annotations)
-		{
-			AnnotationPayload? payload;
-			if (string.IsNullOrWhiteSpace(annotation.Payload)) continue;
-			try
-			{
-				payload = JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload);
-			}
-			catch
-			{
-				continue;
-			}
-
-			if (payload?.Bboxes == null)
-				continue;
-
-			foreach (var box in payload.Bboxes)
-			{
-				if (box.X == null || box.Y == null || box.Width == null || box.Height == null)
-					continue;
-
-				if (string.IsNullOrWhiteSpace(box.Label) || box.Width <= 0 || box.Height <= 0)
-					continue;
-
-				output.Add(new BoxCandidate
-				{
-					AnnotatorId = annotation.AnnotatorId,
-					Label = box.Label.Trim(),
-					X = box.X.Value,
-					Y = box.Y.Value,
-					Width = box.Width.Value,
-					Height = box.Height.Value
-				});
-			}
-		}
-
-		return output;
 	}
 
 	private static ConsensusResponse MapToDto(Business.Models.Consensus consensus)
