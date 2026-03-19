@@ -4,6 +4,7 @@ using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Business.Services.Consensus;
+using DataLabelProject.Business.Services.Shared;
 using DataLabelProject.Data.Repositories.Abstractions;
 
 namespace DataLabelProject.Business.Services.Annotations;
@@ -270,7 +271,7 @@ public class AnnotationService : IAnnotationService
     // 6. Agreement computation - reuses AgreementService
     private double ComputeAgreement(List<Annotation> annotations)
     {
-        var boxes = FlattenBoxes(annotations);
+        var boxes = BoxConversionHelper.FlattenBoxes(annotations);
         if (boxes.Count == 0)
             return 0;
 
@@ -282,7 +283,7 @@ public class AnnotationService : IAnnotationService
     // 7. Build consensus payload - reuses ConsensusService helpers
     private string BuildConsensusPayload(List<Annotation> annotations, double agreementScore)
     {
-        var boxes = FlattenBoxes(annotations);
+        var boxes = BoxConversionHelper.FlattenBoxes(annotations);
         var clusters = _clusteringService.ClusterByIoU(boxes, DefaultIouThreshold);
         var consensusBboxes = _agreementService.BuildConsensusBboxes(clusters);
 
@@ -291,38 +292,6 @@ public class AnnotationService : IAnnotationService
             bboxes = consensusBboxes,
             agreementScore
         });
-    }
-
-    private static List<BoxCandidate> FlattenBoxes(IEnumerable<Annotation> annotations)
-    {
-        var output = new List<BoxCandidate>();
-        foreach (var annotation in annotations)
-        {
-            if (string.IsNullOrWhiteSpace(annotation.Payload)) continue;
-
-            AnnotationPayload? payload;
-            try { payload = JsonSerializer.Deserialize<AnnotationPayload>(annotation.Payload); }
-            catch { continue; }
-
-            if (payload?.Bboxes == null) continue;
-
-            foreach (var box in payload.Bboxes)
-            {
-                if (box.X == null || box.Y == null || box.Width == null || box.Height == null) continue;
-                if (string.IsNullOrWhiteSpace(box.Label) || box.Width <= 0 || box.Height <= 0) continue;
-
-                output.Add(new BoxCandidate
-                {
-                    AnnotatorId = annotation.AnnotatorId,
-                    Label = box.Label.Trim(),
-                    X = box.X.Value,
-                    Y = box.Y.Value,
-                    Width = box.Width.Value,
-                    Height = box.Height.Value
-                });
-            }
-        }
-        return output;
     }
 
     // 2.0 Get annotation by ID
