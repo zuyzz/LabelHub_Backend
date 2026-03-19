@@ -45,7 +45,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id}/projects")]
-    [Authorize("admin,manager")]
+    [Authorize(Roles = "admin,manager")]
     public async Task<IActionResult> GetCategoryProjects(
         [FromRoute] Guid id,
         [FromQuery] ProjectQueryParameters @params)
@@ -55,7 +55,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id}/labels")]
-    [Authorize("admin,manager")]
+    [Authorize(Roles = "admin,manager")]
     public async Task<IActionResult> GetCategoryLabels(
         [FromRoute] Guid id,
         [FromQuery] LabelQueryParameters @params)
