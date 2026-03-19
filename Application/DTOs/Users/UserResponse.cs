@@ -11,5 +11,6 @@ namespace DataLabelProject.Application.DTOs.Users
         public string RoleName { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int JoinedProjectCount { get; set; }
     }
 }

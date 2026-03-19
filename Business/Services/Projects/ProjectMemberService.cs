@@ -5,6 +5,7 @@ using DataLabelProject.Data.Repositories.Abstractions;
 using DataLabelProject.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
 using DataLabelProject.Business.Models.Enums;
+using DataLabelProject.Application.DTOs.Users;
 
 namespace DataLabelProject.Business.Services.Projects;
 
@@ -51,7 +52,7 @@ public class ProjectMemberService : IProjectMemberService
         await _projectMemberRepository.SaveChangesAsync();
     }
 
-    public async Task<PagedResponse<ProjectMemberResponse>> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params)
+    public async Task<PagedResponse<UserResponse>> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params)
     {
         var project = await _projectRepository.GetByIdAsync(projectId);
         if (project == null)
@@ -88,11 +89,28 @@ public class ProjectMemberService : IProjectMemberService
         if (@params.IsActive.HasValue)
             members = members.Where(pm => pm.ProjectMemberUser.IsActive == @params.IsActive.Value);
 
-        return await members.ToPagedResponseAsync(@params, MapToResponse);
+        var userIds = members.Select(pm => pm.MemberId).Distinct();
+        var projectCounts = await _projectMemberRepository.Query()
+            .Where(pm => userIds.Contains(pm.MemberId))
+            .GroupBy(pm => pm.MemberId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                Count = g.Count()
+            })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+
+        return await members.ToPagedResponseAsync(
+            @params,
+            pm => MapToResponse(pm, projectCounts)
+        );
     }
 
-    private static ProjectMemberResponse MapToResponse(ProjectMember p) =>
-        new ProjectMemberResponse
+    private static UserResponse MapToResponse(
+        ProjectMember p,
+        Dictionary<Guid, int> projectCounts)
+    {
+        return new UserResponse
         {
             UserId = p.ProjectMemberUser.UserId,
             Username = p.ProjectMemberUser.Username,
@@ -102,6 +120,9 @@ public class ProjectMemberService : IProjectMemberService
             RoleId = p.ProjectMemberUser.UserRole.RoleId,
             RoleName = p.ProjectMemberUser.UserRole.RoleName,
             IsActive = p.ProjectMemberUser.IsActive,
-            JoinedAt = p.JoinedAt
+            JoinedProjectCount = projectCounts.TryGetValue(p.MemberId, out var count)
+                ? count
+                : 0
         };
+    }
 }

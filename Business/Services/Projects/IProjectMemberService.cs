@@ -6,7 +6,7 @@ namespace DataLabelProject.Business.Services.Projects
 {
     public interface IProjectMemberService
     {
-        Task<PagedResponse<ProjectMemberResponse>> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params);
+        Task<PagedResponse<UserResponse>> GetUserFromProject(Guid projectId, ProjectMemberQueryParameters @params);
         Task AddUserToProject(Guid userId, Guid projectId);
         Task RemoveUserFromProject(Guid userId, Guid projectId);
     }

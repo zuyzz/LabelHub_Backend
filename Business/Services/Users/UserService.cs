@@ -2,23 +2,27 @@ using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Users;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Data.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Users;
 
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IProjectMemberRepository _memberRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
 
     public UserService(
         IUserRepository userRepository,
+        IProjectMemberRepository memberRepository,
         IRoleRepository roleRepository,
         ICurrentUserService currentUserService,
         IRefreshTokenRepository refreshTokenRepository)
     {
         _userRepository = userRepository;
+        _memberRepository = memberRepository;
         _roleRepository = roleRepository;
         _currentUserService = currentUserService;
         _refreshTokenRepository = refreshTokenRepository;
@@ -28,9 +32,13 @@ public class UserService : IUserService
     {
         var (items, totalCount) = await _userRepository.GetAllAsync(@params);
 
+        var userIds = items.Select(u => u.UserId);
+
+        var projectCounts = await GetProjectCountsAsync(userIds);
+
         return new PagedResponse<UserResponse>
         {
-            Items = items.Select(MapToResponse).ToList(),
+            Items = items.Select(u => MapToResponse(u, projectCounts)).ToList(),
             TotalItems = totalCount,
             Page = @params.Page,
             PageSize = @params.PageSize,
@@ -42,7 +50,9 @@ public class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(id);
         if (user == null) return null;
 
-        return MapToResponse(user);
+        var count = await GetProjectCountAsync(id);
+
+        return MapToResponse(user, count);
     }
 
     public async Task<UserResponse> CreateUser(CreateUserRequest request)
@@ -69,13 +79,15 @@ public class UserService : IUserService
             PhoneNumber = request.PhoneNumber,
             RoleId = request.RoleId,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
         };
 
         await _userRepository.CreateAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        return MapToResponse(user);
+        var projectCount = 0;
+
+        return MapToResponse(user, projectCount);
     }
 
     public async Task<UserResponse?> UpdateUser(Guid id, UpdateUserRequest request)
@@ -108,10 +120,33 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        return MapToResponse(user);
+        var projectCount = await GetProjectCountAsync(user.UserId);
+
+        return MapToResponse(user, projectCount);
     }
 
-    private UserResponse MapToResponse(User user)
+    private async Task<Dictionary<Guid, int>> GetProjectCountsAsync(IEnumerable<Guid> userIds)
+    {
+        return await _memberRepository.Query()
+            .Where(pm => userIds.Contains(pm.MemberId))
+            .GroupBy(pm => pm.MemberId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                Count = g.Count()
+            })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+    }
+
+    private async Task<int> GetProjectCountAsync(Guid userId)
+    {
+        return await _memberRepository.Query()
+            .CountAsync(pm => pm.MemberId == userId);
+    }
+
+    private static UserResponse MapToResponse(
+        User user,
+        Dictionary<Guid, int> projectCounts)
     {
         return new UserResponse
         {
@@ -123,7 +158,27 @@ public class UserService : IUserService
             RoleId = user.UserRole.RoleId,
             RoleName = user.UserRole.RoleName,
             IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            JoinedProjectCount = projectCounts.TryGetValue(user.UserId, out var count)
+                ? count
+                : 0
+        };
+    }
+
+    private static UserResponse MapToResponse(User user, int projectCount)
+    {
+        return new UserResponse
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            RoleId = user.UserRole.RoleId,
+            RoleName = user.UserRole.RoleName,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            JoinedProjectCount = projectCount
         };
     }
 }
