@@ -30,6 +30,31 @@ public class AnnotationsController : ControllerBase
     }
 
     /// <summary>
+    /// GET api/annotations/{id}
+    /// Get annotation by ID
+    /// </summary>
+    [HttpGet("annotations/{id:guid}")]
+    [Authorize(Roles = "admin,manager,annotator")]
+    public async Task<IActionResult> GetAnnotationById(Guid id)
+    {
+        try
+        {
+            var result = await _annotationService.GetAnnotationByIdAsync(id, GetCurrentUserId(), GetCurrentUserRole());
+            if (result == null)
+                return NotFound(new { message = "Annotation not found" });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// GET api/tasks/items/{itemId}/annotations
     /// Get annotations by task item
     /// </summary>
@@ -71,18 +96,21 @@ public class AnnotationsController : ControllerBase
 
     /// <summary>
     /// POST api/annotations/submit
-    /// Submit annotation
+    /// Submit annotations
     /// </summary>
     [HttpPost("annotations/submit")]
     [Authorize(Roles = "annotator")]
-    public async Task<IActionResult> SubmitAnnotation([FromBody] SubmitAnnotationRequest request)
+    public async Task<IActionResult> SubmitAnnotation([FromBody] List<SubmitAnnotationRequest> requests)
     {
+        if (requests == null || requests.Count == 0)
+            return BadRequest(new { message = "At least one annotation is required" });
+
         if (!ModelState.IsValid)
             return BadRequest(new { message = "Invalid input data", errors = ModelState });
 
         try
         {
-            var result = await _annotationService.SubmitAnnotationAsync(request, GetCurrentUserId());
+            var result = await _annotationService.SubmitAnnotationsAsync(requests, GetCurrentUserId());
             return StatusCode(201, result);
         }
         catch (KeyNotFoundException ex)

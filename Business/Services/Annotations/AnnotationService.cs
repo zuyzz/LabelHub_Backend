@@ -107,34 +107,50 @@ public class AnnotationService : IAnnotationService
     }
 
     // 2.3 Submit Annotation
-    public async Task<AnnotationResponse> SubmitAnnotationAsync(SubmitAnnotationRequest request, Guid currentUserId)
+    public async Task<List<AnnotationResponse>> SubmitAnnotationsAsync(List<SubmitAnnotationRequest> requests, Guid currentUserId)
     {
-        var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId)
-            ?? throw new KeyNotFoundException("Task item not found");
+        var duplicateTaskItemIds = requests
+            .GroupBy(request => request.TaskItemId)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToList();
 
-        ValidateTaskItemStatus(taskItem);
+        if (duplicateTaskItemIds.Count > 0)
+            throw new InvalidOperationException("Each task item can only be submitted once per request");
 
-        var existing = await _annotationRepository.GetByTaskItemIdAndAnnotatorIdAsync(taskItem.TaskItemId, currentUserId);
-        if (existing != null)
-            throw new InvalidOperationException("Annotation already exists for this task item");
+        var responses = new List<AnnotationResponse>(requests.Count);
 
-        var payloadJson = JsonSerializer.Serialize(request.Payload);
-
-        var annotation = new Annotation
+        foreach (var request in requests)
         {
-            AnnotationId = Guid.NewGuid(),
-            TaskItemId = taskItem.TaskItemId,
-            AnnotatorId = currentUserId,
-            Payload = payloadJson,
-            Status = AnnotationStatus.Submitted,
-            SubmittedAt = DateTime.UtcNow
-        };
+            var taskItem = await _taskItemRepository.GetByIdAsync(request.TaskItemId)
+                ?? throw new KeyNotFoundException("Task item not found");
 
-        await _annotationRepository.AddAsync(annotation);
-        await CheckConsensusAsync(taskItem);
-        await _annotationRepository.SaveChangesAsync();
+            ValidateTaskItemStatus(taskItem);
 
-        return MapToResponse(annotation);
+            var existing = await _annotationRepository.GetByTaskItemIdAndAnnotatorIdAsync(taskItem.TaskItemId, currentUserId);
+            if (existing != null)
+                throw new InvalidOperationException("Annotation already exists for this task item");
+
+            var annotation = new Annotation
+            {
+                AnnotationId = Guid.NewGuid(),
+                TaskItemId = taskItem.TaskItemId,
+                AnnotatorId = currentUserId,
+                Payload = JsonSerializer.Serialize(request.Payload),
+                Status = AnnotationStatus.Submitted,
+                SubmittedAt = DateTime.UtcNow
+            };
+
+            await _annotationRepository.AddAsync(annotation);
+            await _annotationRepository.SaveChangesAsync();
+
+            await CheckConsensusAsync(taskItem);
+            await _annotationRepository.SaveChangesAsync();
+
+            responses.Add(MapToResponse(annotation));
+        }
+
+        return responses;
     }
 
     // 4. Update Annotation (Conflict Resolution)
@@ -154,6 +170,7 @@ public class AnnotationService : IAnnotationService
         annotation.SubmittedAt = DateTime.UtcNow;
 
         await _annotationRepository.UpdateAsync(annotation);
+        await _annotationRepository.SaveChangesAsync();
 
         var taskItem = annotation.AnnotationTaskItem;
         await CheckConsensusAsync(taskItem);
@@ -231,7 +248,7 @@ public class AnnotationService : IAnnotationService
             await _consensusRepository.CreateAsync(new Business.Models.Consensus
             {
                 ConsensusId = Guid.NewGuid(),
-                DatasetItemId = taskItem.TaskItemId,
+                DatasetItemId = taskItem.DatasetItemId,
                 Payload = payload,
                 CreatedAt = DateTime.UtcNow
             });
@@ -306,6 +323,20 @@ public class AnnotationService : IAnnotationService
             }
         }
         return output;
+    }
+
+    // 2.0 Get annotation by ID
+    public async Task<AnnotationResponse?> GetAnnotationByIdAsync(Guid annotationId, Guid currentUserId, string currentUserRole)
+    {
+        var annotation = await _annotationRepository.GetByIdAsync(annotationId);
+        if (annotation == null)
+            return null;
+
+        // Annotators can only see their own annotations
+        if (currentUserRole == "annotator" && annotation.AnnotatorId != currentUserId)
+            throw new UnauthorizedAccessException("You do not have permission to view this annotation");
+
+        return MapToResponse(annotation);
     }
 
     private static AnnotationResponse MapToResponse(Annotation annotation)

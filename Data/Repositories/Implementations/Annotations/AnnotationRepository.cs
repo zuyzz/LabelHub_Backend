@@ -35,7 +35,6 @@ public class AnnotationRepository : IAnnotationRepository
     public async Task<IEnumerable<Annotation>> GetByTaskItemIdAsync(Guid taskItemId)
     {
         return await _context.Annotations
-            .AsNoTracking()
             .Include(a => a.AnnotationTaskItem)
             .Where(a => a.TaskItemId == taskItemId)
             .ToListAsync();
