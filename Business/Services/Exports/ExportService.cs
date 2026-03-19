@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using DataLabelProject.Application.DTOs.Exports;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
-using DataLabelProject.Business.Services.Storage;
 using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data;
 using DataLabelProject.Data.Repositories.Abstractions;
@@ -17,7 +16,6 @@ public class ExportService : IExportService
     private readonly IExportJobRepository _exportJobRepository;
     private readonly AppDbContext _context;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IFileStorage _fileStorage;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -29,13 +27,11 @@ public class ExportService : IExportService
     public ExportService(
         IExportJobRepository exportJobRepository,
         AppDbContext context,
-        ICurrentUserService currentUserService,
-        IFileStorage fileStorage)
+        ICurrentUserService currentUserService)
     {
         _exportJobRepository = exportJobRepository;
         _context = context;
         _currentUserService = currentUserService;
-        _fileStorage = fileStorage;
     }
 
     public async Task<IEnumerable<ExportJobResponse>> GetExports()
@@ -50,7 +46,7 @@ public class ExportService : IExportService
         return export == null ? null : MapToResponse(export);
     }
 
-    public async Task<ExportJobResponse> CreateExport(Guid projectId, CreateExportRequest request)
+    public async Task<(Stream Stream, string ContentType, string FileName)> CreateExport(Guid projectId, CreateExportRequest request)
     {
         var format = request.Format.ToLowerInvariant();
         if (format != "json" && format != "coco" && format != "yolo")
@@ -64,7 +60,7 @@ public class ExportService : IExportService
         var userId = _currentUserService.UserId
             ?? throw new InvalidOperationException("User not authenticated");
 
-        // Generate a new export ID for file paths
+        // Generate a new export ID for tracking
         var exportId = Guid.NewGuid();
 
         try
@@ -72,22 +68,22 @@ public class ExportService : IExportService
             // Build the unified dataset from consensus annotations
             var dataset = await BuildDatasetFromConsensus(projectId);
 
-            // Generate file based on format
-            string fileUri;
+            // Generate file based on format and return directly
+            (Stream stream, string contentType, string fileName) result;
             switch (format)
             {
                 case "coco":
-                    fileUri = await GenerateCoco(dataset, exportId);
+                    result = GenerateCoco(dataset);
                     break;
                 case "yolo":
-                    fileUri = await GenerateYolo(dataset, exportId);
+                    result = await GenerateYolo(dataset);
                     break;
                 default: // json
-                    fileUri = await GenerateJson(dataset, exportId);
+                    result = GenerateJson(dataset);
                     break;
             }
 
-            // Create export job record with completed status
+            // Create export job record for tracking (without FileUri)
             var exportJob = new ExportJob
             {
                 ExportId = exportId,
@@ -95,13 +91,13 @@ public class ExportService : IExportService
                 ProjectId = projectId,
                 Format = format,
                 Status = ExportJobStatus.Completed,
-                FileUri = fileUri
+                FileUri = null // No longer storing in cloud storage
             };
 
             await _exportJobRepository.CreateAsync(exportJob);
             await _exportJobRepository.SaveChangesAsync();
 
-            return MapToResponse(exportJob);
+            return result;
         }
         catch (Exception)
         {
@@ -131,9 +127,6 @@ public class ExportService : IExportService
         if (export.Status != ExportJobStatus.Completed)
             throw new InvalidOperationException($"Export is not completed. Current status: {export.Status}");
 
-        if (string.IsNullOrEmpty(export.FileUri))
-            throw new InvalidOperationException("Export file URI is missing");
-
         // Verify user has access to this export
         var userId = _currentUserService.UserId
             ?? throw new InvalidOperationException("User not authenticated");
@@ -155,8 +148,15 @@ public class ExportService : IExportService
                 throw new UnauthorizedAccessException("You do not have permission to download this export");
         }
 
-        // Download file from storage
-        return await _fileStorage.GetFileStreamAsync(export.FileUri);
+        // Regenerate file on-demand since we no longer store in cloud storage
+        var dataset = await BuildDatasetFromConsensus(export.ProjectId);
+
+        return export.Format.ToLowerInvariant() switch
+        {
+            "coco" => GenerateCoco(dataset),
+            "yolo" => await GenerateYolo(dataset),
+            _ => GenerateJson(dataset)
+        };
     }
 
     // ─── Dataset Building ─────────────────────────────────────────────
@@ -248,17 +248,18 @@ public class ExportService : IExportService
 
     // ─── Format Generators ────────────────────────────────────────────
 
-    private async Task<string> GenerateJson(ExportDataset dataset, Guid exportId)
+    private (Stream Stream, string ContentType, string FileName) GenerateJson(ExportDataset dataset)
     {
         var json = JsonSerializer.Serialize(dataset, JsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
 
-        using var stream = new MemoryStream(bytes);
-        var path = $"exports/{exportId}/dataset.json";
-        return await _fileStorage.CreateFileAsync(stream, path, "application/json");
+        var stream = new MemoryStream(bytes);
+        stream.Position = 0;
+
+        return (stream, "application/json", "dataset.json");
     }
 
-    private async Task<string> GenerateCoco(ExportDataset dataset, Guid exportId)
+    private (Stream Stream, string ContentType, string FileName) GenerateCoco(ExportDataset dataset)
     {
         var coco = new
         {
@@ -288,14 +289,15 @@ public class ExportService : IExportService
         var json = JsonSerializer.Serialize(coco, JsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
 
-        using var stream = new MemoryStream(bytes);
-        var path = $"exports/{exportId}/dataset_coco.json";
-        return await _fileStorage.CreateFileAsync(stream, path, "application/json");
+        var stream = new MemoryStream(bytes);
+        stream.Position = 0;
+
+        return (stream, "application/json", "dataset_coco.json");
     }
 
-    private async Task<string> GenerateYolo(ExportDataset dataset, Guid exportId)
+    private async Task<(Stream Stream, string ContentType, string FileName)> GenerateYolo(ExportDataset dataset)
     {
-        using var zipStream = new MemoryStream();
+        var zipStream = new MemoryStream();
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
         {
             // Group annotations by image
@@ -358,8 +360,7 @@ public class ExportService : IExportService
         }
 
         zipStream.Position = 0;
-        var path = $"exports/{exportId}/dataset_yolo.zip";
-        return await _fileStorage.CreateFileAsync(zipStream, path, "application/zip");
+        return (zipStream, "application/zip", "dataset_yolo.zip");
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────
