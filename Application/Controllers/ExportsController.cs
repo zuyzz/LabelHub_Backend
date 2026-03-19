@@ -39,8 +39,23 @@ public class ExportsController : ControllerBase
     [Authorize(Roles = "manager")]
     public async Task<IActionResult> CreateExport(Guid projectId, [FromBody] CreateExportRequest request)
     {
-        var export = await _exportService.CreateExport(projectId, request);
-        return CreatedAtAction(nameof(GetExportById), new { id = export.ExportId }, export);
+        try
+        {
+            var (stream, contentType, fileName) = await _exportService.CreateExport(projectId, request);
+
+            // Set Content-Disposition header to force download
+            Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+
+            return File(stream, contentType, fileName);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{id}/download")]
@@ -50,6 +65,10 @@ public class ExportsController : ControllerBase
         try
         {
             var (stream, contentType, fileName) = await _exportService.DownloadExport(id);
+
+            // Set Content-Disposition header to force download
+            Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+
             return File(stream, contentType, fileName);
         }
         catch (UnauthorizedAccessException ex)

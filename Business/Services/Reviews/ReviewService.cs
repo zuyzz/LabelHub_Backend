@@ -136,7 +136,16 @@ namespace DataLabelProject.Business.Services.Reviews
                 ?? throw new KeyNotFoundException("Task not found");
 
             var consensus = await _consensusRepository.GetByIdAsync(request.ConsensusId)
-                ?? throw new KeyNotFoundException($"Consensus not found");
+                ?? throw new KeyNotFoundException("Consensus not found");
+
+            switch (taskItem.Status)
+            {
+                case LabelingTaskItemStatus.Locked:
+                    throw new InvalidOperationException("This item have been locked");
+                case LabelingTaskItemStatus.Completed:
+                case LabelingTaskItemStatus.Incompleted:
+                    throw new InvalidOperationException("This item have already been reviewed");
+            }
 
             var reviewerId = _currentUserService.UserId!.Value;
 
@@ -160,7 +169,7 @@ namespace DataLabelProject.Business.Services.Reviews
                     taskItem.Status = LabelingTaskItemStatus.Completed;
                     break;
                 case ReviewResult.Rejected:
-                    // do nothing for now
+                    taskItem.Status = LabelingTaskItemStatus.Incompleted;
                     break;
             }
 
