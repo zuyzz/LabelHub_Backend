@@ -269,6 +269,7 @@ public class DatasetService : IDatasetService
             Description = dataset.Description,
             CreatedAt = dataset.CreatedAt,
             CreatedBy = dataset.CreatedBy,
+            IsActive = dataset.IsActive,
             SampleCount = dataset.DatasetItems?.Count ?? 0
         };
     }
