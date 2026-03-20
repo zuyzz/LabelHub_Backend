@@ -7,6 +7,7 @@ public interface IProjectMemberRepository
 {
     IQueryable<ProjectMember> Query();
     Task<ProjectMember?> GetByIdAsync(Guid projectId, Guid userId);
+    Task<List<ProjectMember>> GetByProjectIdAsync(Guid projectId);
     Task<ProjectMember> CreateAsync(ProjectMember projectMember);
     Task DeleteAsync(ProjectMember projectMember);
     Task SaveChangesAsync(); 

@@ -48,6 +48,13 @@ public class UserRepository : IUserRepository
         return (items, totalCount);
     }
 
+    public async Task<List<User>> GetByIdsAsync(List<Guid> userIds)
+    {
+        return await _context.Users
+            .Where(u => userIds.Contains(u.UserId))
+            .ToListAsync();
+    }
+
     public async Task<User?> GetByIdAsync(Guid id)
     {
         return await _context.Users

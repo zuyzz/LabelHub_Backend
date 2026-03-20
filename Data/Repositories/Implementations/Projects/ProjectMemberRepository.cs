@@ -19,6 +19,13 @@ public class ProjectMemberRepository : IProjectMemberRepository
         return _context.ProjectMembers;
     }
 
+    public async Task<List<ProjectMember>> GetByProjectIdAsync(Guid projectId)
+    {
+        return await _context.ProjectMembers
+            .Where(pm => pm.ProjectId == projectId)
+            .ToListAsync();
+    }
+
     public async Task<ProjectMember?> GetByIdAsync(Guid projectId, Guid userId)
     {
         return await _context.ProjectMembers

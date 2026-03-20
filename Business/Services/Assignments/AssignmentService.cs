@@ -43,103 +43,127 @@ public class AssignmentService : IAssignmentService
         _currentUserService = currentUserService;
     }
 
-    public async Task<TaskAssignmentResponse> AssignTaskAsync(BulkAssignTaskRequest request, Guid assignedBy)
+    public async Task<BulkTaskAssignmentResponse> AssignTaskAsync(
+        BulkAssignTaskRequest request, 
+        Guid assignedBy)
     {
-        // Validate user exists
-        var user = await _userRepo.GetByIdAsync(request.AssignedTo);
-        if (user == null)
-            throw new Exception("User not found");
+        // ===== 1. Validate project =====
+        var project = await _projectRepo.GetByIdAsync(request.ProjectId)
+            ?? throw new Exception("Project not found");
 
-        // Validate project exists
-        var project = await _projectRepo.GetByIdAsync(request.ProjectId);
-        if (project == null)
-            throw new Exception("Project not found");
+        // ===== 2. Validate dataset =====
+        var dataset = await _datasetRepo.GetByIdAsync(request.DatasetId)
+            ?? throw new Exception("Dataset not found");
 
-        // Validate dataset belongs to project
-        var dataset = await _datasetRepo.GetByIdAsync(request.DatasetId);
-        if (dataset == null)
-            throw new Exception("Dataset not found");
         if (dataset.ProjectId != request.ProjectId)
             throw new Exception("Dataset does not belong to the specified project");
 
-        // Validate user is member of project
-        var isMember = await _projectMemberRepo.GetByIdAsync(request.ProjectId, request.AssignedTo);
-        if (isMember == null)
-            throw new Exception("User is not a member of this project");
+        // ===== 3. Validate request assignments =====
+        if (request.Assigments == null || !request.Assigments.Any())
+            throw new Exception("Assignments cannot be empty");
 
-        // Validate user role is reviewer or annotator
-        var role = await _roleRepo.GetByIdAsync(user.RoleId);
-        if (role == null || (role.RoleName != "reviewer" && role.RoleName != "annotator"))
-            throw new Exception("User must have role 'reviewer' or 'annotator'");
+        foreach (var asm in request.Assigments)
+        {
+            if (asm.StartedAt >= asm.DeadlineAt)
+                throw new Exception("StartedAt must be before DeadlineAt");
+        }
 
-        // Get dataset items
+        // ===== 4. Get dataset items =====
         var datasetItems = await _datasetItemRepo.GetAllByDatasetIdAsync(request.DatasetId);
-        var datasetItemIds = datasetItems.Select(di => di.DatasetItemId).ToList();
+        var datasetItemIds = datasetItems.Select(x => x.DatasetItemId).ToList();
 
-        if (datasetItemIds.Count == 0)
-            throw new Exception("No dataset items found for this dataset");
+        if (!datasetItemIds.Any())
+            throw new Exception("No dataset items found");
 
-        // Get unassigned task items
-        var unassignedTaskItems = await _taskItemRepo.GetUnassignedByDatasetItemIdsAsync(datasetItemIds);
+        // ===== 5. Get unassigned task items =====
+        var taskItems = await _taskItemRepo.GetUnassignedByDatasetItemIdsAsync(datasetItemIds);
 
-        if (unassignedTaskItems.Count == 0)
-            throw new Exception("No unassigned task items found for this dataset");
+        if (!taskItems.Any())
+            throw new Exception("No unassigned task items found");
 
-        // Create new task
-        var newTask = new LabelingTask
+        // ===== 6. Validate users in batch (NO N+1) =====
+        var userIds = request.Assigments.Select(x => x.AssignedTo).Distinct().ToList();
+
+        var users = await _userRepo.GetByIdsAsync(userIds);
+        if (users.Count != userIds.Count)
+            throw new Exception("One or more users not found");
+
+        var projectMembers = await _projectMemberRepo
+            .GetByProjectIdAsync(request.ProjectId);
+
+        var memberIds = projectMembers.Select(x => x.MemberId).ToHashSet();
+
+        var roles = await _roleRepo.GetAllAsync();
+        var validRoleIds = roles
+            .Where(r => r.RoleName == "reviewer" || r.RoleName == "annotator")
+            .Select(r => r.RoleId)
+            .ToHashSet();
+
+        foreach (var user in users)
+        {
+            if (!memberIds.Contains(user.UserId))
+                throw new Exception($"User {user.UserId} is not in project");
+
+            if (!validRoleIds.Contains(user.RoleId))
+                throw new Exception($"User {user.UserId} must be reviewer or annotator");
+        }
+
+        // ===== 7. Create task =====
+        var task = new LabelingTask
         {
             TaskId = Guid.NewGuid(),
             ProjectId = project.ProjectId,
             Status = LabelingTaskStatus.Opened
         };
 
-        await _taskRepo.AddAsync(newTask);
-        await _taskRepo.SaveChangesAsync();
+        await _taskRepo.AddAsync(task);
 
-        // Link unassigned task items to task
-        foreach (var item in unassignedTaskItems)
+        // ===== 8. Assign task items =====
+        foreach (var item in taskItems)
         {
-            item.TaskId = newTask.TaskId;
+            item.TaskId = task.TaskId;
             item.Status = LabelingTaskItemStatus.Assigned;
         }
 
-        await _taskItemRepo.UpdateRangeAsync(unassignedTaskItems);
-        await _taskItemRepo.SaveChangesAsync();
+        await _taskItemRepo.UpdateRangeAsync(taskItems);
 
-        DateTime? startedAt = null;
-        if (role != null && role.RoleName == "annotator")
-        {
-            startedAt = DateTime.UtcNow;
-        }
-
-        // Create assignment (starts immediately)
-        var assignment = new Assignment
+        // ===== 9. Create assignments =====
+        var assignments = request.Assigments.Select(a => new Assignment
         {
             AssignmentId = Guid.NewGuid(),
-            TaskId = newTask.TaskId,
-            AssignedTo = request.AssignedTo,
+            TaskId = task.TaskId,
+            AssignedTo = a.AssignedTo,
             AssignedBy = assignedBy,
             AssignedAt = DateTime.UtcNow,
-            StartedAt = request.StartedAt,
-            DeadlineAt = request.DeadlineAt
-        };
+            StartedAt = a.StartedAt,
+            DeadlineAt = a.DeadlineAt
+        }).ToList();
 
-        await _assignmentRepo.AddAsync(assignment);
-        await _assignmentRepo.SaveChangesAsync();
+        await _assignmentRepo.AddRangeAsync(assignments);
 
+        // ===== 10. Deactivate dataset (AFTER all validations pass) =====
         dataset.IsActive = false;
-
         await _datasetRepo.UpdateAsync(dataset);
+
+        await _taskRepo.SaveChangesAsync();
+        await _taskItemRepo.SaveChangesAsync();
+        await _assignmentRepo.SaveChangesAsync();
         await _datasetRepo.SaveChangesAsync();
 
-        return new TaskAssignmentResponse
+        return new BulkTaskAssignmentResponse
         {
-            TaskId = newTask.TaskId,
-            ProjectId = newTask.ProjectId,
-            AssignedTo = assignment.AssignedTo,
-            AssignedBy = assignment.AssignedBy,
-            AssignedAt = assignment.AssignedAt,
-            DeadlineAt = assignment.DeadlineAt
+            TaskId = task.TaskId,
+            ProjectId = task.ProjectId,
+            Assignments = assignments.Select(a => new AssignmentResponse
+            {
+                AssignmentId = a.AssignmentId,
+                TaskId = a.TaskId,
+                AssignedTo = a.AssignedTo,
+                AssignedBy = a.AssignedBy,
+                AssignedAt = a.AssignedAt,
+                StartedAt = a.StartedAt,
+                DeadlineAt = a.DeadlineAt
+            }).ToList()
         };
     }
 }

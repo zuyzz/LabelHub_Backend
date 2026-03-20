@@ -9,5 +9,4 @@ public class AssignmentResponse
     public DateTime AssignedAt { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime DeadlineAt { get; set; }
-    public string Status { get; set; } = null!;
 }
