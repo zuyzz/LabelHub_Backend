@@ -7,6 +7,7 @@ namespace DataLabelProject.Application.DTOs.Datasets
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public Guid CreatedBy { get; set; }
+        public bool IsActive { get; set; } 
         public int SampleCount { get; set; }
     };
 }
