@@ -53,6 +53,7 @@ public class LabelService : ILabelService
     public async Task<PagedResponse<LabelResponse>> GetCategoryLabels(Guid categoryId, LabelQueryParameters @params)
     {
         IQueryable<Label> query = _labelRepository.Query()
+            .Where(l => l.IsActive)
             .Where(l => l.CategoryId == categoryId)
             .Include(l => l.LabelCategory);
 

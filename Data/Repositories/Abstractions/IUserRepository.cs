@@ -6,6 +6,7 @@ namespace DataLabelProject.Data.Repositories.Abstractions;
 public interface IUserRepository
 {
     Task<(IEnumerable<User> Items, int TotalCount)> GetAllAsync(UserQueryParameters @params);
+    Task<List<User>> GetByIdsAsync(List<Guid> userIds);
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> GetByUsernameOrEmailAsync(string usernameOrEmail);
     Task<User?> GetByUsernameAsync(string username);
