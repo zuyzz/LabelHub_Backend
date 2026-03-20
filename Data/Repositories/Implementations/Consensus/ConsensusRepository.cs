@@ -17,33 +17,33 @@ public class ConsensusRepository : IConsensusRepository
 
 	public async Task<ConsensusEntity> CreateAsync(ConsensusEntity consensus)
 	{
-		await _context.Set<ConsensusEntity>().AddAsync(consensus);
+		await _context.Consensuses.AddAsync(consensus);
 		await _context.SaveChangesAsync();
 		return consensus;
 	}
 
 	public async Task UpdateAsync(ConsensusEntity consensus)
 	{
-		_context.Set<ConsensusEntity>().Update(consensus);
+		_context.Consensuses.Update(consensus);
 		await _context.SaveChangesAsync();
 	}
 
 	public async Task<ConsensusEntity?> GetByIdAsync(Guid consensusId)
 	{
-		return await _context.Set<ConsensusEntity>()
+		return await _context.Consensuses
 			.FirstOrDefaultAsync(c => c.ConsensusId == consensusId);
 	}
 
 	public async Task<ConsensusEntity?> GetByReviewIdAsync(Guid reviewId)
 	{
-		return await _context.Set<ConsensusEntity>()
+		return await _context.Consensuses
 			.Include(c => c.Review)
 			.FirstOrDefaultAsync(c => c.Review.ReviewId == reviewId);
 	}
 
 	public async Task<IEnumerable<ConsensusEntity>> GetByDatasetItemIdAsync(Guid datasetItemId)
 	{
-		return await _context.Set<ConsensusEntity>()
+		return await _context.Consensuses
 			.AsNoTracking()
 			.Where(c => c.DatasetItemId == datasetItemId)
 			.OrderByDescending(c => c.CreatedAt)
@@ -52,7 +52,7 @@ public class ConsensusRepository : IConsensusRepository
 
 	public async Task<PagedResponse<ConsensusEntity>> GetConsensusesAsync(ConsensusQueryParameters @params)
 	{
-		var query = _context.Set<ConsensusEntity>()
+		var query = _context.Consensuses
 			.AsNoTracking()
 			.OrderByDescending(c => c.CreatedAt)
 			.AsQueryable();

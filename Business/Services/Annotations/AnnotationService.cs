@@ -242,11 +242,12 @@ public class AnnotationService : IAnnotationService
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Resolved;
             await _annotationRepository.UpdateRangeAsync(annotations);
+            await _annotationRepository.SaveChangesAsync();
 
             // Build consensus payload
             var payload = BuildConsensusPayload(annotations, agreement);
 
-            await _consensusRepository.CreateAsync(new Business.Models.Consensus
+            await _consensusRepository.CreateAsync(new Models.Consensus
             {
                 ConsensusId = Guid.NewGuid(),
                 DatasetItemId = taskItem.DatasetItemId,
@@ -260,6 +261,7 @@ public class AnnotationService : IAnnotationService
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Conflicted;
             await _annotationRepository.UpdateRangeAsync(annotations);
+            await _annotationRepository.SaveChangesAsync();
 
             taskItem.RevisionCount++;
 
