@@ -175,6 +175,7 @@ public class AnnotationService : IAnnotationService
         await _annotationRepository.SaveChangesAsync();
 
         var taskItem = annotation.AnnotationTaskItem;
+        System.Console.WriteLine("startcheck consensus");
         await CheckConsensusAsync(taskItem);
         await _annotationRepository.SaveChangesAsync();
 
@@ -234,7 +235,7 @@ public class AnnotationService : IAnnotationService
         var annotatorAssignmentCount = assignments.Count;
 
         if (annotations.Count < annotatorAssignmentCount)
-            return;
+            System.Console.WriteLine($"{annotations.Count} vs {annotatorAssignmentCount}");
 
         var agreement = ComputeAgreement(annotations);
 
@@ -243,6 +244,7 @@ public class AnnotationService : IAnnotationService
 
         if (agreement >= threshold)
         {
+            System.Console.WriteLine("greater");
             // Mark all annotations as Resolved
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Resolved;
@@ -262,6 +264,7 @@ public class AnnotationService : IAnnotationService
         }
         else
         {
+            System.Console.WriteLine("greater");
             // Mark all annotations as Conflicted
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Conflicted;
