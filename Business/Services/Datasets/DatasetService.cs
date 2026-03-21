@@ -126,6 +126,7 @@ public class DatasetService : IDatasetService
             .OrderByDescending(d => d.CreatedAt)
             .Include(d => d.DatasetItems);
 
+        query = ApplyUserFilter(query);
         query = ApplyParamFilters(query, @params);
 
         return await query.ToPagedResponseAsync(@params, MapToResponse);
@@ -141,10 +142,24 @@ public class DatasetService : IDatasetService
             .OrderByDescending(d => d.CreatedAt)
             .Include(d => d.DatasetItems);
 
-        query = ApplyUserFilter(query);
+        query = ApplyMemberFilter(query);
         query = ApplyParamFilters(query, @params);
 
         return await query.ToPagedResponseAsync(@params, MapToResponse);
+    }
+
+    private IQueryable<Dataset> ApplyMemberFilter(
+        IQueryable<Dataset> query)
+    {
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        if (currentUserRoles.Contains("manager") && currentUserId.HasValue)
+        {
+            query = query.Where(d => d.CreatedBy == currentUserId);
+        }
+
+        return query;
     }
 
     private IQueryable<Dataset> ApplyUserFilter(

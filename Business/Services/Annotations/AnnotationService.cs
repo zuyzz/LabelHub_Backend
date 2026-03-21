@@ -243,7 +243,7 @@ public class AnnotationService : IAnnotationService
         System.Console.WriteLine($"Agreement: {agreement}");
 
         var projectConfig = await _projectConfigRepository.GetByProjectIdAsync(taskItem.ProjectId);
-        var threshold = projectConfig?.AgreementThreshold ?? 0.8;
+        var threshold = projectConfig?.AgreementThreshold ?? 0.6;
 
         if (agreement >= threshold)
         {
