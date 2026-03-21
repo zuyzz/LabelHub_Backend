@@ -154,9 +154,12 @@ public class DatasetService : IDatasetService
         var currentUserId = _currentUserService.UserId;
         var currentUserRoles = _currentUserService.Roles;
 
-        if (currentUserRoles.Contains("manager") && currentUserId.HasValue)
+        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
         {
-            query = query.Where(d => d.CreatedBy == currentUserId);
+            query = query.Where(d =>
+                d.DatasetProject != null &&
+                d.DatasetProject.ProjectMembers.Any(pm =>
+                    pm.MemberId == currentUserId.Value));
         }
 
         return query;
@@ -168,12 +171,9 @@ public class DatasetService : IDatasetService
         var currentUserId = _currentUserService.UserId;
         var currentUserRoles = _currentUserService.Roles;
 
-        if (!currentUserRoles.Contains("admin") && currentUserId.HasValue)
+        if (currentUserRoles.Contains("manager") && currentUserId.HasValue)
         {
-            query = query.Where(d =>
-                d.DatasetProject != null &&
-                d.DatasetProject.ProjectMembers.Any(pm =>
-                    pm.MemberId == currentUserId.Value));
+            query = query.Where(d => d.CreatedBy == currentUserId);
         }
 
         return query;
