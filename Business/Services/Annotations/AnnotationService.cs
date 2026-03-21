@@ -6,6 +6,7 @@ using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Business.Services.Consensus;
 using DataLabelProject.Business.Services.Shared;
 using DataLabelProject.Data.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Annotations;
 
@@ -225,10 +226,14 @@ public class AnnotationService : IAnnotationService
         if (!taskItem.TaskId.HasValue)
             return;
 
-        var assignments = await _assignmentRepository.GetAllByTaskIdAsync(taskItem.TaskId.Value);
-        var assignmentCount = assignments.Count;
+        var assignments = await _assignmentRepository.Query()
+            .Where(a => a.TaskId == taskItem.TaskId && a.AssignmentUser.UserRole.RoleName == "annotator")
+            .Include(a => a.AssignmentUser)
+                .ThenInclude(a => a.UserRole)
+            .ToListAsync();
+        var annotatorAssignmentCount = assignments.Count;
 
-        if (annotations.Count < assignmentCount)
+        if (annotations.Count < annotatorAssignmentCount)
             return;
 
         var agreement = ComputeAgreement(annotations);
