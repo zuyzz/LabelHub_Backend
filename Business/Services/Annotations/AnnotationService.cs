@@ -234,17 +234,20 @@ public class AnnotationService : IAnnotationService
             .ToListAsync();
         var annotatorAssignmentCount = assignments.Count;
 
-        if (annotations.Count < annotatorAssignmentCount)
-            System.Console.WriteLine($"{annotations.Count} vs {annotatorAssignmentCount}");
+        if (annotations.Count < annotatorAssignmentCount){
+            System.Console.WriteLine($"Consensus cannot be calculated: {annotations.Count}/{annotatorAssignmentCount} annotations");
+            return;
+        }
 
         var agreement = ComputeAgreement(annotations);
+        System.Console.WriteLine($"Agreement: {agreement}");
 
         var projectConfig = await _projectConfigRepository.GetByProjectIdAsync(taskItem.ProjectId);
         var threshold = projectConfig?.AgreementThreshold ?? 0.8;
 
         if (agreement >= threshold)
         {
-            System.Console.WriteLine("greater");
+            System.Console.WriteLine("agreement > threshold");
             // Mark all annotations as Resolved
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Resolved;
@@ -264,7 +267,7 @@ public class AnnotationService : IAnnotationService
         }
         else
         {
-            System.Console.WriteLine("greater");
+            System.Console.WriteLine("agreement < threshold");
             // Mark all annotations as Conflicted
             foreach (var a in annotations)
                 a.Status = AnnotationStatus.Conflicted;
