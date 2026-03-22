@@ -14,5 +14,5 @@ public partial class Consensus
 
     public virtual DatasetItem DatasetItem { get; set; } = null!;
 
-    public virtual Review Review { get; set; } = null!;
+    public virtual Review? Review { get; set; } = null!;
 }

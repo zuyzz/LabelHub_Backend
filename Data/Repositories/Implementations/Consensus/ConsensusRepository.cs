@@ -1,5 +1,6 @@
 using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Consensus;
+using DataLabelProject.Business.Models.Enums;
 using DataLabelProject.Data.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using ConsensusEntity = DataLabelProject.Business.Models.Consensus;
@@ -31,6 +32,7 @@ public class ConsensusRepository : IConsensusRepository
 	public async Task<ConsensusEntity?> GetByIdAsync(Guid consensusId)
 	{
 		return await _context.Consensuses
+			.Include(c => c.Review)
 			.FirstOrDefaultAsync(c => c.ConsensusId == consensusId);
 	}
 
@@ -38,7 +40,7 @@ public class ConsensusRepository : IConsensusRepository
 	{
 		return await _context.Consensuses
 			.Include(c => c.Review)
-			.FirstOrDefaultAsync(c => c.Review.ReviewId == reviewId);
+			.FirstOrDefaultAsync(c => c.Review != null && c.Review.ReviewId == reviewId);
 	}
 
 	public async Task<IEnumerable<ConsensusEntity>> GetByDatasetItemIdAsync(Guid datasetItemId)
@@ -47,6 +49,7 @@ public class ConsensusRepository : IConsensusRepository
 			.AsNoTracking()
 			.Where(c => c.DatasetItemId == datasetItemId)
 			.OrderByDescending(c => c.CreatedAt)
+			.Include(c => c.Review)
 			.ToListAsync();
 	}
 
@@ -54,19 +57,15 @@ public class ConsensusRepository : IConsensusRepository
 	{
 		var query = _context.Consensuses
 			.AsNoTracking()
+			.OrderBy(c => c.Review == null ? 0
+                  : c.Review.Result == ReviewResult.Approved ? 1 
+                  : 2)
 			.OrderByDescending(c => c.CreatedAt)
+			.Include(c => c.Review)
 			.AsQueryable();
 
-		// fix
-
-		// if (@params.TaskId.HasValue)
-		// 	query = query.Where(c => c.TaskId == @params.TaskId.Value);
-
-		// if (@params.MinAgreementScore.HasValue)
-		// 	query = query.Where(c => c.AgreementScore >= @params.MinAgreementScore.Value);
-
-		// if (@params.MaxAgreementScore.HasValue)
-		// 	query = query.Where(c => c.AgreementScore <= @params.MaxAgreementScore.Value);
+		if (@params.Result.HasValue)
+			query = query.Where(c => c.Review != null && c.Review.Result == @params.Result);
 
 		var total = await query.CountAsync();
 		var items = await query
