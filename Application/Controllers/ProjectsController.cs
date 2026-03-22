@@ -9,6 +9,7 @@ using DataLabelProject.Business.Services.Labels;
 using DataLabelProject.Application.DTOs.Labels;
 using DataLabelProject.Business.Services.Datasets;
 using DataLabelProject.Application.DTOs.Datasets;
+using DataLabelProject.Application.DTOs.Tasks;
 
 namespace DataLabelProject.Application.Controllers;
 
@@ -169,18 +170,11 @@ public class ProjectsController : ControllerBase
     /// </summary>
     [HttpGet("{id}/task-items")]
     [Authorize]
-    public async Task<IActionResult> GetProjectTaskItems([FromRoute] Guid id)
+    public async Task<IActionResult> GetProjectTaskItems(
+        [FromRoute] Guid id,
+        [FromQuery] TaskItemQueryParameters @params)
     {
-        var taskItems = await _taskService.GetTaskItemsByProjectIdAsync(id);
-        var response = taskItems.Select(i => new DataLabelProject.Application.DTOs.Tasks.TaskItemResponse
-        {
-            TaskItemId = i.TaskItemId,
-            DatasetItemId = i.DatasetItemId,
-            TaskId = i.TaskId,
-            RevisionCount = i.RevisionCount,
-            Status = i.Status
-        }).ToList();
-
-        return Ok(response);
+        var result = await _taskService.GetTaskItemsByProjectIdAsync(id, @params);
+        return Ok(result);
     }
 }
