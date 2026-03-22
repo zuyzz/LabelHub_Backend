@@ -161,7 +161,8 @@ public class ConsensusService : IConsensusService
 			ConsensusId = consensus.ConsensusId,
 			DatasetItemId = consensus.DatasetItemId,
 			Payload = parsedPayload,
-			CreatedAt = consensus.CreatedAt
+			CreatedAt = consensus.CreatedAt,
+			Result = consensus.Review?.Result
 		};
 	}
 }

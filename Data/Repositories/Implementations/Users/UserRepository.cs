@@ -38,6 +38,9 @@ public class UserRepository : IUserRepository
         if (@params.IsActive.HasValue)
             query = query.Where(u => u.IsActive == @params.IsActive.Value);
 
+        if (!string.IsNullOrEmpty(@params.Role))
+            query = query.Where(u => EF.Functions.ILike(u.UserRole.RoleName, $"%{@params.Role.Trim()}%"));
+
         var totalCount = await query.CountAsync();
 
         var items = await query
