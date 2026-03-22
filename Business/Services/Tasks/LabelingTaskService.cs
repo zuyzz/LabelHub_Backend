@@ -2,7 +2,10 @@ using DataLabelProject.Application.DTOs.Common;
 using DataLabelProject.Application.DTOs.Tasks;
 using DataLabelProject.Business.Models;
 using DataLabelProject.Business.Models.Enums;
+using DataLabelProject.Business.Services.Users;
 using DataLabelProject.Data.Repositories.Abstractions;
+using DataLabelProject.Shared.Extensions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataLabelProject.Business.Services.Tasks;
 
@@ -16,6 +19,7 @@ public class LabelingTaskService : ILabelingTaskService
     private readonly IProjectMemberRepository _projectMemberRepo;
     private readonly IDatasetItemRepository _datasetItemRepo;
     private readonly ILabelingTaskItemRepository _taskItemRepo;
+    private readonly ICurrentUserService _currentUserService;
 
     public LabelingTaskService(
         ILabelingTaskRepository taskRepo,
@@ -25,7 +29,8 @@ public class LabelingTaskService : ILabelingTaskService
         IProjectRepository projectRepo,
         IProjectMemberRepository projectMemberRepo,
         IDatasetItemRepository datasetItemRepo,
-        ILabelingTaskItemRepository taskItemRepo)
+        ILabelingTaskItemRepository taskItemRepo,
+        ICurrentUserService currentUserService)
     {
         _taskRepo = taskRepo;
         _assignmentRepo = assignmentRepo;
@@ -35,6 +40,7 @@ public class LabelingTaskService : ILabelingTaskService
         _projectMemberRepo = projectMemberRepo;
         _datasetItemRepo = datasetItemRepo;
         _taskItemRepo = taskItemRepo;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PagedResponse<TaskAssignmentResponse>> GetTasksAsync(
@@ -176,8 +182,50 @@ public class LabelingTaskService : ILabelingTaskService
         return taskItems;
     }
 
-    public async Task<List<LabelingTaskItem>> GetTaskItemsByProjectIdAsync(Guid projectId)
+    public async Task<PagedResponse<TaskItemResponse>> GetTaskItemsByProjectIdAsync(Guid projectId, TaskItemQueryParameters @params)
     {
-        return await _taskItemRepo.GetByProjectIdAsync(projectId);
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRoles = _currentUserService.Roles;
+
+        // Start with base query
+        IQueryable<LabelingTaskItem> query = _taskItemRepo.Query()
+            .Where(ti => ti.ProjectId == projectId);
+
+        // Apply role-based filtering
+        if (!currentUserRoles.Contains("admin") && !currentUserRoles.Contains("manager"))
+        {
+            // Reviewer/Annotator: only see task-items in tasks assigned to them
+            query = query
+                .Include(ti => ti.Task)
+                    .ThenInclude(t => t!.Assignments)
+                .Where(ti =>
+                    ti.TaskId != null &&
+                    ti.Task!.Assignments.Any(a => a.AssignedTo == currentUserId));
+        }
+
+        // Apply status filter
+        if (@params.Status.HasValue)
+        {
+            query = query.Where(ti => ti.Status == @params.Status.Value);
+        }
+
+        // Apply isAvailable filter if needed
+        // (Currently TaskItemQueryParameters has IsAvailable but TaskItem doesn't have deadline concept)
+        // If you need this filter, you would need to join with Assignment and check deadline
+
+        // Use ToPagedResponseAsync for pagination
+        return await query.ToPagedResponseAsync(@params, MapToTaskItemResponse);
+    }
+
+    private TaskItemResponse MapToTaskItemResponse(LabelingTaskItem taskItem)
+    {
+        return new TaskItemResponse
+        {
+            TaskItemId = taskItem.TaskItemId,
+            DatasetItemId = taskItem.DatasetItemId,
+            TaskId = taskItem.TaskId,
+            RevisionCount = taskItem.RevisionCount,
+            Status = taskItem.Status
+        };
     }
 }

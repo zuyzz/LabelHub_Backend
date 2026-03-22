@@ -10,5 +10,5 @@ public interface ILabelingTaskService
     Task<PagedResponse<TaskAssignmentResponse>> GetTasksAsync(Guid userId, string userRole, TaskQueryParameters @params);
     Task<LabelingTask?> GetTaskByIdForUserAsync(Guid taskId, Guid userId, string userRole);
     Task<List<LabelingTaskItem>> AssignTaskItemsToTaskAsync(Guid taskId, IEnumerable<Guid> taskItemIds);
-    Task<List<LabelingTaskItem>> GetTaskItemsByProjectIdAsync(Guid projectId);
+    Task<PagedResponse<TaskItemResponse>> GetTaskItemsByProjectIdAsync(Guid projectId, TaskItemQueryParameters @params);
 }
